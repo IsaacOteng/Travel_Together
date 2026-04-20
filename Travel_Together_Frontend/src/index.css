@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* Leaflet map fix — ensure tiles load correctly in Vite */
+.leaflet-container { z-index: 0; }
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-popup-pane,
+.leaflet-map-pane svg,
+.leaflet-map-pane canvas { z-index: auto; }
+
+/* Popup styling to match dark theme */
+.leaflet-popup-content-wrapper {
+  background: #0d1b2a;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  color: #fff;
+}
+.leaflet-popup-tip { background: #0d1b2a; }
+.leaflet-popup-close-button { color: rgba(255,255,255,0.4) !important; }
+
+/* Dark theme zoom controls */
+.leaflet-control-zoom {
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+}
+.leaflet-control-zoom a {
+  background: #0d1b2a !important;
+  color: rgba(255,255,255,0.4) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  font-size: 16px !important;
+}
+.leaflet-control-zoom a:hover {
+  background: rgba(255,255,255,0.07) !important;
+  color: rgba(255,255,255,0.75) !important;
+}

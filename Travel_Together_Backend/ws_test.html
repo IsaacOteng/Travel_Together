@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat WS Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; max-width: 700px; }
+    #log { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; background: #f9f9f9; margin-bottom: 10px; }
+    .recv { color: #0066cc; }
+    .sent { color: #333; }
+    .err  { color: #cc0000; }
+    .ok   { color: #007700; }
+    input, textarea { width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 6px; font-family: monospace; }
+    button { padding: 6px 14px; margin-right: 6px; cursor: pointer; }
+    #recordBtn { background: #eee; }
+    #recordBtn.recording { background: #cc0000; color: #fff; }
+    #voiceStatus { margin-left: 8px; font-size: 0.9em; color: #666; }
+    audio { display: block; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h3>WebSocket Chat Tester</h3>
+
+  <label>Conversation ID</label>
+  <input id="convId" value="cb2506d5-f494-4287-ae17-ba89d3b47c04" />
+
+  <label>Access Token (paste from shell)</label>
+  <input id="token" placeholder="eyJ..." />
+
+  <button onclick="connect()">Connect</button>
+  <button onclick="disconnect()">Disconnect</button>
+  <span id="status" style="margin-left:10px;font-weight:bold">●  Disconnected</span>
+
+  <div id="log"></div>
+
+  <label>Text message</label>
+  <input id="msgText" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMsg()" />
+  <button onclick="sendMsg()">Send Text</button>
+  <button onclick="sendTypingStart()">Typing Start</button>
+  <button onclick="sendTypingStop()">Typing Stop</button>
+  <button onclick="markRead()">Mark Read</button>
+
+  <hr/>
+
+  <label>Image — pick a file and send</label>
+  <input type="file" id="imageFile" accept="image/*" />
+  <button onclick="uploadAndSend('image')">Upload &amp; Send Image</button>
+
+  <hr/>
+
+  <label>Voice message</label><br/>
+  <button id="recordBtn" onclick="toggleRecord()">🎙 Hold to Record</button>
+  <span id="voiceStatus">Not recording</span>
+  <div id="audioPreview"></div>
+  <button id="sendVoiceBtn" onclick="sendVoice()" style="display:none">Send Voice Message</button>
+
+  <hr/>
+  <label>Raw JSON (advanced)</label>
+  <textarea id="rawJson" rows="3">{ "type": "message.send", "message_type": "text", "text": "hello" }</textarea>
+  <button onclick="sendRaw()">Send Raw</button>
+
+<script>
+  let ws = null;
+
+  // ── logging ────────────────────────────────────────────────────────────────
+
+  function log(msg, cls) {
+    const div = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = cls || '';
+    line.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+    div.appendChild(line);
+    div.scrollTop = div.scrollHeight;
+  }
+
+  function setStatus(text, color) {
+    const el = document.getElementById('status');
+    el.textContent = '●  ' + text;
+    el.style.color = color;
+  }
+
+  // ── WebSocket ──────────────────────────────────────────────────────────────
+
+  function connect() {
+    const convId = document.getElementById('convId').value.trim();
+    const token  = document.getElementById('token').value.trim();
+    ws = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${convId}/`);
+
+    ws.onopen = () => {
+      setStatus('Connected', 'green');
+      log('Connected — authenticating...', 'ok');
+      ws.send(JSON.stringify({ type: 'auth', token }));
+    };
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      log('← ' + JSON.stringify(data), data.type === 'error' ? 'err' : 'recv');
+    };
+    ws.onclose = (e) => {
+      setStatus('Disconnected (code ' + e.code + ')', '#cc0000');
+      log('Disconnected: code=' + e.code, 'err');
+    };
+    ws.onerror = () => log('WebSocket error', 'err');
+  }
+
+  function disconnect() { if (ws) ws.close(); }
+
+  function send(obj) {
+    if (!ws || ws.readyState !== 1) { log('Not connected', 'err'); return; }
+    const payload = JSON.stringify(obj);
+    ws.send(payload);
+    log('→ ' + payload, 'sent');
+  }
+
+  function sendMsg() {
+    const text = document.getElementById('msgText').value.trim();
+    if (!text) return;
+    send({ type: 'message.send', message_type: 'text', text });
+    document.getElementById('msgText').value = '';
+  }
+
+  function sendTypingStart() { send({ type: 'typing.start' }); }
+  function sendTypingStop()  { send({ type: 'typing.stop' });  }
+  function markRead()        { send({ type: 'read.mark' });    }
+  function sendRaw() {
+    try { send(JSON.parse(document.getElementById('rawJson').value)); }
+    catch(e) { log('Invalid JSON: ' + e.message, 'err'); }
+  }
+
+  // ── upload helper ──────────────────────────────────────────────────────────
+
+  async function uploadFile(blob, filename) {
+    const convId = document.getElementById('convId').value.trim();
+    const token  = document.getElementById('token').value.trim();
+
+    const form = new FormData();
+    form.append('file', blob, filename);
+
+    log(`Uploading ${filename} (${(blob.size/1024).toFixed(1)} KB)...`);
+
+    const resp = await fetch(`http://127.0.0.1:8000/api/conversations/${convId}/upload/`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+      credentials: 'include',
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      log('Upload failed: ' + JSON.stringify(err), 'err');
+      return null;
+    }
+    return await resp.json();   // { media_url, message_type }
+  }
+
+  // ── image ──────────────────────────────────────────────────────────────────
+
+  async function uploadAndSend(type) {
+    const input = document.getElementById('imageFile');
+    const file  = input.files[0];
+    if (!file) { log('No image selected.', 'err'); return; }
+
+    const result = await uploadFile(file, file.name);
+    if (!result) return;
+
+    log(`Uploaded → ${result.media_url}`, 'ok');
+    send({ type: 'message.send', message_type: result.message_type, media_url: result.media_url });
+    input.value = '';
+  }
+
+  // ── voice recording ────────────────────────────────────────────────────────
+
+  let mediaRecorder = null;
+  let audioChunks   = [];
+  let recordedBlob  = null;
+  let startTime     = null;
+
+  async function toggleRecord() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      stopRecord();
+    } else {
+      startRecord();
+    }
+  }
+
+  async function startRecord() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks  = [];
+      recordedBlob = null;
+      startTime    = Date.now();
+
+      // Prefer webm/opus (Chrome) then ogg/opus (Firefox) then mp4
+      const mimeType = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4']
+        .find(t => MediaRecorder.isTypeSupported(t)) || '';
+
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        recordedBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+
+        // Show preview
+        const url      = URL.createObjectURL(recordedBlob);
+        const preview  = document.getElementById('audioPreview');
+        preview.innerHTML = `<audio controls src="${url}"></audio><small>${duration}s recorded</small>`;
+
+        document.getElementById('sendVoiceBtn').style.display = 'inline';
+        document.getElementById('voiceStatus').textContent = `Ready (${duration}s) — preview above`;
+        log(`Recorded ${duration}s of audio`, 'ok');
+      };
+
+      mediaRecorder.start();
+      document.getElementById('recordBtn').textContent  = '⏹ Stop Recording';
+      document.getElementById('recordBtn').classList.add('recording');
+      document.getElementById('voiceStatus').textContent = 'Recording...';
+      document.getElementById('sendVoiceBtn').style.display = 'none';
+      document.getElementById('audioPreview').innerHTML = '';
+      log('Recording started — click Stop when done', 'ok');
+    } catch (err) {
+      log('Microphone error: ' + err.message, 'err');
+    }
+  }
+
+  function stopRecord() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      document.getElementById('recordBtn').textContent = '🎙 Hold to Record';
+      document.getElementById('recordBtn').classList.remove('recording');
+    }
+  }
+
+  async function sendVoice() {
+    if (!recordedBlob) { log('No recording to send.', 'err'); return; }
+
+    const ext      = recordedBlob.type.includes('ogg') ? '.ogg' : recordedBlob.type.includes('mp4') ? '.mp4' : '.webm';
+    const filename = `voice_${Date.now()}${ext}`;
+    const duration = parseFloat(
+      (document.getElementById('audioPreview').querySelector('small') || {}).textContent || '0'
+    );
+
+    const result = await uploadFile(recordedBlob, filename);
+    if (!result) return;
+
+    log(`Uploaded voice → ${result.media_url}`, 'ok');
+    send({
+      type:             'message.send',
+      message_type:     'voice',
+      media_url:        result.media_url,
+      duration_seconds: duration || null,
+    });
+
+    // Reset
+    recordedBlob = null;
+    document.getElementById('audioPreview').innerHTML = '';
+    document.getElementById('sendVoiceBtn').style.display = 'none';
+    document.getElementById('voiceStatus').textContent = 'Not recording';
+  }
+</script>
+</body>
+</html>
