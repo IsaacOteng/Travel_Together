@@ -12,7 +12,7 @@ import Discover          from './components/Discover';
 import ChatPage          from './components/Chat/ChatPage';
 import ProfilePage       from './components/Profile/ProfilePage';
 import Dashboard         from './components/Dashboard/Dashboard';
-import GroupDashboard    from './components/Dashboard/GroupDashboard';
+import GroupDashboard    from './components/GroupDashboard';
 import TripWelcome       from './components/Dashboard/TripWelcome';
 import CreateTripPage    from './components/CreateTripPage';
 import SettingsPage      from './components/Settings/SettingsPage';
