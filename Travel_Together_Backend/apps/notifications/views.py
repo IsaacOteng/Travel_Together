@@ -17,8 +17,11 @@ class NotificationListView(APIView):
             qs = qs.filter(is_read=False)
 
         # Simple pagination
-        page      = max(int(request.query_params.get("page", 1)), 1)
-        page_size = min(int(request.query_params.get("page_size", 20)), 50)
+        try:
+            page      = max(int(request.query_params.get("page", 1)), 1)
+            page_size = min(int(request.query_params.get("page_size", 20)), 50)
+        except (TypeError, ValueError):
+            return Response({"detail": "page and page_size must be integers."}, status=400)
         offset    = (page - 1) * page_size
         total     = qs.count()
 

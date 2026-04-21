@@ -1,7 +1,6 @@
-import os
 import uuid
-from django.conf import settings
 from django.db import transaction
+from utils.storage import save_image, save_file
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -376,14 +375,12 @@ class ChatMediaUploadView(APIView):
                 status=400,
             )
 
-        ext  = os.path.splitext(file.name)[1].lower() or (".jpg" if message_type == "image" else ".m4a")
-        key  = f"{subfolder}/{conversation_id}/{uuid.uuid4().hex}{ext}"
-        path = os.path.join(settings.MEDIA_ROOT, key)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if message_type == "image":
+            key       = f"{subfolder}/{conversation_id}/{uuid.uuid4().hex}.jpg"
+            media_url = save_image(file, key, max_px=2000, request=request)
+        else:
+            ext       = ".m4a"
+            key       = f"{subfolder}/{conversation_id}/{uuid.uuid4().hex}{ext}"
+            media_url = save_file(file, key, request=request)
 
-        with open(path, "wb+") as dest:
-            for chunk in file.chunks():
-                dest.write(chunk)
-
-        media_url = request.build_absolute_uri(f"{settings.MEDIA_URL}{key}")
         return Response({"media_url": media_url, "message_type": message_type}, status=201)

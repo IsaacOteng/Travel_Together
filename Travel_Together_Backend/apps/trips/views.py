@@ -1,7 +1,6 @@
-import os
 import uuid
-from django.conf import settings
 from django.db import transaction
+from utils.storage import save_image, delete_file as storage_delete
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -24,26 +23,15 @@ from .serializers import (
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def _save_upload(file, trip_id):
-    """Save an uploaded image to MEDIA_ROOT and return (url, key)."""
-    ext     = os.path.splitext(file.name)[1].lower() or ".jpg"
-    key     = f"trips/{trip_id}/{uuid.uuid4().hex}{ext}"
-    full    = os.path.join(settings.MEDIA_ROOT, key)
-    os.makedirs(os.path.dirname(full), exist_ok=True)
-    with open(full, "wb+") as dest:
-        for chunk in file.chunks():
-            dest.write(chunk)
-    url = f"{settings.MEDIA_URL}{key}"
+def _save_upload(file, trip_id, request=None):
+    """Strip EXIF, resize to max 1600 px, save as JPEG. Returns (absolute_url, key)."""
+    key = f"trips/{trip_id}/{uuid.uuid4().hex}.jpg"
+    url = save_image(file, key, max_px=1600, request=request)
     return url, key
 
 
 def _delete_file(key):
-    try:
-        path = os.path.join(settings.MEDIA_ROOT, key)
-        if os.path.exists(path):
-            os.remove(path)
-    except Exception:
-        pass
+    storage_delete(key)
 
 
 def _is_chief(trip, user):
@@ -124,8 +112,7 @@ class TripDetailView(APIView):
             return err
         if trip.status in (Trip.Status.COMPLETED, Trip.Status.ARCHIVED):
             return Response({"detail": "Cannot edit a completed or archived trip."}, status=400)
-        was_completed      = trip.status == Trip.Status.COMPLETED
-        old_destination    = trip.destination
+        old_destination = trip.destination
         serializer = TripUpdateSerializer(trip, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
@@ -138,34 +125,6 @@ class TripDetailView(APIView):
             trip.destination_point = None   # clear stale coords first
             trip.save(update_fields=["destination_point"])
             geocode_trip(trip)
-
-        # When a trip is marked completed, award karma + send rating notifications
-        if not was_completed and trip.status == Trip.Status.COMPLETED:
-            from apps.karma.utils import award_karma, award_badges
-            from apps.notifications.utils import push
-            approved_members = trip.members.filter(
-                status=TripMember.Status.APPROVED
-            ).select_related("user")
-            for member in approved_members:
-                award_karma(
-                    user        = member.user,
-                    delta       = 10,
-                    reason      = "trip_completed",
-                    description = f"Completed trip: {trip.title}",
-                    trip        = trip,
-                )
-                award_badges(member.user, trip=trip)
-
-                is_chief = (member.user == trip.chief)
-                push(
-                    recipient  = member.user,
-                    notif_type = "review_reminder",
-                    title      = "Rate Your Crew" if is_chief else "Rate Your Trip Mates",
-                    body       = f"'{trip.title}' has ended. Share how the journey went with your crew!",
-                    trip       = trip,
-                    action_url = f"/trips/{trip.id}/rate",
-                    data       = {"trip_id": str(trip.id)},
-                )
 
         return Response(TripDetailSerializer(trip, context={"request": request}).data)
 
@@ -313,8 +272,7 @@ class TripImageListView(APIView):
         with transaction.atomic():
             next_order = existing_count
             for f in files:
-                _, key = _save_upload(f, trip.id)
-                abs_url = request.build_absolute_uri(f"{settings.MEDIA_URL}{key}")
+                abs_url, key = _save_upload(f, trip.id, request=request)
                 img = TripImage.objects.create(
                     trip=trip, image_url=abs_url, image_key=key, order=next_order
                 )
@@ -647,11 +605,16 @@ class SavedTripListView(APIView):
 
     def get(self, request):
         saved = SavedTrip.objects.filter(user=request.user).select_related("trip").order_by("-saved_at")
-        trips = [s.trip for s in saved]
-        # Prefetch images for efficiency
-        Trip.objects.prefetch_related("images", "tags", "members", "saved_by").filter(
-            id__in=[t.id for t in trips]
+        trip_ids = [s.trip_id for s in saved]
+        trips = list(
+            Trip.objects.prefetch_related("images", "tags", "members__user", "saved_by")
+            .filter(id__in=trip_ids)
+            .in_bulk()
+            .values()
         )
+        # Preserve saved_at ordering
+        id_order = {tid: idx for idx, tid in enumerate(trip_ids)}
+        trips.sort(key=lambda t: id_order.get(t.id, 0))
         return Response(TripListSerializer(trips, many=True, context={"request": request}).data)
 
 
@@ -773,8 +736,11 @@ class PublicTripListView(APIView):
             trips = trips.filter(date_end__lte=date_end)
 
         # Simple pagination
-        page      = max(int(request.query_params.get("page", 1)), 1)
-        page_size = min(int(request.query_params.get("page_size", 20)), 50)
+        try:
+            page      = max(int(request.query_params.get("page", 1)), 1)
+            page_size = min(int(request.query_params.get("page_size", 20)), 50)
+        except (TypeError, ValueError):
+            return Response({"detail": "page and page_size must be integers."}, status=400)
         offset    = (page - 1) * page_size
         total     = trips.count()
         trips     = trips[offset: offset + page_size]

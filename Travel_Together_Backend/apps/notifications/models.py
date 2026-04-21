@@ -8,7 +8,9 @@ class Notification(models.Model):
     class NotificationType(models.TextChoices):
         SOS_ALERT         = "sos_alert",         "SOS Alert"
         JOIN_REQUEST      = "join_request",      "Join Request"
-        APPROVED          = "approved",          "Join Approved"
+        JOIN_APPROVED     = "join_approved",     "Join Approved"
+        JOIN_DECLINED     = "join_declined",     "Join Declined"
+        APPROVED          = "approved",          "Approved"
         CHAT_MESSAGE      = "chat_message",      "Chat Message"
         KARMA_LEVEL       = "karma_level",       "Karma Level Up"
         TRIP_REMINDER     = "trip_reminder",     "Trip Reminder"

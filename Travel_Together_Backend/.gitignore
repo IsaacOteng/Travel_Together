@@ -32,3 +32,6 @@ staticfiles/
 # Coverage
 .coverage
 htmlcov/
+
+# Local documentation — never commit
+BACKEND_DOCS.md

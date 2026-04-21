@@ -31,6 +31,7 @@ INSTALLED_APPS = [
 
     # Third-party
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
     "channels",
@@ -110,6 +111,18 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# ─── Cloudflare R2 (object storage) ──────────────────────────────────────────
+# Set USE_R2=true in production. All four values below are required when enabled.
+# Leave USE_R2 unset (or false) for local development — files go to MEDIA_ROOT.
+USE_R2               = env.bool("USE_R2", default=False)
+R2_BUCKET_NAME       = env("R2_BUCKET_NAME",       default="")
+R2_ACCESS_KEY_ID     = env("R2_ACCESS_KEY_ID",     default="")
+R2_SECRET_ACCESS_KEY = env("R2_SECRET_ACCESS_KEY", default="")
+R2_ENDPOINT_URL      = env("R2_ENDPOINT_URL",      default="")
+# Optional: set to your R2 custom domain (e.g. media.traveltogether.app)
+# so uploaded file URLs use your domain instead of the raw R2 endpoint.
+R2_PUBLIC_DOMAIN     = env("R2_PUBLIC_DOMAIN",     default="")
+
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
@@ -150,7 +163,7 @@ SIMPLE_JWT = {
         days=env.int("JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=30)
     ),
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "BLACKLIST_AFTER_ROTATION": True,
     # Tokens are sent via Authorization: Bearer header — no cookies needed.
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
@@ -158,7 +171,7 @@ SIMPLE_JWT = {
 # ─── Apple Sign In ────────────────────────────────────────────────────────────
 APPLE_APP_BUNDLE_ID = env("APPLE_APP_BUNDLE_ID", default="")
 
-# ─── Channels (WebSocket) ─────────────────────────────────────────────────────
+# ─── Channels (WebSocket) + Cache ────────────────────────────────────────────
 _REDIS_URL = env("REDIS_URL", default="")
 if _REDIS_URL:
     CHANNEL_LAYERS = {
@@ -173,6 +186,20 @@ else:
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
+    }
+
+if _REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
     }
 
 # ─── Celery ───────────────────────────────────────────────────────────────────
@@ -211,6 +238,11 @@ CELERY_BEAT_SCHEDULE = {
         "task":     "tasks.cleanup.mark_trips_completed",
         "schedule": crontab(hour=0, minute=5),
     },
+    # Trip reminders — daily at 10 AM UTC (24h before trips starting tomorrow)
+    "send-trip-reminders": {
+        "task":     "tasks.recap.send_trip_reminders_daily",
+        "schedule": crontab(hour=10, minute=0),
+    },
     # Nightly cleanup — 2 AM UTC
     "purge-expired-otps": {
         "task":     "tasks.cleanup.purge_expired_otps",
@@ -240,7 +272,7 @@ EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = "TravelTogether <noreply@traveltogether.app>"
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="TravelTogether <noreply@traveltogether.app>")
 
 # ─── Africa's Talking (SMS) ───────────────────────────────────────────────────
 AT_USERNAME  = env("AT_USERNAME",  default="sandbox")
@@ -255,6 +287,19 @@ AUTHENTICATION_BACKENDS = [
     "social_core.backends.google.GoogleOAuth2",
     "django.contrib.auth.backends.ModelBackend",
 ]
+
+# ─── Production security headers ─────────────────────────────────────────────
+# These are safe to set in all environments; they only take effect over HTTPS.
+if not DEBUG:
+    SECURE_SSL_REDIRECT          = True
+    SECURE_HSTS_SECONDS          = 31536000   # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD          = True
+    SESSION_COOKIE_SECURE        = True
+    CSRF_COOKIE_SECURE           = True
+    SECURE_BROWSER_XSS_FILTER   = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS              = "DENY"
 
 # ─── GeoDjango (Windows — PostGIS bundle paths) ───────────────────────────────
 # These point to the GDAL/GEOS DLLs that ship with the PostGIS installer.

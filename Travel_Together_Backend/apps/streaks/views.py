@@ -1,7 +1,6 @@
-import os
 import uuid
-from django.conf import settings
 from django.db import transaction
+from utils.storage import save_file, delete_file as storage_delete
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -30,23 +29,15 @@ def _get_trip_and_membership(trip_id, user):
 
 
 def _save_video(file, trip_id):
-    ext  = os.path.splitext(file.name)[1].lower() or ".mp4"
-    key  = f"streaks/{trip_id}/{uuid.uuid4().hex}{ext}"
-    path = os.path.join(settings.MEDIA_ROOT, key)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "wb+") as dest:
-        for chunk in file.chunks():
-            dest.write(chunk)
-    return f"{settings.MEDIA_URL}{key}", key
+    import os
+    ext = os.path.splitext(file.name)[1].lower() or ".mp4"
+    key = f"streaks/{trip_id}/{uuid.uuid4().hex}{ext}"
+    url = save_file(file, key)
+    return url, key
 
 
 def _delete_file(key):
-    try:
-        path = os.path.join(settings.MEDIA_ROOT, key)
-        if os.path.exists(path):
-            os.remove(path)
-    except Exception:
-        pass
+    storage_delete(key)
 
 
 # ─── Streak list + upload ─────────────────────────────────────────────────────
@@ -74,8 +65,11 @@ class StreakListView(APIView):
         if user_id:
             qs = qs.filter(user_id=user_id)
 
-        page      = max(int(request.query_params.get("page", 1)), 1)
-        page_size = min(int(request.query_params.get("page_size", 20)), 50)
+        try:
+            page      = max(int(request.query_params.get("page", 1)), 1)
+            page_size = min(int(request.query_params.get("page_size", 20)), 50)
+        except (TypeError, ValueError):
+            return Response({"detail": "page and page_size must be integers."}, status=400)
         offset    = (page - 1) * page_size
         total     = qs.count()
 
@@ -127,7 +121,7 @@ class StreakListView(APIView):
                 stop               = stop,
                 video_url          = video_url,
                 video_key          = video_key,
-                duration_seconds   = float(request.data.get("duration_seconds", 0)),
+                duration_seconds   = d.get("duration_seconds", 0),
                 location           = Point(x=d["longitude"], y=d["latitude"], srid=4326),
                 accuracy_meters    = d.get("accuracy_meters"),
                 geofence_validated = geofence_validated,

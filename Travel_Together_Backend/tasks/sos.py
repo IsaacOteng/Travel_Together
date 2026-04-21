@@ -71,8 +71,7 @@ def notify_emergency_contacts(self, alert_id):
             if at_sender and at_username != "sandbox":
                 payload["from"] = at_sender
             try:
-                # verify=False works around SSL interception by antivirus/proxy on Windows
-                resp = requests.post(at_url, data=payload, headers=headers, timeout=15, verify=False)
+                resp = requests.post(at_url, data=payload, headers=headers, timeout=15)
                 results.append({"contact": contact.name, "number": number, "status": resp.status_code, "response": resp.text})
             except Exception as exc:
                 results.append({"contact": contact.name, "number": number, "error": str(exc)})

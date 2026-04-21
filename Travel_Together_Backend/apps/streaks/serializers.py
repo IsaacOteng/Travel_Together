@@ -48,11 +48,12 @@ class StreakSerializer(serializers.ModelSerializer):
 
 
 class StreakUploadSerializer(serializers.Serializer):
-    video          = serializers.FileField()
-    latitude       = serializers.FloatField()
-    longitude      = serializers.FloatField()
-    accuracy_meters = serializers.FloatField(required=False, allow_null=True)
-    stop_id        = serializers.UUIDField(required=False, allow_null=True)
+    video            = serializers.FileField()
+    latitude         = serializers.FloatField()
+    longitude        = serializers.FloatField()
+    accuracy_meters  = serializers.FloatField(required=False, allow_null=True)
+    stop_id          = serializers.UUIDField(required=False, allow_null=True)
+    duration_seconds = serializers.FloatField(required=False, default=0, min_value=0, max_value=10)
 
     def validate_video(self, file):
         allowed = {"video/mp4", "video/quicktime", "video/webm", "video/x-m4v"}

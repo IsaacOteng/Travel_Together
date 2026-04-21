@@ -81,14 +81,9 @@ def generate_trip_recap(self, trip_id: str):
 
 @shared_task
 def send_trip_reminder(trip_id: str):
-    """
-    Send a reminder 24 hours before a trip starts.
-    Scheduled by Celery Beat using the trip's date_start.
-    """
+    """Send a reminder to all approved members of a single trip."""
     from apps.trips.models import Trip, TripMember
     from apps.notifications.utils import push_many
-    from django.utils import timezone
-    from datetime import timedelta
 
     try:
         trip = Trip.objects.get(id=trip_id)
@@ -111,3 +106,22 @@ def send_trip_reminder(trip_id: str):
         action_url = f"/trips/{trip.id}/",
         data       = {"date_start": str(trip.date_start)},
     )
+
+
+@shared_task
+def send_trip_reminders_daily():
+    """
+    Daily task (10 AM UTC). Finds all published trips starting tomorrow
+    and sends a 24-hour reminder to every approved member.
+    """
+    from apps.trips.models import Trip
+    from django.utils import timezone
+    from datetime import timedelta, date
+
+    tomorrow = timezone.now().date() + timedelta(days=1)
+    trips = Trip.objects.filter(
+        status=Trip.Status.PUBLISHED,
+        date_start=tomorrow,
+    )
+    for trip in trips:
+        send_trip_reminder.delay(str(trip.id))

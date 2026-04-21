@@ -5,6 +5,8 @@ import urllib.request
 import urllib.error
 from datetime import timedelta
 
+from utils.storage import save_image
+
 import jwt
 from jwt.algorithms import RSAAlgorithm
 
@@ -49,17 +51,9 @@ from tasks.email import send_otp_email
 # ─── Avatar upload helper ─────────────────────────────────────────────────────
 
 def _save_avatar(request, file) -> str:
-    """Save an uploaded avatar file and return its absolute media URL."""
-    ext = os.path.splitext(file.name)[1].lower() or ".jpg"
-    filename = f"{uuid.uuid4().hex}{ext}"
-    rel_path = f"avatars/{filename}"
-    abs_dir  = os.path.join(settings.MEDIA_ROOT, "avatars")
-    os.makedirs(abs_dir, exist_ok=True)
-    abs_path = os.path.join(abs_dir, filename)
-    with open(abs_path, "wb") as dest:
-        for chunk in file.chunks():
-            dest.write(chunk)
-    return request.build_absolute_uri(f"{settings.MEDIA_URL}{rel_path}")
+    """Strip EXIF, resize to max 800 px, save as JPEG, return absolute URL."""
+    key = f"avatars/{uuid.uuid4().hex}.jpg"
+    return save_image(file, key, max_px=800, request=request)
 
 
 # ─── Token helper ─────────────────────────────────────────────────────────────
@@ -139,7 +133,7 @@ class SendOTPView(APIView):
                 send_otp_email.delay(email, code, "login")
             except Exception:
                 # Celery/Redis unavailable — run synchronously so OTP still arrives
-                send_otp_email(email, code, "login")
+                send_otp_email.apply(args=[email, code, "login"])
 
         return Response({"email_sent": True}, status=status.HTTP_200_OK)
 
@@ -450,6 +444,7 @@ class AppleAuthView(APIView):
                 first_name=data.get("first_name", ""),
                 last_name=data.get("last_name", ""),
                 is_active=True,
+                username=generate_unique_username(email),
             )
         else:
             # Sync apple_uid if missing
@@ -493,7 +488,7 @@ class FirebaseAuthView(APIView):
             get_firebase_app()
             decoded = firebase_auth.verify_id_token(id_token)
         except Exception as e:
-            import traceback; traceback.print_exc()
+            import logging; logging.getLogger(__name__).exception("Firebase token verification failed")
             return Response(
                 {"detail": f"Firebase token verification failed: {e}"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -562,14 +557,19 @@ class FirebaseAuthView(APIView):
 class LogoutView(APIView):
     """
     POST /api/auth/logout/
-    Body: { "refresh": "<refresh_token>" }  (optional — client should discard tokens regardless)
-    The client is responsible for discarding stored tokens.
+    Body: { "refresh": "<refresh_token>" }
+    Blacklists the refresh token so it cannot be reused after logout.
     """
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # Optionally blacklist the refresh token if BLACKLIST_AFTER_ROTATION is enabled.
-        # For now we rely on token expiry — client drops both tokens on logout.
+        refresh_token = request.data.get("refresh")
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                pass   # invalid/already-blacklisted token — still log out cleanly
         return Response({"logged_out": True}, status=status.HTTP_200_OK)
 
 

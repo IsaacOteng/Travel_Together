@@ -35,3 +35,4 @@ boto3==1.35.0
 # Utilities
 django-filter==24.3
 PyJWT[crypto]==2.11.0
+requests==2.32.3

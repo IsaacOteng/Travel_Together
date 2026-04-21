@@ -291,7 +291,7 @@ class IncidentReport(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.reference_number:
-            self.reference_number = f"TT-{timezone.now().year}-{str(self.id)[:6].upper()}"
+            self.reference_number = f"TT-{timezone.now().year}-{str(self.id).replace('-', '')[:8].upper()}"
         super().save(*args, **kwargs)
 
     def __str__(self):

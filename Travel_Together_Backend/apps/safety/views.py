@@ -13,11 +13,16 @@ from .models import SOSAlert, SOSAction
 
 def _broadcast_alert(trip_id, payload):
     """Push a message to the trip's alerts WebSocket group."""
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"trips.{trip_id}.alerts",
-        {"type": "trip.alert", "data": payload},
-    )
+    try:
+        channel_layer = get_channel_layer()
+        if channel_layer is None:
+            return
+        async_to_sync(channel_layer.group_send)(
+            f"trips.{trip_id}.alerts",
+            {"type": "trip.alert", "data": payload},
+        )
+    except Exception:
+        pass
 from .serializers import (
     SOSAlertSerializer, TriggerSOSSerializer,
     ResolveSOSSerializer, LogActionSerializer,
