@@ -18,6 +18,7 @@ import CreateTripPage    from './components/CreateTripPage';
 import SettingsPage      from './components/Settings/SettingsPage';
 import TripPublicPage   from './components/Discover/TripPublicPage';
 import RatingPage       from './components/Rating/RatingPage';
+import AdminDashboard   from './components/AdminDashboard/AdminDashboard';
 
 /* ── Public route wrappers ────────────────────────────────────── */
 
@@ -120,6 +121,7 @@ export default function App() {
         <Route path="/create-trip"     element={<ProtectedRoute><CreateTripRoute /></ProtectedRoute>} />
         <Route path="/settings"        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/trips/:tripId/rate" element={<ProtectedRoute><RatingPage /></ProtectedRoute>} />
+        <Route path="/admin" element={<AdminDashboard />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

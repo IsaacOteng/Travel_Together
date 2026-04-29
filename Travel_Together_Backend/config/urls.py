@@ -34,6 +34,9 @@ urlpatterns = [
     # Streaks
     path("api/trips/", include("apps.streaks.urls")),
 
+    # Admin dashboard
+    path("api/admin-dashboard/", include("apps.admin_dashboard.urls")),
+
     # Public endpoints (no auth)
     path("api/public/", include("apps.trips.urls_public")),
 

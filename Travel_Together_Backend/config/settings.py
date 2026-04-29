@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "apps.safety",
     "apps.karma",
     "apps.notifications",
+    "apps.admin_dashboard",
 ]
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
