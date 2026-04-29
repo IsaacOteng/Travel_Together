@@ -65,7 +65,7 @@ export default function SettingsPage() {
         verified:     data.is_verified  ?? false,
       }]);
     } catch (err) {
-      console.error("Failed to add emergency contact:", err?.response?.data ?? err);
+      if (import.meta.env.DEV) console.error("Failed to add emergency contact:", err?.response?.data ?? err);
     }
   }
 

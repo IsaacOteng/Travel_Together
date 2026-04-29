@@ -25,9 +25,7 @@ export default function SignUp({ onVerify }) {
         try {
             const result   = await signInWithPopup(auth, provider);
             const idToken  = await result.user.getIdToken();
-            console.log("[id token obtained]", idToken.slice(0, 20) + "...");
             const { data } = await authApi.firebaseAuth(idToken);
-            console.log("[backend response]", data);
             await login(data);
         } catch (err) {
             if (err.code === "auth/popup-closed-by-user" ||
@@ -35,7 +33,7 @@ export default function SignUp({ onVerify }) {
                 setGoogleLoading(false);
                 return;
             }
-            console.error("[Google sign-in error]", err?.response?.data || err);
+            if (import.meta.env.DEV) console.error("[Google sign-in error]", err?.response?.data || err);
             setSocialError("Sign-in failed. Please try again.");
             setGoogleLoading(false);
         }

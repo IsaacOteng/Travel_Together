@@ -56,7 +56,7 @@ export default function Step4({ form, onBack, onPublish, onDraft }) {
       await tripsApi.publish(trip.id);
       onPublish(trip.id);
     } catch (err) {
-      console.error("Trip create/publish failed:", err?.response?.data || err);
+      if (import.meta.env.DEV) console.error("Trip create/publish failed:", err?.response?.data || err);
       onPublish(null);
     } finally {
       setPublishing(false);
