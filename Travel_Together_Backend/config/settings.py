@@ -20,6 +20,11 @@ INSTALLED_APPS = [
     # Daphne must come before staticfiles
     "daphne",
 
+    # Unfold must come before django.contrib.admin
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.inlines",
+
     # Django built-ins
     "django.contrib.admin",
     "django.contrib.auth",
@@ -302,6 +307,121 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER   = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS              = "DENY"
+
+# ─── Unfold Admin UI ─────────────────────────────────────────────────────────
+UNFOLD = {
+    "SITE_TITLE":   "Travel Together",
+    "SITE_HEADER":  "Travel Together",
+    "SITE_SUBHEADER": "Admin Dashboard",
+    "SITE_URL":     "/",
+    "SITE_ICON": {
+        "light": None,
+        "dark":  None,
+    },
+    "SITE_SYMBOL": "flight_takeoff",   # Material Symbols icon name
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "COLORS": {
+        "font": {
+            "subtle-light": "107 114 128",
+            "subtle-dark":  "156 163 175",
+            "default-light": "75 85 99",
+            "default-dark":  "209 213 219",
+            "important-light": "17 24 39",
+            "important-dark":  "243 244 246",
+        },
+        "primary": {
+            "50":  "255 237 213",
+            "100": "254 215 170",
+            "200": "253 186 116",
+            "300": "251 146 60",
+            "400": "249 115 22",
+            "500": "234 88 12",
+            "600": "194 65 12",
+            "700": "154 52 18",
+            "800": "124 45 18",
+            "900": "101 38 16",
+            "950": "67 20 7",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": "Platform",
+                "separator": True,
+                "items": [
+                    {"title": "Dashboard",     "icon": "dashboard",      "link": "/admin/"},
+                ],
+            },
+            {
+                "title": "Users",
+                "separator": True,
+                "items": [
+                    {"title": "Users",                "icon": "person",             "link": "/admin/users/user/"},
+                    {"title": "Emergency Contacts",   "icon": "emergency",          "link": "/admin/users/emergencycontact/"},
+                    {"title": "Email Verifications",  "icon": "mark_email_read",    "link": "/admin/users/emailverification/"},
+                    {"title": "Notification Settings","icon": "notifications",      "link": "/admin/users/notificationsettings/"},
+                ],
+            },
+            {
+                "title": "Trips",
+                "separator": True,
+                "items": [
+                    {"title": "Trips",          "icon": "map",            "link": "/admin/trips/trip/"},
+                    {"title": "Members",        "icon": "group",          "link": "/admin/trips/tripmember/"},
+                    {"title": "Itinerary Stops","icon": "route",          "link": "/admin/trips/itinerarystop/"},
+                    {"title": "Check-ins",      "icon": "check_circle",   "link": "/admin/trips/checkin/"},
+                    {"title": "Ratings",        "icon": "star",           "link": "/admin/trips/triprating/"},
+                    {"title": "Incidents",      "icon": "report",         "link": "/admin/trips/incidentreport/"},
+                ],
+            },
+            {
+                "title": "Safety",
+                "separator": True,
+                "items": [
+                    {"title": "SOS Alerts",    "icon": "sos",            "link": "/admin/safety/sosalert/"},
+                    {"title": "SOS Actions",   "icon": "crisis_alert",   "link": "/admin/safety/sosaction/"},
+                ],
+            },
+            {
+                "title": "Chat",
+                "separator": True,
+                "items": [
+                    {"title": "Conversations", "icon": "forum",          "link": "/admin/chat/conversation/"},
+                    {"title": "Messages",      "icon": "chat",           "link": "/admin/chat/message/"},
+                ],
+            },
+            {
+                "title": "Content",
+                "separator": True,
+                "items": [
+                    {"title": "Streaks",       "icon": "videocam",       "link": "/admin/streaks/streak/"},
+                    {"title": "Polls",         "icon": "poll",           "link": "/admin/polls/poll/"},
+                    {"title": "Notifications", "icon": "notifications",  "link": "/admin/notifications/notification/"},
+                ],
+            },
+            {
+                "title": "Karma",
+                "separator": True,
+                "items": [
+                    {"title": "Karma Log",     "icon": "trending_up",    "link": "/admin/karma/karmalog/"},
+                    {"title": "Badges",        "icon": "military_tech",  "link": "/admin/karma/badge/"},
+                    {"title": "User Badges",   "icon": "workspace_premium", "link": "/admin/karma/userbadge/"},
+                ],
+            },
+            {
+                "title": "System",
+                "separator": True,
+                "items": [
+                    {"title": "Periodic Tasks","icon": "schedule",       "link": "/admin/django_celery_beat/periodictask/"},
+                    {"title": "Token Blacklist","icon": "block",         "link": "/admin/token_blacklist/blacklistedtoken/"},
+                ],
+            },
+        ],
+    },
+}
 
 # ─── GeoDjango (Windows — PostGIS bundle paths) ───────────────────────────────
 # These point to the GDAL/GEOS DLLs that ship with the PostGIS installer.

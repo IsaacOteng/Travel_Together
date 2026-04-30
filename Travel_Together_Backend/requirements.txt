@@ -41,3 +41,6 @@ whitenoise==6.6.0
 django-filter==24.3
 PyJWT[crypto]==2.11.0
 requests==2.32.3
+
+# Admin UI
+django-unfold==0.40.0
