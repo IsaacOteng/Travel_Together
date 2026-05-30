@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   MapPin, Navigation, Calendar, Car, Globe, Users,
-  Star, Ticket, Info, Map, ArrowLeft, Send, Heart, Share2,
+  Star, Ticket, Info, Map, ArrowLeft, Send, Heart, Share2, Check,
 } from "lucide-react";
 import MapEmbed from "./MapEmbed.jsx";
 import { Avatar, WhoIsGoing } from "./helpers.jsx";
@@ -463,6 +463,25 @@ export default function TripPublicPage() {
             </div>
           );
 
+          const Highlights = (trip.highlights || []).length > 0 ? (
+            <div style={{ marginBottom: 22 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                <Check size={13} color="#FF6B35" />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#FF6B35", textTransform: "uppercase", letterSpacing: "0.08em" }}>What's planned</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {(trip.highlights || []).map((h, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "10px 12px" }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 6, background: "rgba(255,107,53,0.15)", border: "1px solid rgba(255,107,53,0.35)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Check size={11} color="#FF6B35" />
+                    </div>
+                    <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.8)" }}>{h}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null;
+
           /* ── MOBILE: single column ── */
           if (mobile) {
             return (
@@ -491,6 +510,8 @@ export default function TripPublicPage() {
                 {MetaGrid}
 
                 <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.75 }}>{trip.description}</p>
+
+                {Highlights}
 
                 <WhoIsGoing
                   members={trip.members}
@@ -529,6 +550,7 @@ export default function TripPublicPage() {
                 )}
                 {MetaGrid}
                 <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.75, marginBottom: 22 }}>{trip.description}</p>
+                {Highlights}
                 <WhoIsGoing
                   members={trip.members}
                   spotsFilled={trip.spotsFilled}

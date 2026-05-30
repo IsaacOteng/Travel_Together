@@ -357,7 +357,7 @@ class TripDetailSerializer(serializers.ModelSerializer):
             "images", "description",
             "date_start", "date_end", "drive_time", "distance_km",
             "spots_total", "spots_left", "member_count",
-            "entry_price", "price_note", "price_covers",
+            "entry_price", "price_note", "price_covers", "highlights",
             "status", "visibility", "group_karma",
             "chief_id", "chief_username", "chief_first_name", "chief_last_name",
             "chief_avatar_url", "chief_trip_count",
@@ -436,6 +436,9 @@ class TripCreateSerializer(serializers.ModelSerializer):
     price_covers = serializers.ListField(
         child=serializers.CharField(max_length=100), required=False, default=list
     )
+    highlights   = serializers.ListField(
+        child=serializers.CharField(max_length=120), required=False, default=list
+    )
     destination_lat = serializers.FloatField(write_only=True, required=False, allow_null=True)
     destination_lng = serializers.FloatField(write_only=True, required=False, allow_null=True)
     meeting_lat  = serializers.FloatField(write_only=True, required=False, allow_null=True)
@@ -448,7 +451,7 @@ class TripCreateSerializer(serializers.ModelSerializer):
             "meeting_point", "meeting_lat", "meeting_lng",
             "description", "date_start", "date_end",
             "drive_time", "distance_km",
-            "spots_total", "entry_price", "price_note",
+            "spots_total", "entry_price", "price_note", "highlights",
             "visibility", "tags", "price_covers",
         ]
 
@@ -497,6 +500,9 @@ class TripUpdateSerializer(serializers.ModelSerializer):
     price_covers = serializers.ListField(
         child=serializers.CharField(max_length=100), required=False
     )
+    highlights   = serializers.ListField(
+        child=serializers.CharField(max_length=120), required=False
+    )
     destination_lat = serializers.FloatField(write_only=True, required=False, allow_null=True)
     destination_lng = serializers.FloatField(write_only=True, required=False, allow_null=True)
     meeting_lat  = serializers.FloatField(write_only=True, required=False, allow_null=True)
@@ -509,7 +515,7 @@ class TripUpdateSerializer(serializers.ModelSerializer):
             "meeting_point", "meeting_lat", "meeting_lng",
             "description", "date_start", "date_end",
             "drive_time", "distance_km",
-            "spots_total", "entry_price", "price_note",
+            "spots_total", "entry_price", "price_note", "highlights",
             "visibility", "tags", "price_covers",
         ]
         extra_kwargs = {f: {"required": False} for f in fields}

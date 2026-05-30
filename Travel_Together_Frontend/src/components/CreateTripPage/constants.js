@@ -30,4 +30,4 @@ export const COVERS_OPTIONS = [
   "Insurance",
 ];
 
-export const EMPTY_STOP = { name: "", arrival_time: "", radius: 100, note: "" };
+export const EMPTY_STOP = { name: "", arrival_time: "", note: "" };

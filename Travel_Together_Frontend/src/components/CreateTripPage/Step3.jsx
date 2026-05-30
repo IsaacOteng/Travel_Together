@@ -17,7 +17,7 @@ export default function Step3({ form, patch, onNext, onBack }) {
     <div className="animate-[fadeUp_.22s_ease_both]">
       <ProgressBar step={3} total={4} />
       <SectionHead icon="🗺️" title="Plan your itinerary"
-        sub="Add stops along the route. Each gets a geofence for check-ins and streak posting." />
+        sub="Add the stops along the route so travellers know where you're headed." />
 
       {stops.map((stop, i) => (
         <StopCard

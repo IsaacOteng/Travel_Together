@@ -76,10 +76,10 @@ export default function CreateTripPage({ onClose, onGoToDashboard }) {
         {/* Content */}
         <div className={`${done ? "px-6 py-8" : "px-6 pt-7 pb-8"} flex-1`}>
           {done        ? <SuccessScreen form={form} onGoToDashboard={() => onGoToDashboard(createdId)} onDiscover={onClose} />
-          : step === 1 ? <Step1 form={form} patch={patch} onNext={() => setStep(2)} />
+          : step === 1 ? <Step1 form={form} patch={patch} onNext={() => setStep(2)} onSkipToItinerary={() => setStep(3)} />
           : step === 2 ? <Step2 form={form} patch={patch} onNext={() => setStep(3)} onBack={() => setStep(1)} />
           : step === 3 ? <Step3 form={form} patch={patch} onNext={() => setStep(4)} onBack={() => setStep(2)} />
-          :              <Step4 form={form} onBack={() => setStep(3)} onPublish={id => { setCreatedId(id); setDone(true); }} onDraft={onClose} />
+          :              <Step4 form={form} onBack={() => setStep(3)} onPublish={id => { setCreatedId(id); setDone(true); }} />
           }
         </div>
       </div>

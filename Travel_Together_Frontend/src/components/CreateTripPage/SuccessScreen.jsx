@@ -25,6 +25,7 @@ export default function SuccessScreen({ form, onGoToDashboard, onDiscover }) {
           ["Group size",  `0 / ${form.spots_total} members`],
           ["Entry price", isFree ? "Free" : `GH₵${form.entryPrice}`],
           ["Covers",      (form.priceCovers || []).join(", ") || "—"],
+          ["Plans",       `${(form.highlights || []).length} listed`],
           ["Stops",       `${(form.stops || []).filter(s => s.name).length} planned`],
         ].map(([k, v]) => (
           <div key={k} className="flex justify-between items-center py-2 border-b border-white/[0.05] last:border-0">

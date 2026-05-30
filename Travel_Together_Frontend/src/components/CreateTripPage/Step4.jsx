@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { MapPin, Calendar, Users, Navigation, Check, Send } from "lucide-react";
-import { ProgressBar, SectionHead, PrimaryBtn, GhostBtn } from './uiComponents.jsx';
+import { MapPin, Calendar, Users, Navigation, Send } from "lucide-react";
+import { ProgressBar, SectionHead, PrimaryBtn } from './uiComponents.jsx';
 import PricePill from './PricePill.jsx';
 import { tripsApi } from '../../services/api.js';
 
 /* ══════════════════════════════════════════
    STEP 4 — PREVIEW & PUBLISH
 ══════════════════════════════════════════ */
-export default function Step4({ form, onBack, onPublish, onDraft }) {
+export default function Step4({ form, onBack, onPublish }) {
   const [publishing, setPublishing] = useState(false);
-  const [drafted,    setDrafted]    = useState(false);
   const isFree    = !form.entryPrice || form.entryPrice === "0";
 
   const doPublish = async () => {
@@ -24,6 +23,7 @@ export default function Step4({ form, onBack, onPublish, onDraft }) {
         spots_total:   form.spots_total,
         entry_price:   form.entryPrice || "0",
         price_covers:  form.priceCovers || [],
+        highlights:    form.highlights || [],
         tags:          form.tags || [],
         meeting_point: form.meetingPoint || "",
         drive_time:    form.driveTime    || "",
@@ -41,7 +41,6 @@ export default function Step4({ form, onBack, onPublish, onDraft }) {
               order:           i,
               name:            s.name.trim(),
               arrival_time:    s.arrival_time   || null,
-              geofence_radius: s.radius         ?? 100,
               note:            s.note?.trim()   || "",
             })
           )
@@ -143,6 +142,20 @@ export default function Step4({ form, onBack, onPublish, onDraft }) {
             </div>
           )}
 
+          {/* What's planned preview */}
+          {(form.highlights || []).length > 0 && (
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-[10px] px-3 py-2.5 mb-3">
+              <div className="text-[9px] font-bold tracking-[.1em] uppercase text-white/25 mb-2">What's planned</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(form.highlights || []).map((h, i) => (
+                  <span key={i} className="text-[11px] px-2.5 py-[3px] rounded-full bg-[rgba(255,107,53,0.12)] text-[#FF6B35] border border-[rgba(255,107,53,0.2)] font-semibold">
+                    {h}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {form.meetingPoint && (
             <div className="flex items-center gap-1.5 text-[11px] text-white/40">
               <Navigation size={11} className="text-[#FF6B35]" />
@@ -160,18 +173,14 @@ export default function Step4({ form, onBack, onPublish, onDraft }) {
         <Send size={15} /> Publish trip
       </PrimaryBtn>
 
-      <div className="flex gap-2.5 mt-2.5">
-        <GhostBtn onClick={onBack}>← Edit</GhostBtn>
+      <div className="mt-2.5">
         <button
-          onClick={() => { setDrafted(true); setTimeout(onDraft, 900); }}
-          className={`flex-1 py-3 rounded-xl text-[13px] font-semibold cursor-pointer
-            flex items-center justify-center gap-1.5 transition-all duration-200
-            ${drafted
-              ? "bg-green-400/10 border-[1.5px] border-green-400/30 text-green-400"
-              : "bg-transparent border-[1.5px] border-white/10 text-white/50 hover:border-white/20"
-            }`}
+          onClick={onBack}
+          className="w-full py-3 rounded-xl border-[1.5px] border-white/10 bg-transparent
+            text-white/50 text-[13px] font-medium cursor-pointer
+            hover:border-white/20 hover:text-white/70 transition-all duration-150"
         >
-          {drafted ? <><Check size={13} /> Saved!</> : "Save as draft"}
+          ← Edit details
         </button>
       </div>
     </div>

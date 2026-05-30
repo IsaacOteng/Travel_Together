@@ -2,7 +2,7 @@ import { useState } from "react";
 import { fmtDate } from "../../utils/date.js";
 import {
   MapPin, Navigation, Calendar, Car, Users,
-  Star, TrendingUp, Send, Ticket, Info, Map, Heart, Share2,
+  Star, TrendingUp, Send, Ticket, Info, Map, Heart, Share2, Check,
 } from "lucide-react";
 import ShareToast from './ShareToast.jsx';
 import SlideHero from './SlideHero.jsx';
@@ -109,6 +109,26 @@ export default function MobileTripDetail({ trip, onClose, onSave, onShare, onAsk
         </div>
 
         <p className="mb-[18px] text-[13px] text-white/60 leading-[1.7]">{trip.description || trip.longDescription}</p>
+
+        {/* What's planned */}
+        {(trip.highlights || []).length > 0 && (
+          <div className="mb-[18px]">
+            <div className="flex items-center gap-1.5 mb-2.5">
+              <Check size={13} color="#FF6B35" />
+              <span className="text-[11px] font-bold text-[#FF6B35] tracking-[0.08em] uppercase">What's planned</span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {(trip.highlights || []).map((h, i) => (
+                <div key={i} className="flex items-center gap-2.5 bg-white/[0.05] border border-white/[0.07] rounded-xl px-3 py-2.5">
+                  <div className="w-[18px] h-[18px] rounded-md bg-[rgba(255,107,53,0.15)] border border-[rgba(255,107,53,0.35)] flex items-center justify-center flex-shrink-0">
+                    <Check size={11} color="#FF6B35" />
+                  </div>
+                  <span className="text-[12.5px] text-white/80">{h}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-1.5 mb-2.5">
           <Map size={13} color="#FF6B35" />

@@ -40,6 +40,7 @@ class Trip(models.Model):
     spots_total             = models.IntegerField(default=10)
     entry_price             = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     price_note              = models.CharField(max_length=200, null=True, blank=True)
+    highlights              = models.JSONField(default=list, blank=True)   # what's planned on the trip, e.g. ["The beach", "Feeding turtles"]
     status                  = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     visibility              = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     group_karma             = models.IntegerField(default=0)

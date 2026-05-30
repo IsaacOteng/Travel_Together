@@ -49,24 +49,6 @@ export default function StopCard({ stop, index, onChange, onRemove, isOnly }) {
             </div>
           </div>
 
-          <div className="mb-3">
-            <Label>Geofence radius</Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range" min={50} max={500} step={50}
-                value={stop.radius}
-                onChange={e => onChange({ ...stop, radius: +e.target.value })}
-                className="flex-1 accent-[#FF6B35] cursor-pointer"
-              />
-              <div className="bg-[rgba(255,107,53,0.15)] border border-[rgba(255,107,53,0.3)] rounded-lg px-2.5 py-1 text-[12px] font-bold text-[#FF6B35] flex-shrink-0 min-w-[60px] text-center">
-                {stop.radius}m
-              </div>
-            </div>
-            <p className="text-[10px] text-white/25 mt-1">
-              Members must be within this radius to check in and post streaks
-            </p>
-          </div>
-
           <div>
             <Label>Note for this stop</Label>
             <TTInput value={stop.note} onChange={e => onChange({ ...stop, note: e.target.value })} placeholder="Parking info, dress code, meeting point…" />

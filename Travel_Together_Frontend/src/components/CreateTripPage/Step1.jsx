@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { MapPin, Navigation, Image, Plus, X } from "lucide-react";
+import { MapPin, Navigation, Image, Plus, X, Check } from "lucide-react";
 import { ProgressBar, SectionHead, Label, TTInput, TTTextarea, PrimaryBtn, Err } from './uiComponents.jsx';
 
 const MAX_PHOTOS = 5;
@@ -7,10 +7,20 @@ const MAX_PHOTOS = 5;
 /* ══════════════════════════════════════════
    STEP 1 — BASICS
 ══════════════════════════════════════════ */
-export default function Step1({ form, patch, onNext }) {
+export default function Step1({ form, patch, onNext, onSkipToItinerary }) {
   const [touched, setTouched] = useState({});
   const touch = (...keys) => setTouched(t => keys.reduce((a, k) => ({ ...a, [k]: true }), t));
   const fileRef = useRef(null);
+
+  const [highlightDraft, setHighlightDraft] = useState("");
+  const highlights = form.highlights || [];
+  const addHighlight = () => {
+    const v = highlightDraft.trim();
+    if (!v) return;
+    patch({ highlights: [...highlights, v] });
+    setHighlightDraft("");
+  };
+  const removeHighlight = (idx) => patch({ highlights: highlights.filter((_, i) => i !== idx) });
 
   const images = form.images || [];
 
@@ -188,12 +198,65 @@ export default function Step1({ form, patch, onNext }) {
         <Err msg={touched.description ? errs.description : ""} />
       </div>
 
+      {/* What's planned — trip checklist */}
+      <div className="mb-6">
+        <Label>What's planned</Label>
+        <p className="text-[10px] text-white/30 mb-2.5 -mt-0.5 leading-relaxed">
+          A quick checklist of what travellers will do — e.g. the beach, feeding turtles, an aquarium visit.
+        </p>
+
+        {highlights.length > 0 && (
+          <div className="flex flex-col gap-1.5 mb-2.5">
+            {highlights.map((item, i) => (
+              <div key={i} className="flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2.5">
+                <div className="w-[18px] h-[18px] rounded-md bg-[rgba(255,107,53,0.15)] border border-[rgba(255,107,53,0.35)] flex items-center justify-center flex-shrink-0">
+                  <Check size={11} className="text-[#FF6B35]" />
+                </div>
+                <span className="flex-1 text-[13px] text-white/80">{item}</span>
+                <button
+                  onClick={() => removeHighlight(i)}
+                  className="text-white/25 hover:text-white/55 transition-colors flex p-0.5"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <TTInput
+            value={highlightDraft}
+            onChange={e => setHighlightDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addHighlight(); } }}
+            placeholder="e.g. Feeding turtles"
+            className="flex-1"
+          />
+          <button
+            onClick={addHighlight}
+            disabled={!highlightDraft.trim()}
+            className="px-3.5 rounded-[10px] bg-[rgba(255,107,53,0.12)] border-[1.5px] border-[rgba(255,107,53,0.3)] text-[#FF6B35] flex items-center justify-center flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[rgba(255,107,53,0.2)] transition-all"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+      </div>
+
       <PrimaryBtn
         onClick={() => { touch("title","destination","description"); if (allOk) onNext(); }}
         disabled={!allOk}
       >
         Continue →
       </PrimaryBtn>
+
+      {onSkipToItinerary && (
+        <button
+          onClick={onSkipToItinerary}
+          className="w-full mt-2.5 py-2.5 bg-transparent border-none text-white/35 text-[12.5px] font-medium cursor-pointer hover:text-[#FF6B35] transition-colors"
+        >
+          Skip to Plan your itinerary →
+        </button>
+      )}
     </div>
   );
 }

@@ -55,13 +55,14 @@ export function Label({ children, required }) {
 }
 
 /* ─── INPUT ──────────────────────────────── */
-export function TTInput({ value, onChange, placeholder, type = "text", className = "" }) {
+export function TTInput({ value, onChange, placeholder, type = "text", className = "", onKeyDown }) {
   const [focused, setFocused] = useState(false);
   return (
     <input
       type={type}
       value={value}
       onChange={onChange}
+      onKeyDown={onKeyDown}
       placeholder={placeholder}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
