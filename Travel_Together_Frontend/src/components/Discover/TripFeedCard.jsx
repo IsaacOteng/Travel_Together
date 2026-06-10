@@ -59,14 +59,11 @@ export default function TripFeedCard({ trip, onView, onSave }) {
           ))}
         </div>
 
-        {/* Price + spots — top right */}
+        {/* Price — top right */}
         <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
           <div className={`backdrop-blur-md rounded-lg px-[9px] py-1 text-[11px] font-extrabold text-white
             ${trip.entryPrice === 0 ? "bg-green-500/80" : "bg-[rgba(255,107,53,0.85)]"}`}>
             {trip.entryPrice === 0 ? "Free" : `GH₵${trip.entryPrice}`}
-          </div>
-          <div className="bg-black/40 backdrop-blur-md rounded-lg px-[9px] py-1 text-[10px] font-bold text-white/80">
-            {spotsLeft > 0 ? `${spotsLeft} left` : "Full"}
           </div>
         </div>
 

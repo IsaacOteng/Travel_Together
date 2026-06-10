@@ -70,6 +70,7 @@ function normalise(t) {
 import MobileBottomNav from '../shared/MobileBottomNav.jsx';
 import TripFeedCard from './TripFeedCard.jsx';
 import MobileTripCard from './MobileTripCard.jsx';
+import SafetyGuideModal from './SafetyGuideModal.jsx';
 
 export default function Discover({ onJoinTrip }) {
   const navigate = useNavigate();
@@ -85,6 +86,7 @@ export default function Discover({ onJoinTrip }) {
   const [showNotifs,   setShowNotifs]   = useState(false);
   const [searchFocused,setSearchFocused]= useState(false);
   const [guestDialog,  setGuestDialog]  = useState({ open: false, reason: "" });
+  const [showSafety,   setShowSafety]   = useState(false);
 
   const [winW, setWinW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
 
@@ -364,7 +366,10 @@ export default function Discover({ onJoinTrip }) {
             <p className="m-0 mb-3 text-[11px] text-white/45 leading-[1.6]">
               All trip organizers are identity-verified. Check karma scores before joining.
             </p>
-            <button className="px-3.5 py-[7px] rounded-lg border border-[rgba(96,165,250,0.3)] bg-[rgba(96,165,250,0.1)] text-[#60a5fa] text-[11px] font-semibold cursor-pointer">
+            <button
+              onClick={() => setShowSafety(true)}
+              className="px-3.5 py-[7px] rounded-lg border border-[rgba(96,165,250,0.3)] bg-[rgba(96,165,250,0.1)] text-[#60a5fa] text-[11px] font-semibold cursor-pointer hover:bg-[rgba(96,165,250,0.18)] transition-colors"
+            >
               Learn more
             </button>
           </div>
@@ -411,6 +416,8 @@ export default function Discover({ onJoinTrip }) {
         onClose={() => setGuestDialog({ open: false, reason: "" })}
         onSignUp={() => navigate('/signup')}
       />
+
+      <SafetyGuideModal open={showSafety} onClose={() => setShowSafety(false)} />
     </div>
   );
 }

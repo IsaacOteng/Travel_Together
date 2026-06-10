@@ -62,7 +62,7 @@ class MessageSendSerializer(serializers.ModelSerializer):
         if msg_type == Message.MessageType.TEXT and not data.get("text"):
             raise serializers.ValidationError("text is required for text messages.")
         if msg_type in (Message.MessageType.IMAGE, Message.MessageType.VOICE) and not data.get("media_url"):
-            raise serializers.ValidationError("media_url is required for image/voice messages.")
+            raise serializers.ValidationError("media_url is required    for image/voice messages.")
         if msg_type == Message.MessageType.STREAK and not data.get("streak_id"):
             raise serializers.ValidationError("streak_id is required for streak messages.")
         return data
