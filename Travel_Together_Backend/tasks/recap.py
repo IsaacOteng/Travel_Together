@@ -81,7 +81,7 @@ def generate_trip_recap(self, trip_id: str):
 
 @shared_task
 def send_trip_reminder(trip_id: str):
-    """Send a reminder to all approved members of a single trip."""
+    """Send a friendly 24-hour countdown reminder to all approved members of a trip."""
     from apps.trips.models import Trip, TripMember
     from apps.notifications.utils import push_many
 
@@ -96,15 +96,37 @@ def send_trip_reminder(trip_id: str):
     approved = TripMember.objects.filter(
         trip=trip, status=TripMember.Status.APPROVED
     ).select_related("user")
+    recipients = [m.user for m in approved]
+    if not recipients:
+        return
+
+    # "Mount Afadja, Volta Region" → "Mount Afadja"
+    destination = (trip.destination or "").split(",")[0].strip() or trip.title
+    start_label = trip.date_start.strftime("%A, %d %b")   # e.g. "Saturday, 12 Jun"
+
+    title = f"24 hours to go — {destination}!"
+
+    body_parts = [f"Heads up! Your trip “{trip.title}” starts tomorrow ({start_label})."]
+    if trip.meeting_point:
+        body_parts.append(f"Meet the group at {trip.meeting_point}.")
+    body_parts.append(
+        "Pack your bag, charge your phone, and double-check your essentials...  "
+        "see you there!"
+    )
+    body = " ".join(body_parts)
 
     push_many(
-        recipients = [m.user for m in approved],
+        recipients = recipients,
         notif_type = "trip_reminder",
-        title      = "Trip starting tomorrow",
-        body       = f"'{trip.title}' starts tomorrow. Make sure you're ready!",
+        title      = title,
+        body       = body,
         trip       = trip,
         action_url = f"/trips/{trip.id}/",
-        data       = {"date_start": str(trip.date_start)},
+        data       = {
+            "date_start":    str(trip.date_start),
+            "meeting_point": trip.meeting_point or "",
+            "destination":   trip.destination or "",
+        },
     )
 
 
