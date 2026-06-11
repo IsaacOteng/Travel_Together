@@ -268,11 +268,10 @@ class TripListSerializer(serializers.ModelSerializer):
         return img.image_url if img else obj.cover_url
 
     def get_member_count(self, obj):
-        return obj.members.filter(status=TripMember.Status.APPROVED).count()
+        return obj.approved_members_count()
 
     def get_spots_left(self, obj):
-        approved = obj.members.filter(status=TripMember.Status.APPROVED).count()
-        return max(obj.spots_total - approved, 0)
+        return obj.spots_left()
 
     def get_is_saved(self, obj):
         request = self.context.get("request")
@@ -403,14 +402,22 @@ class TripDetailSerializer(serializers.ModelSerializer):
         return Trip.objects.filter(chief_id=obj.chief_id).count()
 
     def get_member_count(self, obj):
+        # Members fully in the group (approved). Uses the prefetched member list
+        # to avoid an extra query, so it stays in Python rather than calling the
+        # model helper.
         return sum(
             1 for m in obj.members.all()
             if m.status == TripMember.Status.APPROVED
         )
 
     def get_spots_left(self, obj):
-        approved_count = self.get_member_count(obj)
-        return max(obj.spots_total - approved_count, 0)
+        # Capacity is based on OCCUPYING_STATUSES (the single source of truth),
+        # which today equals approved but will include AWAITING_PAYMENT later.
+        occupied = sum(
+            1 for m in obj.members.all()
+            if m.status in TripMember.OCCUPYING_STATUSES
+        )
+        return max(obj.spots_total - occupied, 0)
 
     def get_my_status(self, obj):
         request = self.context.get("request")

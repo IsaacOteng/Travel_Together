@@ -218,7 +218,7 @@ class AdminTripsView(APIView):
                     "username": t.chief.username if t.chief else None,
                     "avatar_url": t.chief.avatar_url if t.chief else None,
                 },
-                "member_count": TripMember.objects.filter(trip=t, status="approved").count(),
+                "member_count": t.approved_members_count(),
             }
             for t in qs
         ]

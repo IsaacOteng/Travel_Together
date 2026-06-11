@@ -385,10 +385,7 @@ class JoinRequestView(APIView):
             if existing.status == TripMember.Status.REMOVED:
                 return Response({"detail": "You have been removed from this trip."}, status=403)
 
-        spots_left = trip.spots_total - trip.members.filter(
-            status=TripMember.Status.APPROVED
-        ).count()
-        if spots_left <= 0:
+        if trip.spots_left() <= 0:
             return Response({"detail": "This trip is full."}, status=400)
 
         if existing and existing.status == TripMember.Status.REJECTED:
@@ -482,10 +479,7 @@ class TripMemberDetailView(APIView):
 
         from django.utils import timezone
         if action == "approve":
-            spots_left = trip.spots_total - trip.members.filter(
-                status=TripMember.Status.APPROVED
-            ).count()
-            if spots_left <= 0:
+            if trip.spots_left() <= 0:
                 return Response({"detail": "Trip is full."}, status=400)
             member.status = TripMember.Status.APPROVED
             member.approved_at = timezone.now()

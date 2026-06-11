@@ -66,6 +66,22 @@ class Trip(models.Model):
     def __str__(self):
         return self.title
 
+    # ── Capacity helpers — single source of truth for "is a spot taken?" ──
+    def occupied_spots(self):
+        """Spots taken or held — the basis for all availability / 'is full' checks.
+
+        Counts approved members today; will also include AWAITING_PAYMENT once
+        pay-after-approval lands (see TripMember.OCCUPYING_STATUSES).
+        """
+        return self.members.filter(status__in=TripMember.OCCUPYING_STATUSES).count()
+
+    def spots_left(self):
+        return max(self.spots_total - self.occupied_spots(), 0)
+
+    def approved_members_count(self):
+        """Members fully in the group (approved)."""
+        return self.members.filter(status=TripMember.Status.APPROVED).count()
+
 
 # ─── Trip Image ───────────────────────────────────────────────────────────────
 
@@ -161,6 +177,11 @@ class TripMember(models.Model):
         APPROVED = "approved", "Approved"
         REJECTED = "rejected", "Rejected"
         REMOVED  = "removed",  "Removed"
+
+    # Statuses that occupy/hold a trip spot for capacity checks.
+    # AWAITING_PAYMENT joins this list when pay-after-approval lands, so a
+    # held-but-unpaid spot can't be double-sold while the member is paying.
+    OCCUPYING_STATUSES = [Status.APPROVED]
 
     trip            = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="members")
     user            = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="trip_memberships")

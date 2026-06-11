@@ -54,7 +54,7 @@ class TripAdmin(ModelAdmin):
 
     @display(description="Members")
     def member_count(self, obj):
-        return obj.members.filter(status="approved").count()
+        return obj.approved_members_count()
 
     @display(description="Status", label={
         "draft":     "default",
