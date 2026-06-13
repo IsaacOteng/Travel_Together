@@ -41,6 +41,36 @@ def expire_unpaid_approvals():
 
 
 @shared_task
+def release_due_partials():
+    """
+    Hourly sweep: release the PARTIAL payout for trips that departed more than
+    DEPARTURE_GRACE_HOURS ago and haven't had a partial yet. The grace window lets
+    stragglers check in / report first; release_partial_payout still enforces the
+    report-freeze, organizer eligibility, and one-per-trip guards.
+    """
+    from datetime import timedelta
+    from django.conf import settings
+    from django.utils import timezone
+    from apps.trips.models import Trip
+    from .models import Payout
+    from .services import release_partial_payout
+
+    cutoff = timezone.now() - timedelta(hours=getattr(settings, "DEPARTURE_GRACE_HOURS", 6))
+    trips = Trip.objects.filter(
+        departure_confirmed_at__isnull=False,
+        departure_confirmed_at__lt=cutoff,
+    )
+
+    released = 0
+    for trip in trips:
+        if Payout.objects.filter(trip=trip, kind=Payout.Kind.PARTIAL).exists():
+            continue
+        if release_partial_payout(trip):
+            released += 1
+    return {"partial_payouts": released}
+
+
+@shared_task
 def release_due_payouts():
     """
     Daily sweep: release the FINAL payout for completed trips whose dispute window

@@ -4,6 +4,7 @@ from apps.trips.views import (
     TripDetailView,
     TripPublishView,
     TripDepartView,
+    TripConfirmView,
     TripEndView,
     TripImageListView,
     TripImageDetailView,
@@ -16,6 +17,7 @@ from apps.trips.views import (
     ItineraryStopDetailView,
     TripRatingView,
     IncidentReportView,
+    IncidentRespondView,
     TripGroupConversationView,
     TripCheckInView,
 )
@@ -31,6 +33,7 @@ urlpatterns = [
     path("<uuid:trip_id>/",                     TripDetailView.as_view(),           name="trip-detail"),
     path("<uuid:trip_id>/publish/",             TripPublishView.as_view(),          name="trip-publish"),
     path("<uuid:trip_id>/depart/",              TripDepartView.as_view(),           name="trip-depart"),
+    path("<uuid:trip_id>/confirm/",             TripConfirmView.as_view(),          name="trip-confirm"),
     path("<uuid:trip_id>/end/",                 TripEndView.as_view(),              name="trip-end"),
 
     # Images
@@ -56,6 +59,7 @@ urlpatterns = [
 
     # Incident reports
     path("<uuid:trip_id>/reports/",             IncidentReportView.as_view(),       name="trip-reports"),
+    path("<uuid:trip_id>/reports/<uuid:report_id>/respond/", IncidentRespondView.as_view(), name="trip-report-respond"),
 
     # Group conversation
     path("<uuid:trip_id>/conversation/",        TripGroupConversationView.as_view(), name="trip-conversation"),

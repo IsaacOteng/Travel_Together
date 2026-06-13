@@ -9,9 +9,9 @@ import { paymentsApi } from "../../services/api.js";
  * tab → poll verify until the payment is confirmed (the webhook also confirms it
  * server-side, so this is just to update the UI). Calls onPaid() once confirmed.
  *
- * Props: tripId, amount (GHS), onPaid()
+ * Props: tripId, amount (GHS), onPaid(), compact (row-sized single button)
  */
-export default function PayButton({ tripId, amount, onPaid }) {
+export default function PayButton({ tripId, amount, onPaid, compact = false }) {
   const [phase, setPhase] = useState("idle");   // idle | initiating | awaiting | paid | error
   const [error, setError] = useState("");
   const refStr   = useRef(null);
@@ -51,6 +51,36 @@ export default function PayButton({ tripId, amount, onPaid }) {
       setPhase("error");
     }
   };
+
+  // Compact (row-sized) variant — a single small button for use in list rows.
+  if (compact) {
+    if (phase === "paid") {
+      return (
+        <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-green-400 bg-green-400/15">
+          <Check size={11} /> Paid
+        </span>
+      );
+    }
+    if (phase === "awaiting") {
+      return (
+        <button onClick={checkStatus}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-amber-400 border border-amber-400/25 bg-amber-400/10 cursor-pointer hover:bg-amber-400/15 transition-colors">
+          <Loader2 size={11} className="animate-spin" /> Checking…
+        </button>
+      );
+    }
+    return (
+      <button onClick={begin} disabled={phase === "initiating"} title={error || undefined}
+        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-white border-none cursor-pointer transition-all disabled:opacity-60"
+        style={{ background: "linear-gradient(135deg,#FF6B35,#ff8c5a)" }}>
+        {phase === "initiating"
+          ? <><Loader2 size={11} className="animate-spin" /> …</>
+          : phase === "error"
+          ? <>Retry</>
+          : <><CreditCard size={11} /> Pay GH₵{amount}</>}
+      </button>
+    );
+  }
 
   if (phase === "paid") {
     return (

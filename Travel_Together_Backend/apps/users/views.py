@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+import logging
 import urllib.request
 import urllib.error
 from datetime import timedelta
@@ -45,7 +46,7 @@ from .utils import (
     generate_unique_username,
     clear_otp_rate,
 )
-from tasks.email import send_otp_email
+from tasks.email import send_otp_email_now
 
 
 # ─── Avatar upload helper ─────────────────────────────────────────────────────
@@ -129,16 +130,19 @@ class SendOTPView(APIView):
             )
 
             increment_otp_rate(email)
+            # Send synchronously — OTP is the one task a user actively waits on,
+            # so it must not depend on a running Celery worker. A send failure is
+            # logged, never fatal: we keep the always-200 contract (enumeration
+            # protection) and the user can simply request the code again.
             try:
-                send_otp_email.delay(email, code, "login")
+                send_otp_email_now(email, code, "login")
             except Exception:
-                # Celery/Redis unavailable — run synchronously so OTP still arrives
-                send_otp_email.apply(args=[email, code, "login"])
+                logging.getLogger(__name__).exception("Failed to send login OTP email")
 
         return Response({"email_sent": True}, status=status.HTTP_200_OK)
 
 
-# ─── OTP: Verify ──────────────────────────────────────────────────────────────
+# ──────── OTP: Verify ────────
 
 class VerifyOTPView(APIView):
     """

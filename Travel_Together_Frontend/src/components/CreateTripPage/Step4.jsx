@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MapPin, Calendar, Users, Navigation, Send } from "lucide-react";
 import { ProgressBar, SectionHead, PrimaryBtn } from './uiComponents.jsx';
 import PricePill from './PricePill.jsx';
+import PayoutSetup from './PayoutSetup.jsx';
 import { tripsApi } from '../../services/api.js';
 
 /* ══════════════════════════════════════════
@@ -167,6 +168,9 @@ export default function Step4({ form, onBack, onPublish }) {
 
       {/* Entry price breakdown */}
       <PricePill form={form} />
+
+      {/* Payout method — only relevant for paid trips */}
+      {!isFree && <PayoutSetup />}
 
       {/* Publish */}
       <PrimaryBtn onClick={doPublish} loading={publishing}>

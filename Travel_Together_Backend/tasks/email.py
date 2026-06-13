@@ -44,23 +44,30 @@ _BODIES = {
 }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=30)
-def send_otp_email(self, email: str, code: str, purpose: str) -> None:
+def send_otp_email_now(email: str, code: str, purpose: str) -> None:
     """
-    Send a purpose-specific OTP email.
-    Retried up to 3 times with a 30-second delay on failure.
+    Send a purpose-specific OTP email synchronously (no Celery).
+
+    Raises on failure so the caller can decide what to do — the login view logs
+    it (keeping its always-200 contract), while the async wrapper below retries.
+    OTP is the one task a user actively waits on, so it does not depend on a
+    running worker.
     """
     subject = _SUBJECTS.get(purpose, "Your TravelTogether verification code")
     body    = _BODIES.get(purpose, "Your verification code is: {code}\n\nExpires in 15 minutes.")
-    message = body.format(code=code)
+    send_mail(
+        subject=subject,
+        message=body.format(code=code),
+        from_email=None,   # uses DEFAULT_FROM_EMAIL from settings
+        recipient_list=[email],
+        fail_silently=False,
+    )
 
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def send_otp_email(self, email: str, code: str, purpose: str) -> None:
+    """Async wrapper (retried up to 3×) for background OTP sends."""
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=None,   # uses DEFAULT_FROM_EMAIL from settings
-            recipient_list=[email],
-            fail_silently=False,
-        )
+        send_otp_email_now(email, code, purpose)
     except Exception as exc:
         raise self.retry(exc=exc)

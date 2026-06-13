@@ -248,7 +248,7 @@ def cancel_trip(trip, by_organizer=False, reason=""):
         award_karma(
             user        = trip.chief,
             delta       = -getattr(settings, "ORGANIZER_CANCEL_KARMA_PENALTY", 25),
-            reason      = "trip_cancelled_by_organizer",
+            reason      = "penalty",
             description = f"Cancelled trip: {trip.title}",
             trip        = trip,
         )
@@ -315,6 +315,32 @@ def _create_and_send_payout(trip, amount, kind):
     return payout
 
 
+def _has_open_report(trip):
+    """True if the trip has an unresolved incident report. Payouts are frozen
+    while a trip is under investigation — the anti-collusion safety valve."""
+    from apps.trips.models import IncidentReport
+    return IncidentReport.objects.filter(
+        trip=trip,
+        status__in=[IncidentReport.ReportStatus.PENDING, IncidentReport.ReportStatus.UNDER_REVIEW],
+    ).exists()
+
+
+def _organizer_is_established(user):
+    """
+    Whether an organizer is trusted enough for an at-departure partial release:
+    a verified traveller, or one with a track record of completed trips. New /
+    unverified organizers get NO partial — their funds stay fully escrowed until
+    completion, capping how much a fresh scammer account can grab early.
+    """
+    if not user:
+        return False
+    if getattr(user, "is_verified_traveller", False):
+        return True
+    from apps.trips.models import Trip
+    completed = Trip.objects.filter(chief=user, status=Trip.Status.COMPLETED).count()
+    return completed >= getattr(settings, "PARTIAL_RELEASE_MIN_COMPLETED_TRIPS", 2)
+
+
 def release_partial_payout(trip):
     """Release the partial (departure) portion of the organizer's share. One per trip."""
     from decimal import Decimal
@@ -322,6 +348,10 @@ def release_partial_payout(trip):
 
     if Payout.objects.filter(trip=trip, kind=Payout.Kind.PARTIAL).exists():
         return None
+    if _has_open_report(trip):
+        return None   # frozen — trip is under investigation
+    if not _organizer_is_established(trip.chief):
+        return None   # new/unverified organizer — no partial, full hold until completion
     _, _, organizer_total = _organizer_share(trip)
     if organizer_total <= 0:
         return None
@@ -339,6 +369,8 @@ def release_final_payout(trip):
 
     if Payout.objects.filter(trip=trip, kind=Payout.Kind.FINAL).exists():
         return None
+    if _has_open_report(trip):
+        return None   # under investigation — hold everything; the daily sweep retries once resolved
 
     _, _, organizer_total = _organizer_share(trip)
     remaining = (organizer_total - _already_paid_out(trip)).quantize(Decimal("0.01"))

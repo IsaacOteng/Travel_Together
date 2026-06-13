@@ -273,6 +273,11 @@ CELERY_BEAT_SCHEDULE = {
         "task":     "apps.payments.tasks.expire_unpaid_approvals",
         "schedule": crontab(minute=0),
     },
+    # Release partial payouts after the departure grace window — hourly
+    "release-due-partials": {
+        "task":     "apps.payments.tasks.release_due_partials",
+        "schedule": crontab(minute=30),
+    },
     # Release final payouts after the dispute window — daily at 1 AM UTC
     "release-due-payouts": {
         "task":     "apps.payments.tasks.release_due_payouts",
@@ -296,10 +301,13 @@ PAYSTACK_CALLBACK_URL = env("PAYSTACK_CALLBACK_URL", default="")  # where Paysta
 # Escrow economics (percent integers / hours / days)
 PLATFORM_COMMISSION_PERCENT = env.int("PLATFORM_COMMISSION_PERCENT", default=10)   # the app's cut
 PARTIAL_RELEASE_PERCENT     = env.int("PARTIAL_RELEASE_PERCENT",     default=50)   # released to organizer at departure
-DISPUTE_WINDOW_HOURS        = env.int("DISPUTE_WINDOW_HOURS",        default=48)   # hold after trip end before final payout
+DISPUTE_WINDOW_HOURS        = env.int("DISPUTE_WINDOW_HOURS",        default=72)   # completion grace: hold after trip end; silence = approval, any dispute freezes
+DEPARTURE_GRACE_HOURS       = env.int("DEPARTURE_GRACE_HOURS",       default=6)    # hold after departure before the partial releases (lets stragglers check in / report)
 REFUND_CUTOFF_DAYS          = env.int("REFUND_CUTOFF_DAYS",          default=7)    # ≥ this many days out → refundable
 ORGANIZER_CANCEL_KARMA_PENALTY = env.int("ORGANIZER_CANCEL_KARMA_PENALTY", default=25)
-DEPARTURE_QUORUM_PERCENT    = env.int("DEPARTURE_QUORUM_PERCENT",    default=50)   # % of approved members who must check in to depart
+NO_SHOW_KARMA_PENALTY          = env.int("NO_SHOW_KARMA_PENALTY",          default=10)   # karma docked for missing every check-in (reputational only, not a block)
+DEPARTURE_QUORUM_PERCENT    = env.int("DEPARTURE_QUORUM_PERCENT",    default=70)   # % of approved members who must check in before the organizer can depart / get the partial
+PARTIAL_RELEASE_MIN_COMPLETED_TRIPS = env.int("PARTIAL_RELEASE_MIN_COMPLETED_TRIPS", default=2)  # completed trips before an unverified organizer earns a partial release
 
 # ─── Email ────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = env(

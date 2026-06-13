@@ -203,6 +203,7 @@ class TripMember(models.Model):
     removed_at      = models.DateTimeField(null=True, blank=True)
     karma_earned    = models.IntegerField(default=0)
     is_banned       = models.BooleanField(default=False)
+    completion_confirmed_at = models.DateTimeField(null=True, blank=True)  # member confirmed the trip happened
 
     class Meta:
         db_table      = "trips_tripmember"
@@ -307,6 +308,10 @@ class IncidentReport(models.Model):
     evidence_urls    = models.JSONField(default=list)               # up to 5 URLs
     status           = models.CharField(max_length=20, choices=ReportStatus.choices, default=ReportStatus.PENDING)
     reference_number = models.CharField(max_length=20, unique=True, blank=True)
+    # The reported party's (organizer's) side of the story — two-sided disputes.
+    response               = models.TextField(null=True, blank=True)
+    response_evidence_urls = models.JSONField(default=list)
+    responded_at           = models.DateTimeField(null=True, blank=True)
     created_at       = models.DateTimeField(auto_now_add=True)
     updated_at       = models.DateTimeField(auto_now=True)
 

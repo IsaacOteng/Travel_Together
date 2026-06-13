@@ -338,14 +338,27 @@ class AdminIncidentsView(APIView):
         total    = qs.count()
         qs       = qs[(page - 1) * per_page : page * per_page]
 
+        from decimal import Decimal
+
+        def held_amount(trip):
+            return str(
+                Payment.objects.filter(trip=trip, status="held")
+                .aggregate(t=Sum("amount"))["t"] or Decimal("0")
+            )
+
         incidents = [
             {
                 "id":               str(r.id),
                 "incident_type":    r.incident_type,
                 "status":           r.status,
-                "description":      r.description,
+                "description":      r.description,                 # reporter's side
+                "evidence_urls":    r.evidence_urls,
+                "response":         r.response,                    # organizer's side
+                "response_evidence_urls": r.response_evidence_urls,
+                "responded_at":     r.responded_at,
                 "reference_number": r.reference_number,
                 "created_at":       r.created_at,
+                "frozen_amount":    held_amount(r.trip),          # money on hold pending this case
                 "reporter": {
                     "id":       str(r.reporter.id),
                     "email":    r.reporter.email,
@@ -372,19 +385,39 @@ class AdminIncidentDetailView(APIView):
 
     def patch(self, request, incident_id):
         try:
-            incident = IncidentReport.objects.get(id=incident_id)
+            incident = IncidentReport.objects.select_related("trip").get(id=incident_id)
         except IncidentReport.DoesNotExist:
             return Response({"detail": "Incident not found."}, status=404)
 
+        action = request.data.get("action")
+
+        # Resolution actions that move money:
+        if action == "uphold":
+            # Side with the reporter: refund every held payment, cancel the trip,
+            # penalise the organizer. (Any already-released partial is a clawback
+            # matter handled separately.)
+            from apps.payments.services import cancel_trip
+            cancel_trip(incident.trip, by_organizer=True,
+                        reason=f"report {incident.reference_number} upheld")
+            incident.status = IncidentReport.ReportStatus.RESOLVED
+            incident.save(update_fields=["status", "updated_at"])
+            return Response({"detail": "Report upheld — trip cancelled and members refunded.",
+                             "status": incident.status})
+
+        if action == "dismiss":
+            incident.status = IncidentReport.ReportStatus.DISMISSED
+            incident.save(update_fields=["status", "updated_at"])
+            return Response({"detail": "Report dismissed — held payouts will resume.",
+                             "status": incident.status})
+
+        # Plain status change (e.g. move to under_review while investigating).
         allowed_statuses = ("pending", "under_review", "resolved", "dismissed")
         new_status = request.data.get("status")
         if new_status and new_status not in allowed_statuses:
             return Response({"detail": f"Invalid status. Choices: {allowed_statuses}"}, status=400)
-
         if new_status:
             incident.status = new_status
             incident.save(update_fields=["status", "updated_at"])
-
         return Response({"detail": "Incident updated.", "status": incident.status})
 
 

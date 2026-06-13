@@ -4,11 +4,14 @@ import {
   MapPin, Calendar, Users, Star, Clock,
   Heart, Edit3, X, Trash2, FlagOff, LayoutDashboard,
 } from "lucide-react";
+import PayButton from "../Payments/PayButton.jsx";
 
 export function JoinedRow({ trip, onNavigate, onViewGroup }) {
   const navigate    = useNavigate();
+  const [paid, setPaid] = useState(false);
   const isCompleted = trip.tripStatus === "completed";
-  const approved    = trip.joinStatus === "approved";
+  const approved    = trip.joinStatus === "approved" || paid;
+  const awaiting    = !approved && trip.joinStatus === "awaiting_payment";
   return (
     <div
       onClick={() => onNavigate?.(trip.id)}
@@ -39,16 +42,28 @@ export function JoinedRow({ trip, onNavigate, onViewGroup }) {
             <Star size={10} className="fill-current" /> Rate Crew
           </button>
         ) : (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${approved ? "bg-green-400/15 text-green-400" : "bg-orange-400/15 text-orange-400"}`}>
-            {approved ? "Approved" : "Pending"}
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full
+            ${approved ? "bg-green-400/15 text-green-400"
+              : awaiting ? "bg-amber-400/15 text-amber-400"
+              : "bg-orange-400/15 text-orange-400"}`}>
+            {approved ? "Approved" : awaiting ? "Payment due" : "Pending"}
           </span>
         )}
-        <button
-          onClick={e => { e.stopPropagation(); onViewGroup?.(trip.id); }}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white/50 border border-white/[0.08] bg-white/[0.04] hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
-        >
-          <LayoutDashboard size={10}/> View Group
-        </button>
+
+        {/* Awaiting payment → Pay button (becomes View Group once paid).
+            Approved / completed → View Group. Pending → no group access. */}
+        {awaiting ? (
+          <span onClick={e => e.stopPropagation()}>
+            <PayButton compact tripId={trip.id} amount={trip.entryPrice} onPaid={() => setPaid(true)} />
+          </span>
+        ) : (approved || isCompleted) ? (
+          <button
+            onClick={e => { e.stopPropagation(); onViewGroup?.(trip.id); }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white/50 border border-white/[0.08] bg-white/[0.04] hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+          >
+            <LayoutDashboard size={10}/> View Group
+          </button>
+        ) : null}
       </div>
     </div>
   );

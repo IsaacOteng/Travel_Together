@@ -161,12 +161,25 @@ class TripDetailView(APIView):
             return err
         if trip.status == Trip.Status.ACTIVE:
             return Response({"detail": "Cannot delete an active trip."}, status=400)
+        if trip.status == Trip.Status.COMPLETED:
+            # Completed trips are everyone's permanent travel history — never erase.
+            return Response(
+                {"detail": "Completed trips are part of travellers' history and can't be deleted."},
+                status=400,
+            )
 
-        # A trip holding members' money can't just vanish — cancel it instead,
-        # which refunds every held payment and marks it CANCELLED.
+        # A trip others have joined (or that holds money) carries history we must
+        # NOT erase via a cascading hard-delete. Cancel it instead: cancel_trip
+        # refunds every held payment, notifies members, marks it CANCELLED, and
+        # applies the organizer-cancellation karma penalty. Only a truly empty
+        # trip (a draft, or a published trip nobody joined) is hard-deleted.
         from apps.payments.models import Payment
+        has_joiners = trip.members.exclude(role=TripMember.Role.CHIEF).filter(
+            status__in=[TripMember.Status.APPROVED, TripMember.Status.AWAITING_PAYMENT]
+        ).exists()
         has_funds = Payment.objects.filter(trip=trip, status=Payment.Status.HELD).exists()
-        if has_funds:
+
+        if has_joiners or has_funds:
             from apps.payments.services import cancel_trip
             cancel_trip(trip, by_organizer=True, reason="deleted by organizer")
             return Response(
@@ -174,7 +187,7 @@ class TripDetailView(APIView):
                 status=200,
             )
 
-        # Clean up stored images
+        # Empty trip — safe to remove entirely.
         for img in trip.images.all():
             _delete_file(img.image_key)
         trip.delete()
@@ -260,17 +273,56 @@ class TripDepartView(APIView):
             trip.status = Trip.Status.ACTIVE
         trip.save(update_fields=["departure_confirmed_at", "status", "updated_at"])
 
-        partial_released = False
-        if settings.PAYMENTS_ENABLED:
-            from apps.payments.services import release_partial_payout
-            partial_released = bool(release_partial_payout(trip))
-
+        # The partial is NOT released inline — a grace window opens so stragglers
+        # can check in or report. It releases via the hourly sweep after
+        # DEPARTURE_GRACE_HOURS, provided no dispute was raised.
         return Response({
-            "departed":         True,
-            "checked_in":       checked_in,
-            "quorum":           quorum,
-            "partial_released": partial_released,
+            "departed":    True,
+            "checked_in":  checked_in,
+            "quorum":      quorum,
+            "partial_in":  f"~{getattr(settings, 'DEPARTURE_GRACE_HOURS', 6)}h (after the grace window)",
         })
+
+
+# ─── Trip: confirm completion ─────────────────────────────────────────────────
+
+class TripConfirmView(APIView):
+    """
+    POST /api/trips/<id>/confirm/
+
+    A member confirms the trip took place. Only members who actually attended
+    (checked in at least once) can confirm — a no-show can't vouch, though they
+    may still dispute via a report. Recorded as evidence for the grace window.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, trip_id):
+        from django.utils import timezone
+        try:
+            trip = Trip.objects.get(id=trip_id)
+        except Trip.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+
+        member = TripMember.objects.filter(
+            trip=trip, user=request.user, status=TripMember.Status.APPROVED
+        ).first()
+        if not member:
+            return Response({"detail": "You are not a member of this trip."}, status=403)
+
+        if not trip.ended_at and trip.status != Trip.Status.COMPLETED:
+            return Response({"detail": "You can confirm once the trip has ended."}, status=400)
+
+        if not CheckIn.objects.filter(trip=trip, member=request.user).exists():
+            return Response(
+                {"detail": "You didn't check in on this trip, so you can't confirm it. "
+                           "Report a problem instead if something was wrong."},
+                status=400,
+            )
+
+        if not member.completion_confirmed_at:
+            member.completion_confirmed_at = timezone.now()
+            member.save(update_fields=["completion_confirmed_at"])
+        return Response({"confirmed": True})
 
 
 # ─── Trip: end ───────────────────────────────────────────────────────────────
@@ -481,6 +533,10 @@ class JoinRequestView(APIView):
 
         if trip.status not in (Trip.Status.PUBLISHED,):
             return Response({"detail": "This trip is not accepting requests."}, status=400)
+
+        from django.utils import timezone
+        if trip.date_start < timezone.now().date():
+            return Response({"detail": "This trip has already started and can no longer be joined."}, status=400)
 
         if _is_chief(trip, request.user):
             return Response({"detail": "You are already the chief of this trip."}, status=400)
@@ -795,9 +851,14 @@ class PublicTripListView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
+        from django.utils import timezone
+        # Only show trips that haven't started yet — hide anything whose start
+        # date has passed so travellers can't mistakenly join a past trip
+        # (independent of the daily status-flip task).
         trips = Trip.objects.filter(
             status=Trip.Status.PUBLISHED,
             visibility=Trip.Visibility.PUBLIC,
+            date_start__gte=timezone.now().date(),
         ).select_related("chief").prefetch_related("images", "tags", "members__user", "saved_by").order_by("-created_at")
 
         # Full-text / trigram search
@@ -1002,7 +1063,51 @@ class IncidentReportView(APIView):
             return Response(serializer.errors, status=400)
 
         report = serializer.save(trip=trip, reporter=request.user)
+
+        # A trip-level dispute is against the organizer. Default the reported party
+        # to the chief, and notify them so they can present their side — WITHOUT
+        # revealing the reporter's identity (anti-retaliation).
+        if not report.reported_user_id and trip.chief_id:
+            report.reported_user = trip.chief
+            report.save(update_fields=["reported_user"])
+        if trip.chief_id and trip.chief_id != request.user.pk:
+            from apps.notifications.utils import push
+            push(
+                recipient  = trip.chief,
+                notif_type = "report_filed",
+                title      = "A concern was raised about your trip",
+                body       = f"Someone raised a concern about \"{trip.title}\". "
+                             f"Add your side and any evidence so the team can review it fairly.",
+                trip       = trip,
+                action_url = f"/trips/{trip.id}/",
+                data       = {"trip_id": str(trip.id), "report_id": str(report.id)},
+            )
         return Response(IncidentReportSerializer(report).data, status=201)
+
+
+class IncidentRespondView(APIView):
+    """
+    POST /api/trips/{trip_id}/reports/{report_id}/respond/
+    The reported organizer submits their side of the story + evidence.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, trip_id, report_id):
+        from django.utils import timezone
+        try:
+            report = IncidentReport.objects.select_related("trip").get(id=report_id, trip_id=trip_id)
+        except IncidentReport.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+
+        if not (report.trip.chief_id and report.trip.chief_id == request.user.pk):
+            return Response({"detail": "Only the trip organizer can respond to this."}, status=403)
+
+        evidence = request.data.get("evidence_urls") or []
+        report.response               = (request.data.get("response") or "").strip()
+        report.response_evidence_urls = evidence[:5] if isinstance(evidence, list) else []
+        report.responded_at           = timezone.now()
+        report.save(update_fields=["response", "response_evidence_urls", "responded_at", "updated_at"])
+        return Response({"responded": True})
 
 
 # ─── Trip group conversation ──────────────────────────────────────────────────

@@ -225,34 +225,56 @@ const INCIDENT_TYPE = {
   other:          { bg: "bg-slate-500/15",  text: "text-slate-400"  },
 };
 
-function IncidentDrawer({ incident, onClose, onUpdate }) {
-  const [newStatus, setNewStatus] = useState(incident.status);
-  const [saving,    setSaving]    = useState(false);
+function EvidenceList({ urls }) {
+  if (!urls?.length) return null;
+  return (
+    <div className="flex flex-col gap-1 mt-2">
+      {urls.map((u, i) => (
+        <a key={i} href={u} target="_blank" rel="noopener noreferrer"
+          className="text-[11px] text-blue-400 hover:underline truncate">{u}</a>
+      ))}
+    </div>
+  );
+}
 
-  const save = () => {
-    setSaving(true);
-    adminApi.updateIncident(incident.id, { status: newStatus })
-      .then(() => { toast.success("Incident updated"); onUpdate(); onClose(); })
-      .catch(() => toast.error("Failed to update"))
-      .finally(() => setSaving(false));
+function IncidentDrawer({ incident, onClose, onUpdate }) {
+  const [busy, setBusy] = useState(false);
+  const open   = incident.status === "pending" || incident.status === "under_review";
+  const frozen = parseFloat(incident.frozen_amount || 0);
+
+  const run = (payload, msg, close = true) => {
+    setBusy(true);
+    adminApi.updateIncident(incident.id, payload)
+      .then(() => { toast.success(msg); onUpdate(); if (close) onClose(); })
+      .catch(err => toast.error(err?.response?.data?.detail || "Failed"))
+      .finally(() => setBusy(false));
   };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-50 w-full max-w-sm bg-[#0a1929] border-l border-white/6 h-full flex flex-col">
+      <div className="relative z-50 w-full max-w-md bg-[#0a1929] border-l border-white/6 h-full flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/6">
-          <p className="text-white font-semibold text-sm">#{incident.reference_number}</p>
+          <p className="text-white font-semibold text-sm">Dispute #{incident.reference_number}</p>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 text-lg leading-none">×</button>
         </div>
 
-        <div className="flex-1 p-6 space-y-5 overflow-y-auto">
-          <div className="space-y-2 text-xs">
+        <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+          {/* Frozen amount */}
+          {frozen > 0 && (
+            <div className="flex items-center justify-between bg-blue-500/10 border border-blue-500/20 rounded-2xl px-4 py-3">
+              <span className="text-blue-300 text-xs font-semibold">Frozen in escrow</span>
+              <span className="text-blue-200 text-lg font-bold">GH₵{incident.frozen_amount}</span>
+            </div>
+          )}
+
+          {/* Meta */}
+          <div className="space-y-1.5 text-xs">
             {[
               ["Type",     incident.incident_type?.replace("_", " ")],
               ["Trip",     incident.trip?.title],
               ["Reporter", incident.reporter?.username ?? incident.reporter?.email],
-              ["Reported", incident.reported_user ? (incident.reported_user.username ?? incident.reported_user.email) : "—"],
+              ["Organizer", incident.reported_user ? (incident.reported_user.username ?? incident.reported_user.email) : "—"],
               ["Filed",    new Date(incident.created_at).toLocaleString()],
             ].map(([k, v]) => (
               <div key={k} className="flex items-start gap-3">
@@ -262,30 +284,55 @@ function IncidentDrawer({ incident, onClose, onUpdate }) {
             ))}
           </div>
 
-          <div className="bg-white/3 border border-white/6 rounded-2xl p-4">
-            <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-widest mb-2">Description</p>
-            <p className="text-slate-300 text-xs leading-relaxed">{incident.description}</p>
+          {/* Reporter's side */}
+          <div className="bg-red-500/[0.06] border border-red-500/15 rounded-2xl p-4">
+            <p className="text-red-300/80 text-[10px] font-semibold uppercase tracking-widest mb-2">Reporter's claim</p>
+            <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">{incident.description}</p>
+            <EvidenceList urls={incident.evidence_urls} />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-slate-500 text-[10px] font-semibold uppercase tracking-widest">Update status</label>
-            <div className="grid grid-cols-2 gap-2">
-              {["pending", "under_review", "resolved", "dismissed"].map(s => (
-                <button key={s} onClick={() => setNewStatus(s)}
-                  className={`py-2.5 rounded-xl text-xs font-semibold transition-colors capitalize
-                    ${newStatus === s ? "bg-[#FF6B35] text-white" : "bg-white/5 text-slate-400 hover:bg-white/8 hover:text-white border border-white/6"}`}>
-                  {s.replace("_", " ")}
-                </button>
-              ))}
-            </div>
+          {/* Organizer's side */}
+          <div className="bg-white/3 border border-white/6 rounded-2xl p-4">
+            <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-widest mb-2">Organizer's response</p>
+            {incident.response ? (
+              <>
+                <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">{incident.response}</p>
+                <EvidenceList urls={incident.response_evidence_urls} />
+                <p className="text-slate-600 text-[10px] mt-2">Responded {new Date(incident.responded_at).toLocaleString()}</p>
+              </>
+            ) : (
+              <p className="text-slate-500 text-xs italic">Awaiting the organizer's response.</p>
+            )}
           </div>
         </div>
 
-        <div className="p-6 border-t border-white/6">
-          <button disabled={saving || newStatus === incident.status} onClick={save}
-            className="w-full bg-[#FF6B35] hover:bg-[#e55a25] text-white font-semibold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            {saving ? "Saving…" : "Update status"}
-          </button>
+        {/* Resolution */}
+        <div className="p-6 border-t border-white/6 space-y-2">
+          {open ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <button disabled={busy}
+                  onClick={() => run({ action: "uphold" }, "Upheld — refunded & cancelled")}
+                  className="py-2.5 rounded-xl text-xs font-bold bg-red-500/15 text-red-300 border border-red-500/25 hover:bg-red-500/25 transition-colors disabled:opacity-40">
+                  Uphold (refund all)
+                </button>
+                <button disabled={busy}
+                  onClick={() => run({ action: "dismiss" }, "Dismissed — payouts resume")}
+                  className="py-2.5 rounded-xl text-xs font-bold bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-40">
+                  Dismiss
+                </button>
+              </div>
+              {incident.status !== "under_review" && (
+                <button disabled={busy}
+                  onClick={() => run({ status: "under_review" }, "Marked under review", false)}
+                  className="w-full py-2 rounded-xl text-[11px] font-semibold text-blue-300 hover:bg-blue-500/10 transition-colors disabled:opacity-40">
+                  Mark under review (keep frozen)
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="text-center text-slate-500 text-xs capitalize">Resolved · {incident.status.replace("_", " ")}</p>
+          )}
         </div>
       </div>
     </div>

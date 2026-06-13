@@ -23,6 +23,7 @@ import Countdown from './GDCountdown.jsx';
 import Section from './GDSection.jsx';
 import QuickAction from './QuickAction.jsx';
 import MemberRow from './MemberRow.jsx';
+import TripCompletionPrompt from './TripCompletionPrompt.jsx';
 import JoinRequestCard from './JoinRequestCard.jsx';
 import { PollCard, CreatePollModal } from './PollComponents.jsx';
 
@@ -102,6 +103,13 @@ export default function GroupDashboard() {
     tripsApi.get(tripId)
       .then(({ data: t }) => {
         if (cancelled) return;
+        // Gate: only the chief or an approved (paid) member can open the group
+        // dashboard. Pending / awaiting-payment members are sent to the trip page.
+        const amChief = t.chief_id && user && String(t.chief_id) === String(user.id);
+        if (!amChief && !t.viewer_is_member) {
+          navigate(`/trips/${tripId}`, { replace: true });
+          return;
+        }
         setChiefId(t.chief_id ?? null);
         const now       = Date.now();
         const startMs   = t.date_start ? new Date(t.date_start).getTime() : null;
@@ -1023,6 +1031,7 @@ export default function GroupDashboard() {
         {LocationAlertBanner}
         <div className="p-3.5 flex flex-col gap-3">
           {TripHeader}
+          {trip?.status === "completed" && !isChief && <TripCompletionPrompt tripId={tripId} />}
           {PreTripNotice}
           {QuickActionsPanel}
           {HealthPanel}
@@ -1071,6 +1080,7 @@ export default function GroupDashboard() {
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-3.5">
+          {trip?.status === "completed" && !isChief && <TripCompletionPrompt tripId={tripId} />}
           {MapPanel}
           {ItineraryPanel}
           {PollsPanel}

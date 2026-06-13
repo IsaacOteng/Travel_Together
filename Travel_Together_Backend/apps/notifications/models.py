@@ -23,6 +23,7 @@ class Notification(models.Model):
         REFUND_PROCESSED  = "refund_processed",  "Refund Processed"
         PAYOUT_RELEASED   = "payout_released",   "Payout Released"
         TRIP_CANCELLED    = "trip_cancelled",    "Trip Cancelled"
+        REPORT_FILED      = "report_filed",      "Report Filed"
 
     id                = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     recipient         = models.ForeignKey(

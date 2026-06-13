@@ -16,7 +16,8 @@ def award_trip_completion_karma(self, trip_id: str):
     +10 for each member, +15 bonus for the chief.
     """
     try:
-        from apps.trips.models import Trip, TripMember
+        from django.conf import settings
+        from apps.trips.models import Trip, TripMember, CheckIn
         from apps.karma.utils import award_karma
         from apps.notifications.utils import push
 
@@ -29,23 +30,51 @@ def award_trip_completion_karma(self, trip_id: str):
             trip=trip, status=TripMember.Status.APPROVED
         ).select_related("user")
 
+        no_show_penalty = getattr(settings, "NO_SHOW_KARMA_PENALTY", 10)
+
         for member in members:
-            delta = 15 if member.role == TripMember.Role.CHIEF else 10
-            award_karma(
-                user        = member.user,
-                delta       = delta,
-                reason      = "trip_completed",
-                description = f"Completed trip: {trip.title}",
-                trip        = trip,
-            )
-            push(
-                recipient  = member.user,
-                notif_type = "karma_level",
-                title      = "Karma earned",
-                body       = f"You earned +{delta} karma for completing '{trip.title}'.",
-                trip       = trip,
-                data       = {"delta": delta, "new_total": member.user.travel_karma},
-            )
+            is_chief = member.role == TripMember.Role.CHIEF
+            # The chief counts as present; everyone else must have checked in.
+            attended = is_chief or CheckIn.objects.filter(trip=trip, member=member.user).exists()
+
+            if attended:
+                delta = 15 if is_chief else 10
+                award_karma(
+                    user        = member.user,
+                    delta       = delta,
+                    reason      = "trip_completed",
+                    description = f"Completed trip: {trip.title}",
+                    trip        = trip,
+                )
+                push(
+                    recipient  = member.user,
+                    notif_type = "karma_level",
+                    title      = "Karma earned",
+                    body       = f"You earned +{delta} karma for completing '{trip.title}'.",
+                    trip       = trip,
+                    data       = {"delta": delta, "new_total": member.user.travel_karma},
+                )
+            else:
+                # Missed every check-in — a reputational hit to karma (and their
+                # reliability score, which is computed from check-ins). NOT a block:
+                # they can still join and travel on future trips.
+                award_karma(
+                    user        = member.user,
+                    delta       = -no_show_penalty,
+                    reason      = "penalty",
+                    description = f"Missed check-in: {trip.title}",
+                    trip        = trip,
+                )
+                push(
+                    recipient  = member.user,
+                    notif_type = "karma_level",
+                    title      = "Missed check-in",
+                    body       = f"You didn't check in on '{trip.title}', so {no_show_penalty} karma was deducted. "
+                                 f"It also lowers your reliability score — but you can still join future trips.",
+                    trip       = trip,
+                    data       = {"delta": -no_show_penalty, "new_total": member.user.travel_karma},
+                )
+
             check_karma_level_up.delay(str(member.user.id))
 
     except Exception as exc:

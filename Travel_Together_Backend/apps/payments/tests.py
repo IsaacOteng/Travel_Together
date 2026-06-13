@@ -136,6 +136,8 @@ class RefundTests(TestCase):
 class PayoutTests(TestCase):
     def setUp(self):
         self.chief = make_user("chief@t.co")
+        self.chief.is_verified_traveller = True   # established → eligible for partial release
+        self.chief.save()
         self.trip  = make_trip(self.chief)
         held_payment(self.trip, make_user("a@t.co"), amount="100.00")
         held_payment(self.trip, make_user("b@t.co"), amount="100.00")
@@ -156,6 +158,68 @@ class PayoutTests(TestCase):
         services.release_partial_payout(self.trip)
         self.assertIsNone(services.release_partial_payout(self.trip))
         self.assertEqual(Payout.objects.filter(trip=self.trip, kind=Payout.Kind.PARTIAL).count(), 1)
+
+
+@override_settings(PAYMENTS_ENABLED=True, PARTIAL_RELEASE_MIN_COMPLETED_TRIPS=2)
+class PayoutGuardTests(TestCase):
+    """Anti-collusion: new/unverified organizers get no partial; open reports freeze payouts."""
+
+    def setUp(self):
+        self.chief = make_user("chief@t.co")
+        self.trip  = make_trip(self.chief)
+        held_payment(self.trip, make_user("a@t.co"), amount="100.00")
+
+    def test_new_organizer_gets_no_partial(self):
+        # 0 completed trips, unverified → no partial release
+        self.assertIsNone(services.release_partial_payout(self.trip))
+
+    def test_verified_organizer_gets_partial(self):
+        self.chief.is_verified_traveller = True
+        self.chief.save()
+        self.assertIsNotNone(services.release_partial_payout(self.trip))
+
+    def test_open_report_freezes_payouts(self):
+        from apps.trips.models import IncidentReport
+        self.chief.is_verified_traveller = True   # established, so only the report can block it
+        self.chief.save()
+        IncidentReport.objects.create(
+            trip=self.trip, reporter=make_user("victim@t.co"),
+            incident_type="fraud", description="x" * 50,
+        )
+        self.assertIsNone(services.release_partial_payout(self.trip))
+        self.assertIsNone(services.release_final_payout(self.trip))
+
+
+@override_settings(PAYMENTS_ENABLED=True, DEPARTURE_GRACE_HOURS=6)
+class PartialSweepTests(TestCase):
+    """Partial releases via the sweep only after the departure grace window."""
+
+    def setUp(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        self.chief = make_user("chief@t.co")
+        self.chief.is_verified_traveller = True
+        self.chief.save()
+        self.trip = make_trip(self.chief)
+        self.now = timezone.now
+        self.timedelta = timedelta
+        held_payment(self.trip, make_user("a@t.co"), amount="100.00")
+
+    def _depart(self, hours_ago):
+        self.trip.departure_confirmed_at = self.now() - self.timedelta(hours=hours_ago)
+        self.trip.save(update_fields=["departure_confirmed_at"])
+
+    def test_partial_held_within_grace(self):
+        from apps.payments.tasks import release_due_partials
+        self._depart(hours_ago=1)             # still inside the 6h window
+        release_due_partials()
+        self.assertFalse(Payout.objects.filter(trip=self.trip, kind=Payout.Kind.PARTIAL).exists())
+
+    def test_partial_releases_after_grace(self):
+        from apps.payments.tasks import release_due_partials
+        self._depart(hours_ago=7)             # past the 6h window
+        release_due_partials()
+        self.assertTrue(Payout.objects.filter(trip=self.trip, kind=Payout.Kind.PARTIAL).exists())
 
 
 @override_settings(PAYMENTS_ENABLED=True, PAYSTACK_SECRET_KEY="")

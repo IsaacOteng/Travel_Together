@@ -13,6 +13,7 @@ export function JoinedSection({ loading, trips, full, onExpand, onCollapse, onNa
     date:       fmtDate(t.date_start),
     joinStatus: t.my_status || "pending",
     tripStatus: t.status    || "published",
+    entryPrice: t.entry_price,
     members:    t.member_count ?? 0,
     daysLeft:   t.date_start
                   ? Math.max(0, Math.ceil((new Date(t.date_start) - Date.now()) / 86400000))
