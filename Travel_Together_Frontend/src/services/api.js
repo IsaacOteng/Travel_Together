@@ -144,6 +144,7 @@ export const tripsApi = {
   unsave:         (id)         => api.delete(`/api/trips/${id}/save/`),
   create:         (data)       => api.post("/api/trips/",                       data),
   publish:        (id)         => api.post(`/api/trips/${id}/publish/`),
+  depart:         (id)         => api.post(`/api/trips/${id}/depart/`),
   endTrip:        (id)         => api.post(`/api/trips/${id}/end/`),
   itinerary:      (id)         => api.get(`/api/trips/${id}/itinerary/`),
   addStop:        (id, data)   => api.post(`/api/trips/${id}/itinerary/`, data),
@@ -169,6 +170,15 @@ export const tripsApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+};
+
+// ─── Payments (Paystack escrow) ───────────────────────────────────────────────
+
+export const paymentsApi = {
+  initiate:        (tripId)    => api.post(`/api/payments/trips/${tripId}/initiate/`),
+  verify:          (reference) => api.get(`/api/payments/verify/${reference}/`),
+  getPayoutMethod: ()          => api.get("/api/payments/payout-method/"),
+  setPayoutMethod: (data)      => api.put("/api/payments/payout-method/", data),
 };
 
 // ─── Polls ────────────────────────────────────────────────────────────────────
@@ -221,6 +231,9 @@ export const adminApi = {
   getIncidents:   (params)            => api.get("/api/admin-dashboard/incidents/",  { params }),
   updateIncident: (id, data)          => api.patch(`/api/admin-dashboard/incidents/${id}/`, data),
   getLeaderboard: ()                  => api.get("/api/admin-dashboard/leaderboard/"),
+  getPayments:    (params)            => api.get("/api/admin-dashboard/payments/",   { params }),
+  refundPayment:  (id)                => api.post(`/api/admin-dashboard/payments/${id}/refund/`),
+  getPayouts:     (params)            => api.get("/api/admin-dashboard/payouts/",    { params }),
 };
 
 export default api;

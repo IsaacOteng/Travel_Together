@@ -1,10 +1,13 @@
 import { LogOut, Trash2, Mail } from "lucide-react";
 import { SectionCard, SettingRow } from "./atoms.jsx";
 import EmergencyContactCard from "./EmergencyContactCard.jsx";
+import PayoutMethodCard from "./PayoutMethodCard.jsx";
 
 export default function SettingsContent({ contacts, openModal, onRemoveContact, userEmail }) {
   return (
     <div className="flex flex-col gap-5">
+
+      <PayoutMethodCard />
 
       <SectionCard title="Emergency Contacts">
         <div className="px-4 pt-3 pb-1">

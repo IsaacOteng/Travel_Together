@@ -12,6 +12,7 @@ from apps.safety.models import SOSAlert
 from apps.karma.models import KarmaLog
 from apps.chat.models import Message
 from apps.streaks.models import Streak
+from apps.payments.models import Payment, Payout
 
 
 # ─── Overview / Stats ─────────────────────────────────────────────────────────
@@ -59,6 +60,12 @@ class AdminStatsView(APIView):
                 "karma_given_7d": KarmaLog.objects.filter(
                     created_at__gte=last_7, delta__gt=0
                 ).aggregate(total=Sum("delta"))["total"] or 0,
+            },
+            "payments": {
+                "in_escrow":  str(Payment.objects.filter(status="held").aggregate(t=Sum("amount"))["t"] or 0),
+                "released":   str(Payment.objects.filter(status="released").aggregate(t=Sum("amount"))["t"] or 0),
+                "refunded":   str(Payment.objects.filter(status="refunded").aggregate(t=Sum("amount"))["t"] or 0),
+                "held_count": Payment.objects.filter(status="held").count(),
             },
         })
 
@@ -403,3 +410,117 @@ class AdminLeaderboardView(APIView):
             }
             for u in users
         ])
+
+
+# ─── Payments ledger ──────────────────────────────────────────────────────────
+
+def _mask_ref(ref):
+    return f"••••{ref[-6:]}" if ref else None
+
+
+class AdminPaymentsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        qs = Payment.objects.select_related("user", "trip").order_by("-created_at")
+
+        status_f = request.query_params.get("status")
+        if status_f:
+            qs = qs.filter(status=status_f)
+
+        search = request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(Q(user__email__icontains=search) | Q(trip__title__icontains=search))
+
+        from decimal import Decimal
+        def total(s):
+            return str(qs.filter(status=s).aggregate(t=Sum("amount"))["t"] or Decimal("0"))
+        summary = {s: total(s) for s in ("held", "released", "refunded", "pending", "failed")}
+
+        page     = max(int(request.query_params.get("page", 1)), 1)
+        per_page = 20
+        total_ct = qs.count()
+        rows     = qs[(page - 1) * per_page : page * per_page]
+
+        results = [
+            {
+                "id":               str(p.id),
+                "status":           p.status,
+                "amount":           str(p.amount),
+                "fee":              str(p.fee),
+                "currency":         p.currency,
+                "reference_masked": _mask_ref(p.paystack_ref),
+                "created_at":       p.created_at,
+                "paid_at":          p.paid_at,
+                "refunded_at":      p.refunded_at,
+                "user":  {"id": str(p.user.id),  "email": p.user.email, "username": p.user.username},
+                "trip":  {"id": str(p.trip.id),  "title": p.trip.title},
+            }
+            for p in rows
+        ]
+        return Response({"count": total_ct, "page": page, "summary": summary, "results": results})
+
+
+class AdminPaymentRefundView(APIView):
+    """Manual refund — for dispute resolution (e.g. a trip that collapsed after a
+    partial release). Only held payments can be refunded."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, payment_id):
+        from apps.payments.services import refund_payment
+        from apps.payments import paystack
+
+        try:
+            payment = Payment.objects.select_related("user", "trip").get(id=payment_id)
+        except Payment.DoesNotExist:
+            return Response({"detail": "Payment not found."}, status=404)
+
+        if payment.status != Payment.Status.HELD:
+            return Response(
+                {"detail": f"Only held payments can be refunded (this one is {payment.status})."},
+                status=400,
+            )
+        try:
+            amount = refund_payment(payment, reason="admin_refund")
+        except paystack.PaystackError as exc:
+            return Response({"detail": str(exc)}, status=502)
+
+        return Response({
+            "refunded": True,
+            "amount":   str(amount) if amount is not None else None,
+            "status":   payment.status,
+        })
+
+
+class AdminPayoutsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        qs = Payout.objects.select_related("organizer", "trip").order_by("-created_at")
+
+        status_f = request.query_params.get("status")
+        if status_f:
+            qs = qs.filter(status=status_f)
+
+        page     = max(int(request.query_params.get("page", 1)), 1)
+        per_page = 20
+        total_ct = qs.count()
+        rows     = qs[(page - 1) * per_page : page * per_page]
+
+        results = [
+            {
+                "id":         str(po.id),
+                "kind":       po.kind,
+                "status":     po.status,
+                "amount":     str(po.amount),
+                "created_at": po.created_at,
+                "paid_at":    po.paid_at,
+                "trip":       {"id": str(po.trip.id), "title": po.trip.title},
+                "organizer":  {
+                    "id":    str(po.organizer.id) if po.organizer else None,
+                    "email": po.organizer.email   if po.organizer else None,
+                },
+            }
+            for po in rows
+        ]
+        return Response({"count": total_ct, "page": page, "results": results})

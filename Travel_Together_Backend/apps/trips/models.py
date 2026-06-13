@@ -11,6 +11,7 @@ class Trip(models.Model):
         PUBLISHED = "published", "Published"
         ACTIVE    = "active",    "Active"
         COMPLETED = "completed", "Completed"
+        CANCELLED = "cancelled", "Cancelled"
         ARCHIVED  = "archived",  "Archived"
 
     class Visibility(models.TextChoices):
@@ -149,6 +150,7 @@ class ItineraryStop(models.Model):
     duration_minutes = models.IntegerField(null=True, blank=True)
     note             = models.TextField(null=True, blank=True)
     is_current       = models.BooleanField(default=False)        # at most one per trip
+    is_system        = models.BooleanField(default=False)        # locked meeting-point stop (organizer can't edit/remove)
     created_at       = models.DateTimeField(auto_now_add=True)
     updated_at       = models.DateTimeField(auto_now=True)
 
@@ -173,20 +175,21 @@ class TripMember(models.Model):
         MEMBER = "member", "Member"
 
     class Status(models.TextChoices):
-        PENDING  = "pending",  "Pending"
-        APPROVED = "approved", "Approved"
-        REJECTED = "rejected", "Rejected"
-        REMOVED  = "removed",  "Removed"
+        PENDING          = "pending",          "Pending"
+        AWAITING_PAYMENT = "awaiting_payment", "Awaiting Payment"
+        APPROVED         = "approved",         "Approved"
+        REJECTED         = "rejected",         "Rejected"
+        REMOVED          = "removed",          "Removed"
 
-    # Statuses that occupy/hold a trip spot for capacity checks.
-    # AWAITING_PAYMENT joins this list when pay-after-approval lands, so a
-    # held-but-unpaid spot can't be double-sold while the member is paying.
-    OCCUPYING_STATUSES = [Status.APPROVED]
+    # Statuses that occupy/hold a trip spot for capacity checks. A member who is
+    # approved-but-awaiting-payment still holds a tentative spot (until their
+    # payment deadline lapses), so it can't be double-sold while they pay.
+    OCCUPYING_STATUSES = [Status.APPROVED, Status.AWAITING_PAYMENT]
 
     trip            = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="members")
     user            = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="trip_memberships")
     role            = models.CharField(max_length=10, choices=Role.choices, default=Role.MEMBER)
-    status          = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    status          = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     requested_at    = models.DateTimeField(auto_now_add=True)
     approved_at     = models.DateTimeField(null=True, blank=True)
     approved_by     = models.ForeignKey(

@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "apps.karma",
     "apps.notifications",
     "apps.admin_dashboard",
+    "apps.payments",
 ]
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
@@ -267,7 +268,38 @@ CELERY_BEAT_SCHEDULE = {
         "task":     "tasks.cleanup.purge_deleted_users",
         "schedule": crontab(hour=2, minute=30),
     },
+    # Lapse approvals whose payment deadline has passed — hourly
+    "expire-unpaid-approvals": {
+        "task":     "apps.payments.tasks.expire_unpaid_approvals",
+        "schedule": crontab(minute=0),
+    },
+    # Release final payouts after the dispute window — daily at 1 AM UTC
+    "release-due-payouts": {
+        "task":     "apps.payments.tasks.release_due_payouts",
+        "schedule": crontab(hour=1, minute=0),
+    },
 }
+
+# ─── Payments ─────────────────────────────────────────────────────────────────
+# Master switch for pay-after-approval escrow. Default OFF so the app behaves
+# exactly as before until the payments rollout is complete (Phase 8 cutover).
+PAYMENTS_ENABLED      = env.bool("PAYMENTS_ENABLED", default=False)
+# Hours a member has to pay after being approved before the spot is released.
+PAYMENT_DEADLINE_HOURS = env.int("PAYMENT_DEADLINE_HOURS", default=48)
+
+# Paystack — use TEST keys (sk_test_… / pk_test_…); no business cert needed for test mode.
+PAYSTACK_SECRET_KEY   = env("PAYSTACK_SECRET_KEY",   default="")
+PAYSTACK_PUBLIC_KEY   = env("PAYSTACK_PUBLIC_KEY",   default="")
+PAYSTACK_BASE_URL     = env("PAYSTACK_BASE_URL",     default="https://api.paystack.co")
+PAYSTACK_CALLBACK_URL = env("PAYSTACK_CALLBACK_URL", default="")  # where Paystack redirects after payment
+
+# Escrow economics (percent integers / hours / days)
+PLATFORM_COMMISSION_PERCENT = env.int("PLATFORM_COMMISSION_PERCENT", default=10)   # the app's cut
+PARTIAL_RELEASE_PERCENT     = env.int("PARTIAL_RELEASE_PERCENT",     default=50)   # released to organizer at departure
+DISPUTE_WINDOW_HOURS        = env.int("DISPUTE_WINDOW_HOURS",        default=48)   # hold after trip end before final payout
+REFUND_CUTOFF_DAYS          = env.int("REFUND_CUTOFF_DAYS",          default=7)    # ≥ this many days out → refundable
+ORGANIZER_CANCEL_KARMA_PENALTY = env.int("ORGANIZER_CANCEL_KARMA_PENALTY", default=25)
+DEPARTURE_QUORUM_PERCENT    = env.int("DEPARTURE_QUORUM_PERCENT",    default=50)   # % of approved members who must check in to depart
 
 # ─── Email ────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = env(

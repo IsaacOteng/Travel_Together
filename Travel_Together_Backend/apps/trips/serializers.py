@@ -59,10 +59,10 @@ class ItineraryStopSerializer(serializers.ModelSerializer):
         fields = [
             "id", "order", "name",
             "latitude", "longitude", "geofence_radius",
-            "arrival_time", "duration_minutes", "note", "is_current",
+            "arrival_time", "duration_minutes", "note", "is_current", "is_system",
             "checkin_count", "checked_in_users",
         ]
-        read_only_fields = ["id", "is_current"]
+        read_only_fields = ["id", "is_current", "is_system"]
 
     def get_checkin_count(self, obj):
         return CheckIn.objects.filter(stop=obj).count()

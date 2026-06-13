@@ -3,6 +3,7 @@ from apps.trips.views import (
     TripListCreateView,
     TripDetailView,
     TripPublishView,
+    TripDepartView,
     TripEndView,
     TripImageListView,
     TripImageDetailView,
@@ -29,6 +30,7 @@ urlpatterns = [
     # Trip detail
     path("<uuid:trip_id>/",                     TripDetailView.as_view(),           name="trip-detail"),
     path("<uuid:trip_id>/publish/",             TripPublishView.as_view(),          name="trip-publish"),
+    path("<uuid:trip_id>/depart/",              TripDepartView.as_view(),           name="trip-depart"),
     path("<uuid:trip_id>/end/",                 TripEndView.as_view(),              name="trip-end"),
 
     # Images

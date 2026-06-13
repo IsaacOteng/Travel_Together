@@ -105,6 +105,8 @@ def mark_trips_completed():
     trip_ids = [str(t.id) for t in finished]
     if trip_ids:
         Trip.objects.filter(id__in=trip_ids).update(status=Trip.Status.COMPLETED)
+        # Stamp ended_at (starts the payout dispute window) only where not already set.
+        Trip.objects.filter(id__in=trip_ids, ended_at__isnull=True).update(ended_at=timezone.now())
         for trip_id in trip_ids:
             award_trip_completion_karma.delay(trip_id)
             generate_trip_recap.delay(trip_id)

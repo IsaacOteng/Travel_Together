@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
   LayoutDashboard, Users, Map, ShieldAlert, BarChart2,
-  LogOut, Menu, X, ChevronRight,
+  LogOut, Menu, X, ChevronRight, Wallet,
 } from "lucide-react";
 
 import Overview       from "./Overview";
@@ -11,16 +11,18 @@ import UsersPage      from "./UsersPage";
 import TripsPage      from "./TripsPage";
 import SafetyPage     from "./SafetyPage";
 import LeaderboardPage from "./LeaderboardPage";
+import PaymentsPage   from "./PaymentsPage";
 
 const NAV = [
   { id: "overview",    label: "Overview",    Icon: LayoutDashboard, desc: "Platform stats" },
   { id: "users",       label: "Users",       Icon: Users,           desc: "Manage accounts" },
   { id: "trips",       label: "Trips",       Icon: Map,             desc: "All trips"       },
+  { id: "payments",    label: "Payments",    Icon: Wallet,          desc: "Escrow & payouts" },
   { id: "safety",      label: "Safety",      Icon: ShieldAlert,     desc: "SOS & incidents" },
   { id: "leaderboard", label: "Leaderboard", Icon: BarChart2,       desc: "Karma rankings"  },
 ];
 
-const PAGE = { overview: Overview, users: UsersPage, trips: TripsPage, safety: SafetyPage, leaderboard: LeaderboardPage };
+const PAGE = { overview: Overview, users: UsersPage, trips: TripsPage, payments: PaymentsPage, safety: SafetyPage, leaderboard: LeaderboardPage };
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();

@@ -10,6 +10,9 @@ from .views import (
     AdminIncidentsView,
     AdminIncidentDetailView,
     AdminLeaderboardView,
+    AdminPaymentsView,
+    AdminPaymentRefundView,
+    AdminPayoutsView,
 )
 
 urlpatterns = [
@@ -23,4 +26,7 @@ urlpatterns = [
     path("incidents/",                AdminIncidentsView.as_view()),
     path("incidents/<uuid:incident_id>/", AdminIncidentDetailView.as_view()),
     path("leaderboard/",              AdminLeaderboardView.as_view()),
+    path("payments/",                 AdminPaymentsView.as_view()),
+    path("payments/<uuid:payment_id>/refund/", AdminPaymentRefundView.as_view()),
+    path("payouts/",                  AdminPayoutsView.as_view()),
 ]

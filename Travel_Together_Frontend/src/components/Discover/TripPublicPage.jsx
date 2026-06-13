@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import MapEmbed from "./MapEmbed.jsx";
 import { Avatar, WhoIsGoing } from "./helpers.jsx";
+import PayButton from "../Payments/PayButton.jsx";
 import ShareToast from "./ShareToast.jsx";
 import AppNav from "../shared/AppNav.jsx";
 import MobileBottomNav from "../shared/MobileBottomNav.jsx";
@@ -140,11 +141,13 @@ export default function TripPublicPage() {
         const t = normalise(data);
         setTrip(t);
         setSaved(t.saved);
-        setJoinState(
-          t.my_status === "approved" ? "approved"
-          : t.my_status === "pending" ? "pending"
-          : "none"
-        );
+        setJoinState((() => {
+          const s = t.my_status && typeof t.my_status === "object" ? t.my_status.status : t.my_status;
+          return s === "approved" ? "approved"
+            : s === "awaiting_payment" ? "awaiting_payment"
+            : s === "pending" ? "pending"
+            : "none";
+        })());
         if (t.chief?.id) {
           usersApi.getPublicProfile(t.chief.id)
             .then(({ data: profile }) => { if (!cancelled) setChiefRating(profile.avg_rating ?? null); })
@@ -438,6 +441,9 @@ export default function TripPublicPage() {
               )}
               {!isChief && joinState === "pending" && (
                 <div style={{ padding: "14px 0", borderRadius: 14, textAlign: "center", background: "rgba(251,191,36,0.1)", color: "#fbbf24", border: "1.5px solid rgba(251,191,36,0.25)", fontSize: 13, fontWeight: 600 }}>⏳ Waiting for approval</div>
+              )}
+              {!isChief && joinState === "awaiting_payment" && (
+                <PayButton tripId={trip.id} amount={trip.entryPrice} onPaid={() => setJoinState("approved")} />
               )}
             </>
           );

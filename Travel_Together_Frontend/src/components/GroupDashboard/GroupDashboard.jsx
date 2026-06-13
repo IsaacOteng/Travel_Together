@@ -6,7 +6,7 @@ import {
   Crown, Compass, Radio, ArrowLeft, UserCheck,
   RefreshCw, LogOut,
   Plus, X, Check, MessageCircle, Map,
-  BarChart2, Star, Lock, Trash2,
+  BarChart2, Star, Lock, Trash2, Navigation,
 } from "lucide-react";
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -56,6 +56,8 @@ export default function GroupDashboard() {
   const [chiefId,       setChiefId]       = useState(null);
   const [members,       setMembers]       = useState([]);
   const [loading,       setLoading]       = useState(true);
+  const [departing,     setDeparting]     = useState(false);
+  const [departMsg,     setDepartMsg]     = useState("");
 
   const isChief = !!user && (
     (chiefId && String(chiefId) === String(user.id)) ||
@@ -117,6 +119,7 @@ export default function GroupDashboard() {
           spotsFilled: t.member_count ?? 0,
           groupKarma:  t.group_karma  ?? 0,
           status:      t.status       ?? "",
+          departureConfirmedAt: t.departure_confirmed_at ?? null,
           startMs,
           endMs,
         });
@@ -565,20 +568,54 @@ export default function GroupDashboard() {
     catch { tripsApi.itinerary(tripId).then(r => setItinerary(r.data.results ?? r.data)).catch(() => {}); }
   };
 
+  const handleDepart = async () => {
+    if (departing) return;
+    setDeparting(true);
+    setDepartMsg("");
+    try {
+      await tripsApi.depart(tripId);
+      setTrip(prev => prev ? { ...prev, status: "active", departureConfirmedAt: new Date().toISOString() } : prev);
+      setDepartMsg("Departure confirmed — the trip is now live.");
+    } catch (err) {
+      setDepartMsg(err?.response?.data?.detail || "Couldn't mark the trip as departed.");
+    } finally {
+      setDeparting(false);
+    }
+  };
+
+  const canDepart = isChief && trip && !trip.departureConfirmedAt
+    && ["published", "active"].includes(trip.status);
+
   const ItineraryPanel = (
     <Section
       title="Itinerary"
       icon={Calendar}
       iconColor="#6B7FA6"
       action={isChief && (
-        <button
-          onClick={() => setShowAddStop(true)}
-          className="flex items-center gap-1 text-[10px] font-bold text-[#6B7FA6] bg-[#6B7FA6]/10 border border-[#6B7FA6]/20 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-[#6B7FA6]/20 transition-colors"
-        >
-          <Plus size={10} /> Add Stop
-        </button>
+        <div className="flex items-center gap-1.5">
+          {canDepart && (
+            <button
+              onClick={handleDepart}
+              disabled={departing}
+              className="flex items-center gap-1 text-[10px] font-bold text-[#FF6B35] bg-[#FF6B35]/10 border border-[#FF6B35]/25 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-[#FF6B35]/20 transition-colors disabled:opacity-60"
+            >
+              <Navigation size={10} /> {departing ? "Departing…" : "Depart"}
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddStop(true)}
+            className="flex items-center gap-1 text-[10px] font-bold text-[#6B7FA6] bg-[#6B7FA6]/10 border border-[#6B7FA6]/20 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-[#6B7FA6]/20 transition-colors"
+          >
+            <Plus size={10} /> Add Stop
+          </button>
+        </div>
       )}
     >
+      {departMsg && (
+        <p className="text-[10.5px] text-white/55 bg-white/[0.04] border border-white/[0.07] rounded-lg px-2.5 py-1.5 mb-2.5 leading-snug">
+          {departMsg}
+        </p>
+      )}
       {itinerary.length === 0 ? (
         <p className="text-[11px] text-white/25 text-center py-2">No stops added yet.</p>
       ) : (
@@ -610,7 +647,7 @@ export default function GroupDashboard() {
                     {checkedInStops.includes(String(stop.id)) && (
                       <CheckCircle size={13} className="text-green-400" title="You've checked in" />
                     )}
-                    {isChief && (
+                    {isChief && !stop.is_system && (
                       <button onClick={() => handleDeleteStop(stop.id)}
                         className="text-white/15 hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer p-0">
                         <X size={11} />

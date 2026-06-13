@@ -69,6 +69,10 @@ export default function NotificationsPanel({ open, onClose }) {
       onClose(); navigate(`/group-dashboard/${d.trip_id}`);
     } else if (t === "karma_level") {
       onClose(); navigate("/profile");
+    } else if ((t === "refund_processed" || t === "trip_cancelled" || t === "payment_due") && d.trip_id) {
+      onClose(); navigate(`/trips/${d.trip_id}`);
+    } else if ((t === "payout_released" || t === "payment_received") && d.trip_id) {
+      onClose(); navigate(`/group-dashboard/${d.trip_id}`);
     } else if (t === "proximity_warning" && d.trip_id) {
       onClose(); navigate(`/group-dashboard/${d.trip_id}`);
     }

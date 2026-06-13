@@ -8,15 +8,18 @@ import ShareToast from './ShareToast.jsx';
 import SlideHero from './SlideHero.jsx';
 import MapEmbed from './MapEmbed.jsx';
 import { Avatar, WhoIsGoing } from './helpers.jsx';
+import PayButton from '../Payments/PayButton.jsx';
 import { tripsApi } from '../../services/api.js';
 
 export default function MobileTripDetail({ trip, onClose, onSave, onShare, onAskOrganizer }) {
   const [activeImg, setActiveImg] = useState(0);
-  const [joinState, setJoinState] = useState(
-    trip.my_status === "approved" ? "approved"
-    : trip.my_status === "pending" ? "pending"
-    : "none"
-  );
+  const [joinState, setJoinState] = useState(() => {
+    const s = trip.my_status && typeof trip.my_status === "object" ? trip.my_status.status : trip.my_status;
+    return s === "approved" ? "approved"
+      : s === "awaiting_payment" ? "awaiting_payment"
+      : s === "pending" ? "pending"
+      : "none";
+  });
   const [joining,  setJoining]  = useState(false);
   const [sharing,  setSharing]  = useState(false);
 
@@ -213,6 +216,11 @@ export default function MobileTripDetail({ trip, onClose, onSave, onShare, onAsk
           <div className="flex-1 py-[13px] rounded-xl text-[13px] font-semibold text-center"
             style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24", border: "1.5px solid rgba(251,191,36,0.25)" }}>
             ⏳ Waiting for approval
+          </div>
+        )}
+        {joinState === "awaiting_payment" && (
+          <div className="flex-1">
+            <PayButton tripId={trip.id} amount={trip.entryPrice} onPaid={() => setJoinState("approved")} />
           </div>
         )}
         {joinState === "approved" && (

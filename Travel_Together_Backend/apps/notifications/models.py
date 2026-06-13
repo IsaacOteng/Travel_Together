@@ -17,6 +17,12 @@ class Notification(models.Model):
         PROXIMITY_WARNING = "proximity_warning", "Proximity Warning"
         TRIP_ENDED        = "trip_ended",        "Trip Ended"
         REVIEW_REMINDER   = "review_reminder",   "Review Reminder"
+        PAYMENT_DUE       = "payment_due",       "Payment Due"
+        PAYMENT_RECEIVED  = "payment_received",  "Payment Received"
+        PAYMENT_FAILED    = "payment_failed",    "Payment Failed"
+        REFUND_PROCESSED  = "refund_processed",  "Refund Processed"
+        PAYOUT_RELEASED   = "payout_released",   "Payout Released"
+        TRIP_CANCELLED    = "trip_cancelled",    "Trip Cancelled"
 
     id                = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     recipient         = models.ForeignKey(

@@ -1,6 +1,7 @@
 import {
   AlertTriangle, UserCheck, CheckCircle, XCircle,
   MessageCircle, Star, Clock, MapPin, Bell,
+  CreditCard, Wallet, RotateCcw,
 } from "lucide-react";
 
 export const TYPE_CFG = {
@@ -15,6 +16,12 @@ export const TYPE_CFG = {
   trip_ended:        { Icon: CheckCircle,   color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.25)" },
   proximity_warning: { Icon: MapPin,        color: "#fb923c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.25)"  },
   review_reminder:   { Icon: Star,          color: "#FF6B35", bg: "rgba(255,107,53,0.12)",  border: "rgba(255,107,53,0.25)"  },
+  payment_due:       { Icon: CreditCard,    color: "#FF6B35", bg: "rgba(255,107,53,0.12)",  border: "rgba(255,107,53,0.25)"  },
+  payment_received:  { Icon: CheckCircle,   color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.25)"  },
+  payment_failed:    { Icon: XCircle,       color: "#f87171", bg: "rgba(248,113,113,0.10)", border: "rgba(248,113,113,0.25)" },
+  refund_processed:  { Icon: RotateCcw,     color: "#60a5fa", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.25)"  },
+  payout_released:   { Icon: Wallet,        color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.25)"  },
+  trip_cancelled:    { Icon: XCircle,       color: "#f87171", bg: "rgba(248,113,113,0.10)", border: "rgba(248,113,113,0.25)" },
 };
 
 export const PANEL_BG = "#09162a";

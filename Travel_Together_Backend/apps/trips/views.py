@@ -38,6 +38,30 @@ def _is_chief(trip, user):
     return trip.chief_id == user.pk
 
 
+def _ensure_meeting_point_stop(trip):
+    """
+    Create the locked meeting-point check-in (order 0) if it doesn't exist.
+
+    This is the tamper-proof departure / no-show signal: the organizer can't
+    edit or remove it, and members check in here to prove they're on board.
+    Idempotent.
+    """
+    if trip.itinerary.filter(is_system=True).exists():
+        return None
+    # Make room at order 0 by bumping any existing stops down.
+    for stop in trip.itinerary.all().order_by("-order"):
+        stop.order += 1
+        stop.save(update_fields=["order"])
+    return ItineraryStop.objects.create(
+        trip=trip,
+        order=0,
+        name=trip.meeting_point or "Meeting Point",
+        location=trip.meeting_point_coords,
+        is_system=True,
+        note="Departure check-in point",
+    )
+
+
 def _require_chief(trip, user):
     if not _is_chief(trip, user):
         return Response({"detail": "Only the trip chief can do this."}, status=403)
@@ -137,6 +161,19 @@ class TripDetailView(APIView):
             return err
         if trip.status == Trip.Status.ACTIVE:
             return Response({"detail": "Cannot delete an active trip."}, status=400)
+
+        # A trip holding members' money can't just vanish — cancel it instead,
+        # which refunds every held payment and marks it CANCELLED.
+        from apps.payments.models import Payment
+        has_funds = Payment.objects.filter(trip=trip, status=Payment.Status.HELD).exists()
+        if has_funds:
+            from apps.payments.services import cancel_trip
+            cancel_trip(trip, by_organizer=True, reason="deleted by organizer")
+            return Response(
+                {"detail": "Trip cancelled and members refunded.", "status": "cancelled"},
+                status=200,
+            )
+
         # Clean up stored images
         for img in trip.images.all():
             _delete_file(img.image_key)
@@ -161,7 +198,79 @@ class TripPublishView(APIView):
             return Response({"detail": "Only draft trips can be published."}, status=400)
         trip.status = Trip.Status.PUBLISHED
         trip.save(update_fields=["status", "updated_at"])
+        _ensure_meeting_point_stop(trip)
         return Response({"status": trip.status})
+
+
+# ─── Trip: depart ────────────────────────────────────────────────────────────
+
+class TripDepartView(APIView):
+    """
+    POST /api/trips/<id>/depart/
+
+    Chief confirms the group has departed. Requires a quorum of approved members
+    to have checked in at the locked meeting-point stop (tamper-proof proof the
+    trip really set off). On success: stamps departure_confirmed_at, flips the
+    trip ACTIVE, and releases the partial payout to the organizer.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, trip_id):
+        import math
+        from django.utils import timezone
+        from django.conf import settings
+
+        try:
+            trip = Trip.objects.get(id=trip_id)
+        except Trip.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+        err = _require_chief(trip, request.user)
+        if err:
+            return err
+        if trip.status not in (Trip.Status.PUBLISHED, Trip.Status.ACTIVE):
+            return Response({"detail": "This trip can't be marked as departed."}, status=400)
+
+        meeting_stop = trip.itinerary.filter(is_system=True).first()
+        if not meeting_stop:
+            return Response({"detail": "No meeting-point check-in configured for this trip."}, status=400)
+
+        approved_ids = set(
+            trip.members.filter(status=TripMember.Status.APPROVED)
+            .exclude(role=TripMember.Role.CHIEF)
+            .values_list("user_id", flat=True)
+        )
+        checked_in_ids = set(
+            CheckIn.objects.filter(trip=trip, stop=meeting_stop)
+            .values_list("member_id", flat=True)
+        )
+        checked_in     = len(approved_ids & checked_in_ids)
+        approved_count = len(approved_ids)
+
+        pct    = getattr(settings, "DEPARTURE_QUORUM_PERCENT", 50)
+        quorum = math.ceil(approved_count * pct / 100) if approved_count else 0
+        if checked_in < quorum:
+            return Response({
+                "detail": f"Need {quorum} member(s) checked in at the meeting point to depart ({checked_in} so far).",
+                "checked_in": checked_in,
+                "quorum":     quorum,
+            }, status=400)
+
+        trip.departure_confirmed_at = timezone.now()
+        if trip.status == Trip.Status.PUBLISHED:
+            trip.status = Trip.Status.ACTIVE
+        trip.save(update_fields=["departure_confirmed_at", "status", "updated_at"])
+
+        partial_released = False
+        if settings.PAYMENTS_ENABLED:
+            from apps.payments.services import release_partial_payout
+            partial_released = bool(release_partial_payout(trip))
+
+        return Response({
+            "departed":         True,
+            "checked_in":       checked_in,
+            "quorum":           quorum,
+            "partial_released": partial_released,
+        })
 
 
 # ─── Trip: end ───────────────────────────────────────────────────────────────
@@ -430,6 +539,10 @@ class JoinRequestView(APIView):
         if member.role == TripMember.Role.CHIEF:
             return Response({"detail": "The chief cannot leave the trip."}, status=400)
 
+        # Refund (minus fee) if still within the cutoff window, else forfeit.
+        from apps.payments.services import handle_member_leaving
+        handle_member_leaving(trip, request.user)
+
         member.delete()
         # Remove from group chat
         from apps.chat.models import ConversationMember
@@ -478,39 +591,26 @@ class TripMemberDetailView(APIView):
         reason = serializer.validated_data.get("reason", "")
 
         from django.utils import timezone
+        from django.conf import settings
         if action == "approve":
             if trip.spots_left() <= 0:
                 return Response({"detail": "Trip is full."}, status=400)
-            member.status = TripMember.Status.APPROVED
             member.approved_at = timezone.now()
             member.approved_by = request.user
-            member.save(update_fields=["status", "approved_at", "approved_by"])
-            # Auto-add to group conversation if it exists
-            from apps.chat.models import ConversationMember as ConvMember
-            conv = trip.group_chats.first()
-            if conv:
-                ConvMember.objects.get_or_create(
-                    conversation=conv, user=member.user,
-                    defaults={"is_admin": False},
-                )
-            # Stamp the chief's join_request notification as decided
-            from apps.notifications.models import Notification as Notif
-            Notif.objects.filter(
-                notification_type="join_request",
-                trip=trip,
-                data__user_id=str(member.user.id),
-            ).update(is_read=True, data={"trip_id": str(trip.id), "user_id": str(member.user.id), "decided": "approved"})
-            # Notify the approved member
-            from apps.notifications.utils import push
-            push(
-                recipient  = member.user,
-                notif_type = "join_approved",
-                title      = "Join request approved!",
-                body       = f"You've been approved to join \"{trip.title}\". Welcome to the group!",
-                sender     = request.user,
-                trip       = trip,
-                data       = {"trip_id": str(trip.id)},
-            )
+
+            # Pay-after-approval: when enabled and the trip has an entry fee, the
+            # member is parked at AWAITING_PAYMENT and must pay to be admitted.
+            # Free trips (or payments disabled) admit the member immediately.
+            from apps.payments.services import admit_member_to_group, start_member_payment
+            requires_payment = settings.PAYMENTS_ENABLED and trip.entry_price and trip.entry_price > 0
+            if requires_payment:
+                member.status = TripMember.Status.AWAITING_PAYMENT
+                member.save(update_fields=["status", "approved_at", "approved_by"])
+                start_member_payment(trip, member, approved_by=request.user)
+            else:
+                member.status = TripMember.Status.APPROVED
+                member.save(update_fields=["status", "approved_at", "approved_by"])
+                admit_member_to_group(trip, member, approved_by=request.user)
         elif action == "reject":
             member.status = TripMember.Status.REJECTED
             member.rejected_reason = reason
@@ -668,6 +768,8 @@ class ItineraryStopDetailView(APIView):
         ).first()
         if not member and not _is_chief(trip, request.user):
             return Response({"detail": "Only the chief or a scout can edit stops."}, status=403)
+        if stop.is_system:
+            return Response({"detail": "The meeting-point check-in can't be edited."}, status=400)
         serializer = ItineraryStopWriteSerializer(stop, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
@@ -681,6 +783,8 @@ class ItineraryStopDetailView(APIView):
         err = _require_chief(stop.trip, request.user)
         if err:
             return err
+        if stop.is_system:
+            return Response({"detail": "The meeting-point check-in can't be removed."}, status=400)
         stop.delete()
         return Response(status=204)
 
