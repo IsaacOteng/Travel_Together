@@ -94,16 +94,23 @@ export default function TripsPage() {
   const [page,     setPage]    = useState(1);
   const [selected, setSelected] = useState(null);
   const [error,    setError]   = useState(null);
+  const [flagged,  setFlagged] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true); setError(null);
-    adminApi.getTrips({ page, search: search || undefined, status: status || undefined })
+    adminApi.getTrips({ page, search: search || undefined, status: status || undefined, flagged: flagged ? 1 : undefined })
       .then(r => setData(r.data))
       .catch(() => setError("Failed to load trips."))
       .finally(() => setLoading(false));
-  }, [page, search, status]);
+  }, [page, search, status, flagged]);
 
   useEffect(() => { load(); }, [load]);
+
+  const clearFlag = (id) => {
+    adminApi.updateTrip(id, { flagged_for_review: false })
+      .then(() => { toast.success("Flag cleared — payout can resume"); load(); })
+      .catch(() => toast.error("Failed to clear flag"));
+  };
 
   return (
     <div className="space-y-5 max-w-6xl">
@@ -127,6 +134,11 @@ export default function TripsPage() {
               {s || "All"}
             </button>
           ))}
+          <button onClick={() => { setFlagged(f => !f); setPage(1); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5
+              ${flagged ? "bg-amber-500 text-white" : "bg-[#0d1f33] border border-amber-500/20 text-amber-400 hover:border-amber-500/40"}`}>
+            <AlertTriangle size={12} /> Flagged
+          </button>
         </div>
       </div>
 
@@ -177,7 +189,17 @@ export default function TripsPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5"><StatusPill value={t.status} /></td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-1.5">
+                      <StatusPill value={t.status} />
+                      {t.flagged_for_review && (
+                        <span title={t.flag_reason || "Flagged for review"}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-400">
+                          <AlertTriangle size={9} /> Flagged
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-5 py-3.5 text-slate-400 hidden sm:table-cell">
                     {t.chief?.username ?? t.chief?.email ?? "—"}
                   </td>
@@ -190,7 +212,13 @@ export default function TripsPage() {
                       {t.member_count}/{t.spots_total}
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                    {t.flagged_for_review && (
+                      <button onClick={() => clearFlag(t.id)}
+                        className="px-2.5 py-1.5 mr-1.5 rounded-lg text-amber-400 border border-amber-500/25 hover:bg-amber-500/10 transition-colors text-xs font-medium">
+                        Clear flag
+                      </button>
+                    )}
                     <button onClick={() => setSelected(t.id)}
                       className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white border border-white/6 hover:border-white/10 hover:bg-white/5 transition-colors text-xs">
                       Edit

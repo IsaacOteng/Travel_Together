@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmtDate } from "../../utils/date.js";
+import { fmtDate, fmtTime } from "../../utils/date.js";
 import {
   MapPin, Navigation, Calendar, Car, Globe, Users,
   Star, TrendingUp, Send, Ticket, Info, Map, Heart, Share2, Check,
@@ -79,7 +79,7 @@ export default function TripDetailModal({ trip, onClose, onSave, onShare, onAskO
                 {[
                   { icon: MapPin,     label: "Location",      value: trip.destination },
                   { icon: Navigation, label: "Meeting point", value: trip.meetingPlace || "—" },
-                  { icon: Calendar,   label: "Dates",         value: `${fmtDate(trip.dateStart)} – ${fmtDate(trip.dateEnd)}` },
+                  { icon: Calendar,   label: "Dates",         value: `${fmtDate(trip.dateStart)}${trip.start_time ? `, ${fmtTime(trip.start_time)}` : ""} – ${fmtDate(trip.dateEnd)}` },
                   { icon: Car,        label: "Travel time",   value: trip.drive || "—" },
                   { icon: Globe,      label: "Distance",      value: trip.distance || "—" },
                   { icon: Users,      label: "Group size",    value: `${trip.spotsFilled}/${trip.spotsTotal} joined` },

@@ -89,7 +89,7 @@ def start_member_payment(trip, member, approved_by=None):
         ),
         sender     = approved_by,
         trip       = trip,
-        action_url = f"/trips/{trip.id}/",
+        action_url = f"/trip/{trip.id}",          # the public trip page → Pay button
         data       = {
             "trip_id":    str(trip.id),
             "payment_id": str(payment.id),
@@ -131,6 +131,22 @@ def confirm_payment(payment, fee=None):
         member.save(update_fields=["status"])
         admit_member_to_group(payment.trip, member, approved_by=payment.trip.chief)
 
+        # Tell the organizer the member paid and is now in the group.
+        trip = payment.trip
+        if trip.chief and trip.chief_id != payment.user_id:
+            from apps.notifications.utils import push
+            name = member.user.first_name or member.user.username or "A member"
+            push(
+                recipient  = trip.chief,
+                notif_type = "payment_received",
+                title      = "Payment received",
+                body       = f"{name} paid and joined \"{trip.title}\".",
+                sender     = member.user,
+                trip       = trip,
+                action_url = f"/group-dashboard/{trip.id}",
+                data       = {"trip_id": str(trip.id)},
+            )
+
     return payment
 
 
@@ -142,7 +158,7 @@ def is_refund_eligible(trip):
     return days_out >= getattr(settings, "REFUND_CUTOFF_DAYS", 7)
 
 
-def refund_payment(payment, reason="", notify=True):
+def refund_payment(payment, reason="", notify=True, force=False):
     """
     Refund a held payment back to the member, **minus the Paystack fee** (the
     member bears the fee so the platform never goes into debt). Idempotent.
@@ -153,8 +169,11 @@ def refund_payment(payment, reason="", notify=True):
     from . import paystack
     from .models import Payment
 
-    if payment.status != Payment.Status.HELD:
-        return None  # only money currently in escrow can be refunded
+    if payment.status == Payment.Status.REFUNDED:
+        return None  # already refunded — idempotent
+    if payment.status != Payment.Status.HELD and not force:
+        return None  # normally only escrowed money is refundable; `force` = admin
+                     # discretionary, platform-funded refund (strictly-our-fault cases)
 
     refund_amt = max(payment.amount - (payment.fee or Decimal("0")), Decimal("0"))
 
@@ -243,6 +262,19 @@ def cancel_trip(trip, by_organizer=False, reason=""):
     trip.status = Trip.Status.CANCELLED
     trip.save(update_fields=["status", "updated_at"])
 
+    # Clawback: any payout already released to the organizer can't be pulled back
+    # from escrow (it's gone), so it becomes a debt recovered from their future
+    # payouts. We never cover this from our commission.
+    from decimal import Decimal
+    from .models import Payout
+    released = sum(
+        (po.amount for po in Payout.objects.filter(trip=trip).exclude(status=Payout.Status.FAILED)),
+        Decimal("0"),
+    )
+    if released > 0 and trip.chief:
+        trip.chief.clawback_owed = (trip.chief.clawback_owed or Decimal("0")) + released
+        trip.chief.save(update_fields=["clawback_owed"])
+
     if by_organizer and trip.chief:
         from apps.karma.utils import award_karma
         award_karma(
@@ -280,9 +312,21 @@ def _already_paid_out(trip):
 
 def _create_and_send_payout(trip, amount, kind):
     """Create a Payout row and attempt the Paystack transfer (best-effort in dev)."""
+    from decimal import Decimal
     from apps.notifications.utils import push
     from . import paystack
     from .models import Payout, PayoutMethod
+
+    # Pay down any clawback debt first — recovered from this payout before the
+    # organizer sees a cedi. If the debt swallows it entirely, nothing is sent.
+    organizer = trip.chief
+    if organizer and (organizer.clawback_owed or Decimal("0")) > 0:
+        deduct = min(amount, organizer.clawback_owed)
+        amount -= deduct
+        organizer.clawback_owed -= deduct
+        organizer.save(update_fields=["clawback_owed"])
+        if amount <= 0:
+            return None
 
     payout = Payout.objects.create(trip=trip, organizer=trip.chief, amount=amount, kind=kind)
 
@@ -316,8 +360,12 @@ def _create_and_send_payout(trip, amount, kind):
 
 
 def _has_open_report(trip):
-    """True if the trip has an unresolved incident report. Payouts are frozen
-    while a trip is under investigation — the anti-collusion safety valve."""
+    """
+    True if payouts should be frozen — either an unresolved incident report or an
+    anomaly flag (e.g. near-zero check-ins). The anti-collusion safety valve.
+    """
+    if getattr(trip, "flagged_for_review", False):
+        return True
     from apps.trips.models import IncidentReport
     return IncidentReport.objects.filter(
         trip=trip,

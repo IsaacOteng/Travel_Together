@@ -87,6 +87,13 @@ class ConfirmPaymentTests(TestCase):
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, Payment.Status.HELD)
 
+    def test_confirm_notifies_organizer(self):
+        from apps.notifications.models import Notification
+        services.confirm_payment(self.payment)
+        self.assertTrue(
+            Notification.objects.filter(recipient=self.chief, notification_type="payment_received").exists()
+        )
+
 
 # ─── Phase 4: refunds ─────────────────────────────────────────────────────────
 
@@ -188,6 +195,42 @@ class PayoutGuardTests(TestCase):
         )
         self.assertIsNone(services.release_partial_payout(self.trip))
         self.assertIsNone(services.release_final_payout(self.trip))
+
+    def test_anomaly_flag_freezes_payouts(self):
+        self.chief.is_verified_traveller = True
+        self.chief.save()
+        self.trip.flagged_for_review = True
+        self.trip.save()
+        self.assertIsNone(services.release_partial_payout(self.trip))
+        self.assertIsNone(services.release_final_payout(self.trip))
+
+
+@override_settings(PAYMENTS_ENABLED=True, PAYSTACK_SECRET_KEY="",
+                   PLATFORM_COMMISSION_PERCENT=10, PARTIAL_RELEASE_PERCENT=50)
+class ClawbackTests(TestCase):
+    """Released payouts on an upheld-fraud trip become a debt recovered from future payouts."""
+
+    @patch("apps.payments.paystack.refund_transaction", return_value={})
+    def test_cancel_records_clawback(self, _mock):
+        chief = make_user("chief@t.co")
+        trip  = make_trip(chief)
+        Payout.objects.create(trip=trip, organizer=chief, amount=Decimal("90.00"),
+                              kind=Payout.Kind.PARTIAL, status=Payout.Status.PAID)
+        services.cancel_trip(trip, by_organizer=True)
+        chief.refresh_from_db()
+        self.assertEqual(chief.clawback_owed, Decimal("90.00"))
+
+    def test_future_payout_deducts_clawback(self):
+        chief = make_user("chief@t.co")
+        chief.is_verified_traveller = True
+        chief.clawback_owed = Decimal("50.00")
+        chief.save()
+        trip = make_trip(chief)
+        held_payment(trip, make_user("a@t.co"), amount="200.00")   # share 180, partial 90
+        payout = services.release_partial_payout(trip)
+        self.assertEqual(payout.amount, Decimal("40.00"))          # 90 − 50 clawback
+        chief.refresh_from_db()
+        self.assertEqual(chief.clawback_owed, Decimal("0.00"))
 
 
 @override_settings(PAYMENTS_ENABLED=True, DEPARTURE_GRACE_HOURS=6)

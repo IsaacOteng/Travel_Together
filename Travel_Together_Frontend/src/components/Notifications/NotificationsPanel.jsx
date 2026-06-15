@@ -62,15 +62,15 @@ export default function NotificationsPanel({ open, onClose }) {
     } else if (t === "join_request" && d.trip_id) {
       onClose(); navigate(`/group-dashboard/${d.trip_id}`);
     } else if (t === "trip_ended" && d.trip_id) {
-      onClose(); navigate(`/trips/${d.trip_id}`);
+      onClose(); navigate(`/trip/${d.trip_id}`);
     } else if (t === "trip_reminder" && d.trip_id) {
-      onClose(); navigate(`/trips/${d.trip_id}`);
+      onClose(); navigate(`/trip/${d.trip_id}`);
     } else if (t === "sos_alert" && d.trip_id) {
       onClose(); navigate(`/group-dashboard/${d.trip_id}`);
     } else if (t === "karma_level") {
       onClose(); navigate("/profile");
     } else if ((t === "refund_processed" || t === "trip_cancelled" || t === "payment_due") && d.trip_id) {
-      onClose(); navigate(`/trips/${d.trip_id}`);
+      onClose(); navigate(`/trip/${d.trip_id}`);
     } else if ((t === "payout_released" || t === "payment_received") && d.trip_id) {
       onClose(); navigate(`/group-dashboard/${d.trip_id}`);
     } else if (t === "proximity_warning" && d.trip_id) {

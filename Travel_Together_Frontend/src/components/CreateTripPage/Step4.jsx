@@ -21,6 +21,8 @@ export default function Step4({ form, onBack, onPublish }) {
         description:   form.description,
         date_start:    form.dateStart,
         date_end:      form.dateEnd,
+        start_time:    form.startTime || null,
+        end_time:      form.endTime   || null,
         spots_total:   form.spots_total,
         entry_price:   form.entryPrice || "0",
         price_covers:  form.priceCovers || [],
@@ -112,7 +114,7 @@ export default function Step4({ form, onBack, onPublish }) {
         <div className="p-4">
           <div className="flex gap-1.5 flex-wrap mb-3">
             {[
-              { Icon: Calendar,   text: form.dateStart || "Start date" },
+              { Icon: Calendar,   text: form.dateStart ? `${form.dateStart}${form.startTime ? ` · ${form.startTime}` : ""}` : "Start date" },
               { Icon: Users,      text: `0 / ${form.spots_total || "?"}` },
               form.driveTime && { Icon: Navigation, text: form.driveTime },
             ].filter(Boolean).map((m, i) => (

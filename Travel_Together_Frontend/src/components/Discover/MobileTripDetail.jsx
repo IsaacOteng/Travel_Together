@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmtDate } from "../../utils/date.js";
+import { fmtDate, fmtTime } from "../../utils/date.js";
 import {
   MapPin, Navigation, Calendar, Car, Users,
   Star, TrendingUp, Send, Ticket, Info, Map, Heart, Share2, Check,
@@ -62,7 +62,7 @@ export default function MobileTripDetail({ trip, onClose, onSave, onShare, onAsk
           {[
             { icon: MapPin,     text: (trip.destination  || "").split(",")[0] || "—" },
             { icon: Navigation, text: `Meet: ${(trip.meetingPlace || "").split(",")[0] || "—"}` },
-            { icon: Calendar,   text: `${fmtDate(trip.dateStart)} – ${fmtDate(trip.dateEnd)}` },
+            { icon: Calendar,   text: `${fmtDate(trip.dateStart)}${trip.start_time ? `, ${fmtTime(trip.start_time)}` : ""} – ${fmtDate(trip.dateEnd)}` },
           ].map(m => (
             <div key={m.text} className="flex items-center gap-1.5 bg-white/[0.07] rounded-lg px-2.5 py-[5px] border border-white/[0.07]">
               <m.icon size={11} color="#FF6B35" />

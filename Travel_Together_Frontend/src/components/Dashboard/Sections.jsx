@@ -1,4 +1,4 @@
-import { fmtDate } from "../../utils/date.js";
+import { fmtDate, fmtTime } from "../../utils/date.js";
 import SectionHeader from "./SectionHeader.jsx";
 import DashEmptyState from "./DashEmptyState.jsx";
 import { JoinedRow, SavedRow, CreatedRow } from "./TripRows.jsx";
@@ -10,7 +10,7 @@ export function JoinedSection({ loading, trips, full, onExpand, onCollapse, onNa
   const rows = items.map(t => ({
     id:         t.id,
     title:      t.title || t.destination,
-    date:       fmtDate(t.date_start),
+    date:       fmtDate(t.date_start) + (t.start_time ? ` · ${fmtTime(t.start_time)}` : ""),
     joinStatus: t.my_status || "pending",
     tripStatus: t.status    || "published",
     entryPrice: t.entry_price,
@@ -55,7 +55,7 @@ export function SavedSection({ loading, trips, full, onExpand, onCollapse, onNav
   const rows = items.map(t => ({
     id:      t.id,
     title:   t.title || t.destination,
-    date:    fmtDate(t.date_start),
+    date:    fmtDate(t.date_start) + (t.start_time ? ` · ${fmtTime(t.start_time)}` : ""),
     members: t.member_count ?? 0,
     spots:   t.spots_left   ?? 0,
     status:  t.status       || "published",
@@ -95,7 +95,7 @@ export function CreatedSection({ loading, trips, full, onExpand, onCollapse, onV
   const rows = items.map(t => ({
     id:         t.id,
     title:      t.title || t.destination,
-    date:       fmtDate(t.date_start),
+    date:       fmtDate(t.date_start) + (t.start_time ? ` · ${fmtTime(t.start_time)}` : ""),
     status:     t.status,
     members:    t.member_count     ?? 0,
     maxMembers: t.spots_total      ?? 0,

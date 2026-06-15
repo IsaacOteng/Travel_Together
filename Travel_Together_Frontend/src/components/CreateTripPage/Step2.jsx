@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Users, Check, AlertCircle } from "lucide-react";
+import { Calendar, Clock, Users, Check, AlertCircle } from "lucide-react";
 import { TAGS, COVERS_OPTIONS } from './constants.js';
 import { ProgressBar, SectionHead, Label, TTInput, TTSelect, PrimaryBtn, GhostBtn, Err } from './uiComponents.jsx';
 
@@ -52,6 +52,24 @@ export default function Step2({ form, patch, onNext, onBack }) {
             <TTInput type="date" value={form.dateEnd || ""} onChange={e => { patch({ dateEnd: e.target.value }); touch("dateEnd"); }} className="pl-8 [color-scheme:dark]" />
           </div>
           <Err msg={touched.dateEnd ? errs.dateEnd : ""} />
+        </div>
+      </div>
+
+      {/* Times (optional) */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <Label>Start time</Label>
+          <div className="relative">
+            <Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <TTInput type="time" value={form.startTime || ""} onChange={e => patch({ startTime: e.target.value })} className="pl-8 [color-scheme:dark]" />
+          </div>
+        </div>
+        <div>
+          <Label>End time</Label>
+          <div className="relative">
+            <Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <TTInput type="time" value={form.endTime || ""} onChange={e => patch({ endTime: e.target.value })} className="pl-8 [color-scheme:dark]" />
+          </div>
         </div>
       </div>
 

@@ -1,7 +1,34 @@
 import { useEffect, useState, useCallback } from "react";
-import { Search, ChevronLeft, ChevronRight, AlertTriangle, Wallet, RotateCcw } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, AlertTriangle, Wallet, RotateCcw, Users } from "lucide-react";
 import { adminApi } from "../../services/api";
 import toast from "react-hot-toast";
+
+function PayoutRiskPanel() {
+  const [risks, setRisks] = useState([]);
+  useEffect(() => {
+    adminApi.getPayoutRisks().then(({ data }) => setRisks(data.results || [])).catch(() => {});
+  }, []);
+  if (!risks.length) return null;
+  return (
+    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle size={15} className="text-amber-400" />
+        <p className="text-sm font-bold text-amber-300">Payout risk — shared numbers</p>
+      </div>
+      <p className="text-xs text-amber-200/60 mb-3">These payout numbers are used by more than one organizer (possible mule / collusion).</p>
+      <div className="flex flex-col gap-2">
+        {risks.map((r, i) => (
+          <div key={i} className="flex items-center justify-between bg-black/20 border border-white/[0.06] rounded-xl px-3 py-2">
+            <span className="text-xs text-slate-300 font-mono">{r.bank_code} {r.account_masked}</span>
+            <span className="flex items-center gap-1.5 text-[11px] text-amber-400">
+              <Users size={12} /> {r.count} accounts: {r.users.map(u => u.username || u.email).join(", ")}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const STATUSES = ["", "pending", "held", "released", "refunded", "failed"];
 
@@ -91,6 +118,8 @@ export default function PaymentsPage() {
         <h1 className="text-white font-bold text-2xl tracking-tight">Payments</h1>
         <p className="text-slate-500 text-sm mt-0.5">{data?.count ?? "—"} total payments · escrow ledger</p>
       </div>
+
+      <PayoutRiskPanel />
 
       {/* Summary */}
       <div className="flex flex-wrap gap-3">

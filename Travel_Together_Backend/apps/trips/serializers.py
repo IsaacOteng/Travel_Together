@@ -254,7 +254,7 @@ class TripListSerializer(serializers.ModelSerializer):
         fields = [
             "id", "title", "description", "destination", "cover_image", "images",
             "destination_lat", "destination_lng", "meeting_point",
-            "date_start", "date_end", "drive_time", "distance_km",
+            "date_start", "date_end", "start_time", "end_time", "drive_time", "distance_km",
             "spots_total", "spots_left",
             "entry_price", "status", "visibility",
             "tags", "member_count", "is_saved", "pending_requests",
@@ -354,7 +354,7 @@ class TripDetailSerializer(serializers.ModelSerializer):
             "destination_lat", "destination_lng",
             "meeting_point", "meeting_lat", "meeting_lng",
             "images", "description",
-            "date_start", "date_end", "drive_time", "distance_km",
+            "date_start", "date_end", "start_time", "end_time", "drive_time", "distance_km",
             "spots_total", "spots_left", "member_count",
             "entry_price", "price_note", "price_covers", "highlights",
             "status", "visibility", "group_karma",
@@ -456,7 +456,7 @@ class TripCreateSerializer(serializers.ModelSerializer):
         fields = [
             "title", "destination", "destination_lat", "destination_lng",
             "meeting_point", "meeting_lat", "meeting_lng",
-            "description", "date_start", "date_end",
+            "description", "date_start", "date_end", "start_time", "end_time",
             "drive_time", "distance_km",
             "spots_total", "entry_price", "price_note", "highlights",
             "visibility", "tags", "price_covers",
@@ -520,7 +520,7 @@ class TripUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "title", "destination", "destination_lat", "destination_lng",
             "meeting_point", "meeting_lat", "meeting_lng",
-            "description", "date_start", "date_end",
+            "description", "date_start", "date_end", "start_time", "end_time",
             "drive_time", "distance_km",
             "spots_total", "entry_price", "price_note", "highlights",
             "visibility", "tags", "price_covers",

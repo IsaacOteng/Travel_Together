@@ -159,6 +159,7 @@ export const tripsApi = {
   getRatings:        (id)         => api.get(`/api/trips/${id}/ratings/`),
   submitRating:      (id, data)   => api.post(`/api/trips/${id}/ratings/`,         data),
   fileReport:        (id, data)   => api.post(`/api/trips/${id}/reports/`,         data),
+  getTripReports:    (id)         => api.get(`/api/trips/${id}/reports/`),
   respondReport:     (id, reportId, data) => api.post(`/api/trips/${id}/reports/${reportId}/respond/`, data),
   confirmTrip:       (id)         => api.post(`/api/trips/${id}/confirm/`),
   groupConversation: (id)         => api.get(`/api/trips/${id}/conversation/`),
@@ -236,6 +237,7 @@ export const adminApi = {
   getPayments:    (params)            => api.get("/api/admin-dashboard/payments/",   { params }),
   refundPayment:  (id)                => api.post(`/api/admin-dashboard/payments/${id}/refund/`),
   getPayouts:     (params)            => api.get("/api/admin-dashboard/payouts/",    { params }),
+  getPayoutRisks: ()                  => api.get("/api/admin-dashboard/payout-risks/"),
 };
 
 export default api;

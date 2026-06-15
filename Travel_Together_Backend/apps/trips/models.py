@@ -36,6 +36,8 @@ class Trip(models.Model):
     description             = models.TextField(null=True, blank=True)
     date_start              = models.DateField()
     date_end                = models.DateField()
+    start_time              = models.TimeField(null=True, blank=True)   # time of day the trip starts
+    end_time                = models.TimeField(null=True, blank=True)
     drive_time              = models.CharField(max_length=10, choices=DriveTime.choices, null=True, blank=True)
     distance_km             = models.FloatField(null=True, blank=True)
     spots_total             = models.IntegerField(default=10)
@@ -53,6 +55,8 @@ class Trip(models.Model):
                             )
     departure_confirmed_at  = models.DateTimeField(null=True, blank=True)
     ended_at                = models.DateTimeField(null=True, blank=True)
+    flagged_for_review      = models.BooleanField(default=False)            # anomaly hold — freezes payouts pending admin
+    flag_reason             = models.CharField(max_length=200, null=True, blank=True)
     created_at              = models.DateTimeField(auto_now_add=True)
     updated_at              = models.DateTimeField(auto_now=True)
 

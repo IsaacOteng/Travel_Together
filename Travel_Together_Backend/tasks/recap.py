@@ -103,6 +103,11 @@ def send_trip_reminder(trip_id: str):
     # "Mount Afadja, Volta Region" → "Mount Afadja"
     destination = (trip.destination or "").split(",")[0].strip() or trip.title
     start_label = trip.date_start.strftime("%A, %d %b")   # e.g. "Saturday, 12 Jun"
+    if trip.start_time:
+        st     = trip.start_time
+        hour12 = st.hour % 12 or 12
+        ampm   = "AM" if st.hour < 12 else "PM"
+        start_label += f" at {hour12}:{st.minute:02d} {ampm}"
 
     title = f"24 hours to go — {destination}!"
 

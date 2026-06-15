@@ -24,6 +24,7 @@ import Section from './GDSection.jsx';
 import QuickAction from './QuickAction.jsx';
 import MemberRow from './MemberRow.jsx';
 import TripCompletionPrompt from './TripCompletionPrompt.jsx';
+import OrganizerReportCard from './OrganizerReportCard.jsx';
 import JoinRequestCard from './JoinRequestCard.jsx';
 import { PollCard, CreatePollModal } from './PollComponents.jsx';
 
@@ -107,13 +108,15 @@ export default function GroupDashboard() {
         // dashboard. Pending / awaiting-payment members are sent to the trip page.
         const amChief = t.chief_id && user && String(t.chief_id) === String(user.id);
         if (!amChief && !t.viewer_is_member) {
-          navigate(`/trips/${tripId}`, { replace: true });
+          navigate(`/trip/${tripId}`, { replace: true });
           return;
         }
         setChiefId(t.chief_id ?? null);
         const now       = Date.now();
-        const startMs   = t.date_start ? new Date(t.date_start).getTime() : null;
-        const endMs     = t.date_end   ? new Date(t.date_end).getTime()   : null;
+        // Combine date + time so the countdown reflects the real start moment,
+        // not midnight of the start date.
+        const startMs   = t.date_start ? new Date(`${t.date_start}T${t.start_time || "00:00"}`).getTime() : null;
+        const endMs     = t.date_end   ? new Date(`${t.date_end}T${t.end_time   || "23:59"}`).getTime()   : null;
         const targetMs  = (startMs && startMs > now) ? startMs : (endMs ?? startMs);
         const diffMs    = targetMs ? Math.max(0, targetMs - now) : null;
         const daysLeft  = diffMs != null ? Math.floor(diffMs / 86400000)   : "—";
@@ -1031,6 +1034,7 @@ export default function GroupDashboard() {
         {LocationAlertBanner}
         <div className="p-3.5 flex flex-col gap-3">
           {TripHeader}
+          {isChief && <OrganizerReportCard tripId={tripId} />}
           {trip?.status === "completed" && !isChief && <TripCompletionPrompt tripId={tripId} />}
           {PreTripNotice}
           {QuickActionsPanel}
@@ -1080,6 +1084,7 @@ export default function GroupDashboard() {
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-3.5">
+          {isChief && <OrganizerReportCard tripId={tripId} />}
           {trip?.status === "completed" && !isChief && <TripCompletionPrompt tripId={tripId} />}
           {MapPanel}
           {ItineraryPanel}

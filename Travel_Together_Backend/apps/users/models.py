@@ -72,6 +72,7 @@ class User(AbstractBaseUser):
     cover_position        = models.CharField(max_length=20, default="50% 50%")
     travel_karma          = models.IntegerField(default=0)
     karma_level           = models.CharField(max_length=20, choices=KarmaLevel.choices, default=KarmaLevel.EXPLORER)
+    clawback_owed         = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # debt from upheld-fraud payouts; deducted from future payouts
     email_verified        = models.BooleanField(default=False)
     is_verified_traveller = models.BooleanField(default=False)
     google_uid            = models.CharField(max_length=255, unique=True, null=True, blank=True)

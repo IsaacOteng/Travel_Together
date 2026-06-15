@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmtDate } from "../../utils/date.js";
+import { fmtDate, fmtTime } from "../../utils/date.js";
 import {
   MapPin, Calendar, Car, Users,
   Star, TrendingUp, Heart, ChevronRight, Share2,
@@ -103,7 +103,7 @@ export default function MobileTripCard({ trip, onView, onSave }) {
         {/* Meta pills */}
         <div className="flex gap-1.5 flex-wrap mb-4">
           {[
-            { icon: Calendar, text: fmtDate(trip.dateStart) },
+            { icon: Calendar, text: `${fmtDate(trip.dateStart)}${trip.start_time ? ` · ${fmtTime(trip.start_time)}` : ""}` },
             trip.drive && { icon: Car, text: trip.drive },
             { icon: Users,    text: `${trip.spotsFilled}/${trip.spotsTotal}` },
           ].filter(Boolean).map((m, i) => (

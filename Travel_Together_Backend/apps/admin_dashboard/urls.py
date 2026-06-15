@@ -13,6 +13,7 @@ from .views import (
     AdminPaymentsView,
     AdminPaymentRefundView,
     AdminPayoutsView,
+    AdminPayoutRisksView,
 )
 
 urlpatterns = [
@@ -29,4 +30,5 @@ urlpatterns = [
     path("payments/",                 AdminPaymentsView.as_view()),
     path("payments/<uuid:payment_id>/refund/", AdminPaymentRefundView.as_view()),
     path("payouts/",                  AdminPayoutsView.as_view()),
+    path("payout-risks/",             AdminPayoutRisksView.as_view()),
 ]

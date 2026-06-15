@@ -299,13 +299,14 @@ PAYSTACK_BASE_URL     = env("PAYSTACK_BASE_URL",     default="https://api.paysta
 PAYSTACK_CALLBACK_URL = env("PAYSTACK_CALLBACK_URL", default="")  # where Paystack redirects after payment
 
 # Escrow economics (percent integers / hours / days)
-PLATFORM_COMMISSION_PERCENT = env.int("PLATFORM_COMMISSION_PERCENT", default=10)   # the app's cut
+PLATFORM_COMMISSION_PERCENT = env.int("PLATFORM_COMMISSION_PERCENT", default=5)    # the app's cut (profit; never used to cover refunds)
 PARTIAL_RELEASE_PERCENT     = env.int("PARTIAL_RELEASE_PERCENT",     default=50)   # released to organizer at departure
 DISPUTE_WINDOW_HOURS        = env.int("DISPUTE_WINDOW_HOURS",        default=72)   # completion grace: hold after trip end; silence = approval, any dispute freezes
 DEPARTURE_GRACE_HOURS       = env.int("DEPARTURE_GRACE_HOURS",       default=6)    # hold after departure before the partial releases (lets stragglers check in / report)
 REFUND_CUTOFF_DAYS          = env.int("REFUND_CUTOFF_DAYS",          default=7)    # ≥ this many days out → refundable
 ORGANIZER_CANCEL_KARMA_PENALTY = env.int("ORGANIZER_CANCEL_KARMA_PENALTY", default=25)
 NO_SHOW_KARMA_PENALTY          = env.int("NO_SHOW_KARMA_PENALTY",          default=10)   # karma docked for missing every check-in (reputational only, not a block)
+ANOMALY_MIN_CHECKIN_PERCENT    = env.int("ANOMALY_MIN_CHECKIN_PERCENT",    default=20)   # a completed trip below this check-in rate is auto-flagged for review
 DEPARTURE_QUORUM_PERCENT    = env.int("DEPARTURE_QUORUM_PERCENT",    default=70)   # % of approved members who must check in before the organizer can depart / get the partial
 PARTIAL_RELEASE_MIN_COMPLETED_TRIPS = env.int("PARTIAL_RELEASE_MIN_COMPLETED_TRIPS", default=2)  # completed trips before an unverified organizer earns a partial release
 

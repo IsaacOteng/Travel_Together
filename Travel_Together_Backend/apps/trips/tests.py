@@ -70,7 +70,7 @@ class DeleteGuardTests(TestCase):
 
     def _chief_member(self, trip):
         TripMember.objects.create(trip=trip, user=self.chief,
-                                  role=TripMember.Role.CHIEF, status=TripMember.Status.APPROVED)
+                                role=TripMember.Role.CHIEF, status=TripMember.Status.APPROVED)
 
     def test_empty_trip_is_hard_deleted(self):
         trip = make_trip(self.chief, days_out=5)
@@ -86,7 +86,7 @@ class DeleteGuardTests(TestCase):
         self._chief_member(trip)
         joiner = make_user("joiner@t.co")
         TripMember.objects.create(trip=trip, user=joiner,
-                                  role=TripMember.Role.MEMBER, status=TripMember.Status.APPROVED)
+                                    role=TripMember.Role.MEMBER, status=TripMember.Status.APPROVED)
         self.client.force_authenticate(self.chief)
 
         res = self.client.delete(f"/api/trips/{trip.id}/")
@@ -117,7 +117,7 @@ class ConfirmCompletionTests(TestCase):
         self.stop   = ItineraryStop.objects.create(trip=self.trip, order=0, name="Meet", is_system=True)
         self.member = make_user("m@t.co")
         TripMember.objects.create(trip=self.trip, user=self.member,
-                                  role=TripMember.Role.MEMBER, status=TripMember.Status.APPROVED)
+                                    role=TripMember.Role.MEMBER, status=TripMember.Status.APPROVED)
 
     def test_no_show_cannot_confirm(self):
         self.client.force_authenticate(self.member)
@@ -126,7 +126,7 @@ class ConfirmCompletionTests(TestCase):
 
     def test_attended_member_can_confirm(self):
         CheckIn.objects.create(trip=self.trip, member=self.member, stop=self.stop,
-                               location_at_checkin=Point(0, 0, srid=4326))
+                            location_at_checkin=Point(0, 0, srid=4326))
         self.client.force_authenticate(self.member)
         res = self.client.post(f"/api/trips/{self.trip.id}/confirm/")
         self.assertEqual(res.status_code, 200)
@@ -187,7 +187,7 @@ class DisputeFlowTests(TestCase):
 
         self.client.force_authenticate(self.chief)
         res = self.client.post(f"/api/trips/{self.trip.id}/reports/{report_id}/respond/",
-                               {"response": "Here is my side"}, format="json")
+                                {"response": "Here is my side"}, format="json")
         self.assertEqual(res.status_code, 200)
         report.refresh_from_db()
         self.assertEqual(report.response, "Here is my side")
@@ -200,7 +200,7 @@ class DisputeFlowTests(TestCase):
         from apps.trips.models import IncidentReport
         report_id = self._file_report()
         p = Payment.objects.create(trip=self.trip, user=self.member, amount=Decimal("100.00"),
-                                   status=Payment.Status.HELD, paystack_ref="ref1")
+                                    status=Payment.Status.HELD, paystack_ref="ref1")
 
         admin = make_user("admin@t.co"); admin.is_staff = True; admin.save()
         self.client.force_authenticate(admin)

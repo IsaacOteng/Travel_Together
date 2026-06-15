@@ -1040,9 +1040,31 @@ class TripRatingView(APIView):
 
 class IncidentReportView(APIView):
     """
+    GET  /api/trips/{trip_id}/reports/  — organizer views concerns raised (reporter hidden)
     POST /api/trips/{trip_id}/reports/  — file a report (must be approved member)
     """
     permission_classes = [IsAuthenticated]
+
+    def get(self, request, trip_id):
+        try:
+            trip = Trip.objects.get(id=trip_id)
+        except Trip.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+        if not _is_chief(trip, request.user):
+            return Response({"detail": "Only the organizer can view this."}, status=403)
+        reports = trip.incident_reports.order_by("-created_at")
+        return Response([
+            {
+                "id":            str(r.id),
+                "incident_type": r.incident_type,
+                "description":   r.description,      # the claim — reporter identity withheld
+                "status":        r.status,
+                "created_at":    r.created_at,
+                "response":      r.response,
+                "responded_at":  r.responded_at,
+            }
+            for r in reports
+        ])
 
     def post(self, request, trip_id):
         try:
@@ -1079,7 +1101,7 @@ class IncidentReportView(APIView):
                 body       = f"Someone raised a concern about \"{trip.title}\". "
                              f"Add your side and any evidence so the team can review it fairly.",
                 trip       = trip,
-                action_url = f"/trips/{trip.id}/",
+                action_url = f"/group-dashboard/{trip.id}",   # organizer responds here
                 data       = {"trip_id": str(trip.id), "report_id": str(report.id)},
             )
         return Response(IncidentReportSerializer(report).data, status=201)

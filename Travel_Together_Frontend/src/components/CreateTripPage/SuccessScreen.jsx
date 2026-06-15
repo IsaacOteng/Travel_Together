@@ -21,7 +21,7 @@ export default function SuccessScreen({ form, onGoToDashboard, onDiscover }) {
       <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4 mb-6 text-left">
         {[
           ["Destination", form.destination],
-          ["Dates",       `${form.dateStart} – ${form.dateEnd}`],
+          ["Dates",       `${form.dateStart}${form.startTime ? ` ${form.startTime}` : ""} – ${form.dateEnd}`],
           ["Group size",  `0 / ${form.spots_total} members`],
           ["Entry price", isFree ? "Free" : `GH₵${form.entryPrice}`],
           ["Covers",      (form.priceCovers || []).join(", ") || "—"],

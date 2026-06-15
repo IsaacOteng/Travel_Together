@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import MapEmbed from "./MapEmbed.jsx";
 import { Avatar, WhoIsGoing } from "./helpers.jsx";
+import { fmtTime } from "../../utils/date.js";
 import PayButton from "../Payments/PayButton.jsx";
 import ShareToast from "./ShareToast.jsx";
 import AppNav from "../shared/AppNav.jsx";
@@ -453,7 +454,7 @@ export default function TripPublicPage() {
               {[
                 { icon: MapPin,     label: "Location",      value: trip.destination },
                 { icon: Navigation, label: "Meeting point", value: trip.meetingPlace || "—" },
-                { icon: Calendar,   label: "Dates",         value: `${trip.dateStart} – ${trip.dateEnd}` },
+                { icon: Calendar,   label: "Dates",         value: `${trip.dateStart}${trip.start_time ? `, ${fmtTime(trip.start_time)}` : ""} – ${trip.dateEnd}` },
                 { icon: Car,        label: "Travel time",   value: trip.drive || "—" },
                 { icon: Globe,      label: "Distance",      value: trip.distance || "—" },
                 { icon: Users,      label: "Group size",    value: `${trip.spotsFilled}/${trip.spotsTotal} joined` },

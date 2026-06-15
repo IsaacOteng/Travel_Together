@@ -201,6 +201,9 @@ class AdminTripsView(APIView):
         if trip_status:
             qs = qs.filter(status=trip_status)
 
+        if request.query_params.get("flagged") in ("1", "true", "True"):
+            qs = qs.filter(flagged_for_review=True)
+
         page     = max(int(request.query_params.get("page", 1)), 1)
         per_page = 20
         total    = qs.count()
@@ -213,6 +216,8 @@ class AdminTripsView(APIView):
                 "destination": t.destination,
                 "status":      t.status,
                 "visibility":  t.visibility,
+                "flagged_for_review": t.flagged_for_review,
+                "flag_reason":        t.flag_reason,
                 "date_start":  t.date_start,
                 "date_end":    t.date_end,
                 "spots_total": t.spots_total,
@@ -242,13 +247,18 @@ class AdminTripDetailView(APIView):
         except Trip.DoesNotExist:
             return Response({"detail": "Trip not found."}, status=404)
 
-        allowed = {"status", "visibility"}
+        allowed = {"status", "visibility", "flagged_for_review"}
         for field in allowed:
             if field in request.data:
                 setattr(trip, field, request.data[field])
-        trip.save(update_fields=[f for f in allowed if f in request.data])
+        changed = [f for f in allowed if f in request.data]
+        if "flagged_for_review" in changed and not trip.flagged_for_review:
+            trip.flag_reason = None
+            changed.append("flag_reason")
+        trip.save(update_fields=changed)
 
-        return Response({"detail": "Trip updated.", "status": trip.status})
+        return Response({"detail": "Trip updated.", "status": trip.status,
+                         "flagged_for_review": trip.flagged_for_review})
 
 
 # ─── SOS Alerts ───────────────────────────────────────────────────────────────
@@ -508,21 +518,60 @@ class AdminPaymentRefundView(APIView):
         except Payment.DoesNotExist:
             return Response({"detail": "Payment not found."}, status=404)
 
-        if payment.status != Payment.Status.HELD:
+        # platform_funded = admin discretionary refund for strictly-our-fault cases
+        # (refunds even non-escrowed money; the platform covers it). Default off.
+        force = request.data.get("platform_funded") in (True, "true", "True", "1")
+
+        if payment.status != Payment.Status.HELD and not force:
             return Response(
-                {"detail": f"Only held payments can be refunded (this one is {payment.status})."},
+                {"detail": f"Only held payments can be refunded (this one is {payment.status}). "
+                           f"Use platform_funded to issue a discretionary refund."},
                 status=400,
             )
         try:
-            amount = refund_payment(payment, reason="admin_refund")
+            amount = refund_payment(payment, reason="admin_refund", force=force)
         except paystack.PaystackError as exc:
             return Response({"detail": str(exc)}, status=502)
 
         return Response({
-            "refunded": True,
-            "amount":   str(amount) if amount is not None else None,
-            "status":   payment.status,
+            "refunded":        True,
+            "amount":          str(amount) if amount is not None else None,
+            "status":          payment.status,
+            "platform_funded": force,
         })
+
+
+class AdminPayoutRisksView(APIView):
+    """
+    Ring-detection signal: payout numbers shared by more than one organizer —
+    a classic mule/collusion pattern worth a manual look.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        from django.db.models import Count
+        from apps.payments.models import PayoutMethod
+
+        dupes = (
+            PayoutMethod.objects.values("account_number", "bank_code")
+            .annotate(n=Count("id")).filter(n__gt=1).order_by("-n")
+        )
+        results = []
+        for d in dupes:
+            holders = (
+                PayoutMethod.objects.filter(account_number=d["account_number"])
+                .select_related("user")
+            )
+            results.append({
+                "account_masked": f"••••{d['account_number'][-4:]}",
+                "bank_code":      d["bank_code"],
+                "count":          d["n"],
+                "users": [
+                    {"id": str(m.user.id), "email": m.user.email, "username": m.user.username}
+                    for m in holders
+                ],
+            })
+        return Response({"results": results})
 
 
 class AdminPayoutsView(APIView):
