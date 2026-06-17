@@ -153,6 +153,7 @@ export const tripsApi = {
   get:            (id)         => api.get(`/api/trips/${id}/`),
   update:         (id, data)   => api.patch(`/api/trips/${id}/`,                data),
   join:           (id)         => api.post(`/api/trips/${id}/join/`),
+  leave:          (id)         => api.delete(`/api/trips/${id}/join/`),
   members:        (id)         => api.get(`/api/trips/${id}/members/`),
   approveMember:  (id, userId) => api.patch(`/api/trips/${id}/members/${userId}/`, { action: "approve" }),
   declineMember:  (id, userId) => api.patch(`/api/trips/${id}/members/${userId}/`, { action: "reject" }),

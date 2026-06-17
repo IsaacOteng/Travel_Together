@@ -5,7 +5,7 @@ import { JoinedRow, SavedRow, CreatedRow } from "./TripRows.jsx";
 
 const PREVIEW_COUNT = 2;
 
-export function JoinedSection({ loading, trips, full, onExpand, onCollapse, onNavigate, onViewGroup }) {
+export function JoinedSection({ loading, trips, full, onExpand, onCollapse, onNavigate, onViewGroup, onLeave }) {
   const items = full ? trips : trips.slice(0, PREVIEW_COUNT);
   const rows = items.map(t => ({
     id:         t.id,
@@ -37,7 +37,7 @@ export function JoinedSection({ loading, trips, full, onExpand, onCollapse, onNa
       ) : (
         <div className="flex flex-col gap-2.5">
           {rows.map(t => (
-            <JoinedRow key={t.id} trip={t} onNavigate={onNavigate} onViewGroup={onViewGroup}/>
+            <JoinedRow key={t.id} trip={t} onNavigate={onNavigate} onViewGroup={onViewGroup} onLeave={onLeave}/>
           ))}
         </div>
       )}

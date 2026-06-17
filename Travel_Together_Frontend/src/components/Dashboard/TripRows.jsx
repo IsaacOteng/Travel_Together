@@ -2,16 +2,28 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin, Calendar, Users, Star, Clock,
-  Heart, Edit3, X, Trash2, FlagOff, LayoutDashboard,
+  Heart, Edit3, X, Trash2, FlagOff, LayoutDashboard, LogOut,
 } from "lucide-react";
 import PayButton from "../Payments/PayButton.jsx";
 
-export function JoinedRow({ trip, onNavigate, onViewGroup }) {
+export function JoinedRow({ trip, onNavigate, onViewGroup, onLeave }) {
   const navigate    = useNavigate();
   const [paid, setPaid] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const isCompleted = trip.tripStatus === "completed";
   const approved    = trip.joinStatus === "approved" || paid;
   const awaiting    = !approved && trip.joinStatus === "awaiting_payment";
+  const within7     = trip.daysLeft != null && trip.daysLeft < 7;   // refund cutoff
+
+  const doLeave = async (e) => {
+    e.stopPropagation();
+    if (leaving) return;
+    setLeaving(true);
+    try { await onLeave?.(trip.id); }
+    finally { setLeaving(false); setConfirmLeave(false); }
+  };
+
   return (
     <div
       onClick={() => onNavigate?.(trip.id)}
@@ -33,37 +45,63 @@ export function JoinedRow({ trip, onNavigate, onViewGroup }) {
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {isCompleted ? (
-          <button
-            onClick={e => { e.stopPropagation(); navigate(`/trips/${trip.id}/rate`); }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white/60 border border-white/[0.1] bg-white/[0.05] hover:text-white/80 hover:bg-white/[0.09] transition-colors cursor-pointer"
-          >
-            <Star size={10} className="fill-current" /> Rate Crew
-          </button>
+      <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        {confirmLeave ? (
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] leading-tight max-w-[150px] ${within7 ? "text-red-400/90 font-semibold" : "text-white/45"}`}>
+              {within7
+                ? "You're within 7 days of the trip — leaving means no refund."
+                : "You'll be refunded, minus a small processing fee."}
+            </span>
+            <button onClick={doLeave} disabled={leaving}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-400 bg-red-400/10 border border-red-400/25 cursor-pointer hover:bg-red-400/20 transition-colors disabled:opacity-50">
+              {leaving ? "…" : "Leave"}
+            </button>
+            <button onClick={() => setConfirmLeave(false)} disabled={leaving}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white/50 border border-white/10 cursor-pointer hover:text-white/80">
+              Keep
+            </button>
+          </div>
         ) : (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full
-            ${approved ? "bg-green-400/15 text-green-400"
-              : awaiting ? "bg-amber-400/15 text-amber-400"
-              : "bg-orange-400/15 text-orange-400"}`}>
-            {approved ? "Approved" : awaiting ? "Payment due" : "Pending"}
-          </span>
-        )}
+          <>
+            {isCompleted ? (
+              <button
+                onClick={e => { e.stopPropagation(); navigate(`/trips/${trip.id}/rate`); }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white/60 border border-white/[0.1] bg-white/[0.05] hover:text-white/80 hover:bg-white/[0.09] transition-colors cursor-pointer"
+              >
+                <Star size={10} className="fill-current" /> Rate Crew
+              </button>
+            ) : (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full
+                ${approved ? "bg-green-400/15 text-green-400"
+                  : awaiting ? "bg-amber-400/15 text-amber-400"
+                  : "bg-orange-400/15 text-orange-400"}`}>
+                {approved ? "Approved" : awaiting ? "Payment due" : "Pending"}
+              </span>
+            )}
 
-        {/* Awaiting payment → Pay button (becomes View Group once paid).
-            Approved / completed → View Group. Pending → no group access. */}
-        {awaiting ? (
-          <span onClick={e => e.stopPropagation()}>
-            <PayButton compact tripId={trip.id} amount={trip.entryPrice} onPaid={() => setPaid(true)} />
-          </span>
-        ) : (approved || isCompleted) ? (
-          <button
-            onClick={e => { e.stopPropagation(); onViewGroup?.(trip.id); }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white/50 border border-white/[0.08] bg-white/[0.04] hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
-          >
-            <LayoutDashboard size={10}/> View Group
-          </button>
-        ) : null}
+            {/* Awaiting payment → Pay button (becomes View Group once paid).
+                Approved / completed → View Group. Pending → no group access. */}
+            {awaiting ? (
+              <PayButton compact tripId={trip.id} amount={trip.entryPrice} onPaid={() => setPaid(true)} />
+            ) : (approved || isCompleted) ? (
+              <button
+                onClick={e => { e.stopPropagation(); onViewGroup?.(trip.id); }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white/50 border border-white/[0.08] bg-white/[0.04] hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+              >
+                <LayoutDashboard size={10}/> View Group
+              </button>
+            ) : null}
+
+            {/* Leave group — for in-group (approved) members on upcoming trips */}
+            {approved && !isCompleted && (
+              <button onClick={() => setConfirmLeave(true)} title="Leave group"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 border border-white/[0.08] bg-white/[0.04] hover:text-red-400 hover:border-red-400/30 transition-colors cursor-pointer shrink-0">
+                <LogOut size={12}/>
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

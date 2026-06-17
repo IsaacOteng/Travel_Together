@@ -69,6 +69,12 @@ export default function Dashboard() {
     catch { tripsApi.list().then(r => setMyTrips(Array.isArray(r.data) ? r.data : (r.data.results ?? []))).catch(() => {}); }
   }, []);
 
+  const handleLeaveTrip = useCallback(async (id) => {
+    setMyTrips(prev => prev.filter(t => t.id !== id));
+    try { await tripsApi.leave(id); }
+    catch { tripsApi.list().then(r => setMyTrips(Array.isArray(r.data) ? r.data : (r.data.results ?? []))).catch(() => {}); }
+  }, []);
+
   const handleEndTrip = useCallback(async (id) => {
     try {
       const { data } = await tripsApi.endTrip(id);
@@ -103,7 +109,7 @@ export default function Dashboard() {
 
   const mobile = winW < 768;
 
-  const joinedProps  = { loading, trips: joinedTrips,  onNavigate: goToTrip, onViewGroup: goToGroup,  onCollapse: closeSection };
+  const joinedProps  = { loading, trips: joinedTrips,  onNavigate: goToTrip, onViewGroup: goToGroup, onLeave: handleLeaveTrip, onCollapse: closeSection };
   const savedProps   = { loading, trips: savedTrips,   onNavigate: goToTrip, onUnsave: handleUnsaveTrip, onCollapse: closeSection };
   const createdProps = { loading, trips: createdTrips, onViewTrip: goToTrip, onManage: goToGroup, onDelete: handleDeleteTrip, onEndTrip: handleEndTrip, onCollapse: closeSection };
 
