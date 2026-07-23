@@ -85,7 +85,7 @@ class VerifyPaymentView(APIView):
     GET /api/payments/verify/<reference>/
 
     Frontend calls this after returning from Paystack. Confirms with Paystack and,
-    on success, admits the member. Backup to the webhook — both are idempotent.
+    on success, admits the member. Backup to the webhook both are idempotent.
     """
     permission_classes = [IsAuthenticated]
 

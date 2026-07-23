@@ -6,7 +6,7 @@ from django.db import models
 
 class Payment(models.Model):
     """
-    A single member's entry-fee payment for a trip — the escrow ledger row.
+    A single member's entry-fee payment for a trip the escrow ledger row.
 
     Lifecycle (the status we control; Paystack only moves the money):
         pending   — member is approved but hasn't paid yet (spot held until due_at)
@@ -48,7 +48,7 @@ class Payment(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.email} — {self.amount} {self.currency} ({self.status}) @ {self.trip.title}"
+        return f"{self.user.email} {self.amount} {self.currency} ({self.status}) @ {self.trip.title}"
 
 
 # ─── Payout Method ────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ class Payment(models.Model):
 class PayoutMethod(models.Model):
     """
     Where an organizer receives payouts. The name on the account does NOT need to
-    match their verified identity (people use a family/business number) — the
+    match their verified identity (people use a family/business number) the
     accountability anchor is their identity verification, not this name.
 
     In production the raw number is tokenised by Paystack into a recipient_code,
@@ -82,7 +82,7 @@ class PayoutMethod(models.Model):
         verbose_name = "Payout Method"
 
     def __str__(self):
-        return f"{self.user.email} — {self.type} ••••{self.account_number[-4:]}"
+        return f"{self.user.email} {self.type} ••••{self.account_number[-4:]}"
 
 
 # ─── Payout ───────────────────────────────────────────────────────────────────

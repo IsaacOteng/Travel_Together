@@ -82,7 +82,7 @@ def start_member_payment(trip, member, approved_by=None):
     push(
         recipient  = member.user,
         notif_type = "payment_due",
-        title      = "You're approved — confirm your spot",
+        title      = "You're approved confirm your spot",
         body       = (
             f"You've been approved for \"{trip.title}\". "
             f"Pay GH₵{trip.entry_price} to secure your spot."
@@ -112,7 +112,7 @@ def confirm_payment(payment, fee=None):
     from .models import Payment
 
     if payment.status == Payment.Status.HELD:
-        return payment  # already confirmed — safe to call again (idempotent)
+        return payment  # already confirmed safe to call again (idempotent)
 
     payment.status  = Payment.Status.HELD
     payment.paid_at = timezone.now()
@@ -170,7 +170,7 @@ def refund_payment(payment, reason="", notify=True, force=False):
     from .models import Payment
 
     if payment.status == Payment.Status.REFUNDED:
-        return None  # already refunded — idempotent
+        return None  # already refunded idempotent
     if payment.status != Payment.Status.HELD and not force:
         return None  # normally only escrowed money is refundable; `force` = admin
                      # discretionary, platform-funded refund (strictly-our-fault cases)
@@ -220,7 +220,7 @@ def handle_member_leaving(trip, user):
     if held:
         if is_refund_eligible(trip):
             return refund_payment(held, reason="left_trip")
-        return None  # forfeit — stays held, flows to organizer at payout
+        return None  # forfeit stays held, flows to organizer at payout
 
     pending = Payment.objects.filter(trip=trip, user=user, status=Payment.Status.PENDING).first()
     if pending:
@@ -317,7 +317,7 @@ def _create_and_send_payout(trip, amount, kind):
     from . import paystack
     from .models import Payout, PayoutMethod
 
-    # Pay down any clawback debt first — recovered from this payout before the
+    # Pay down any clawback debt first recovered from this payout before the
     # organizer sees a cedi. If the debt swallows it entirely, nothing is sent.
     organizer = trip.chief
     if organizer and (organizer.clawback_owed or Decimal("0")) > 0:
@@ -337,7 +337,7 @@ def _create_and_send_payout(trip, amount, kind):
             paystack.initiate_transfer(
                 amount=amount,
                 recipient_code=method.recipient_code,
-                reason=f"{kind} payout — {trip.title}",
+                reason=f"{kind} payout {trip.title}",
                 reference=reference,
             )
             payout.paystack_ref = reference
@@ -361,7 +361,7 @@ def _create_and_send_payout(trip, amount, kind):
 
 def _has_open_report(trip):
     """
-    True if payouts should be frozen — either an unresolved incident report or an
+    True if payouts should be frozen either an unresolved incident report or an
     anomaly flag (e.g. near-zero check-ins). The anti-collusion safety valve.
     """
     if getattr(trip, "flagged_for_review", False):
@@ -377,7 +377,7 @@ def _organizer_is_established(user):
     """
     Whether an organizer is trusted enough for an at-departure partial release:
     a verified traveller, or one with a track record of completed trips. New /
-    unverified organizers get NO partial — their funds stay fully escrowed until
+    unverified organizers get NO partial their funds stay fully escrowed until
     completion, capping how much a fresh scammer account can grab early.
     """
     if not user:
@@ -397,9 +397,9 @@ def release_partial_payout(trip):
     if Payout.objects.filter(trip=trip, kind=Payout.Kind.PARTIAL).exists():
         return None
     if _has_open_report(trip):
-        return None   # frozen — trip is under investigation
+        return None   # frozen trip is under investigation
     if not _organizer_is_established(trip.chief):
-        return None   # new/unverified organizer — no partial, full hold until completion
+        return None   # new/unverified organizer no partial, full hold until completion
     _, _, organizer_total = _organizer_share(trip)
     if organizer_total <= 0:
         return None
@@ -418,7 +418,7 @@ def release_final_payout(trip):
     if Payout.objects.filter(trip=trip, kind=Payout.Kind.FINAL).exists():
         return None
     if _has_open_report(trip):
-        return None   # under investigation — hold everything; the daily sweep retries once resolved
+        return None   # under investigation hold everything; the daily sweep retries once resolved
 
     _, _, organizer_total = _organizer_share(trip)
     remaining = (organizer_total - _already_paid_out(trip)).quantize(Decimal("0.01"))
