@@ -88,14 +88,14 @@ class SendOTPView(APIView):
         email = serializer.validated_data["email"]
         ip    = get_client_ip(request)
 
-        # Rate limit check — still return 200 to prevent enumeration
+        # Rate limit check still return 200 to prevent enumeration
         if not is_otp_rate_limited(email):
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={"is_active": True},
             )
             if not created and not user.is_active:
-                # Reactivate a previously deleted account — full fresh start
+                # Reactivate a previously deleted account full fresh start
                 user.is_active           = True
                 user.deleted_at          = None
                 user.onboarding_complete = False
@@ -130,7 +130,7 @@ class SendOTPView(APIView):
             )
 
             increment_otp_rate(email)
-            # Send synchronously — OTP is the one task a user actively waits on,
+            # Send synchronously OTP is the one task a user actively waits on,
             # so it must not depend on a running Celery worker. A send failure is
             # logged, never fatal: we keep the always-200 contract (enumeration
             # protection) and the user can simply request the code again.
@@ -266,7 +266,7 @@ class TokenRefreshView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # Issue a brand-new token pair — rolls the 30-day window forward
+        # Issue a brand-new token pair rolls the 30-day window forward
         new_refresh = _issue_tokens(user)
         return Response(_token_response(new_refresh), status=status.HTTP_200_OK)
 
@@ -573,7 +573,7 @@ class LogoutView(APIView):
                 token = RefreshToken(refresh_token)
                 token.blacklist()
             except Exception:
-                pass   # invalid/already-blacklisted token — still log out cleanly
+                pass   # invalid/already-blacklisted token still log out cleanly
         return Response({"logged_out": True}, status=status.HTTP_200_OK)
 
 
@@ -582,7 +582,7 @@ class LogoutView(APIView):
 class AccountDeleteView(APIView):
     """
     DELETE /api/auth/account/
-    Authenticated user only — no OTP required.
+    Authenticated user only no OTP required.
     Frees the username immediately so others can claim it.
     Soft-deletes the account; Celery handles permanent cleanup after grace period.
     """
@@ -602,7 +602,7 @@ class AccountDeleteView(APIView):
 class CheckUsernameView(APIView):
     """
     GET /api/auth/check-username/?username=xxx
-    Public — used during onboarding before the user is fully set up.
+    Public used during onboarding before the user is fully set up.
     """
     permission_classes = [AllowAny]
 
@@ -786,7 +786,7 @@ class MyProfileStatsView(APIView):
     """
     GET /api/users/me/stats/
     Returns computed reliability stats: check-in rate, avg received rating,
-    trip counts.  All values derived from real data — nothing hardcoded.
+    trip counts.  All values derived from real data nothing hardcoded.
     """
     permission_classes = [IsAuthenticated]
 

@@ -10,7 +10,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--email",    required=True,  help="Admin email address")
         parser.add_argument("--username", default=None,   help="Username (optional)")
-        parser.add_argument("--password", default=None,   help="Password — only needed for Django's built-in /admin/ panel")
+        parser.add_argument("--password", default=None,   help="Password only needed for Django's built-in /admin/ panel")
 
     def handle(self, *args, **options):
         email    = options["email"].strip().lower()
@@ -46,7 +46,7 @@ class Command(BaseCommand):
                 user.set_password(password)
                 user.save()
             else:
-                # Passwordless — unusable password is fine for OTP-based login
+                # Passwordless unusable password is fine for OTP-based login
                 if created:
                     user.set_unusable_password()
                     user.save()
@@ -57,5 +57,5 @@ class Command(BaseCommand):
         ))
         if not password:
             self.stdout.write(self.style.WARNING(
-                "No password set — log in via OTP or Google on the frontend, then go to /admin."
+                "No password set log in via OTP or Google on the frontend, then go to /admin."
             ))

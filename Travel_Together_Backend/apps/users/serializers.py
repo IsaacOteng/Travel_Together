@@ -79,7 +79,7 @@ class EmergencyContactSerializer(serializers.ModelSerializer):
 # ─── User: read ───────────────────────────────────────────────────────────────
 
 class UserMeSerializer(serializers.ModelSerializer):
-    """Full profile read — used for GET /api/users/me/"""
+    """Full profile read used for GET /api/users/me/"""
     notification_settings = NotificationSettingsSerializer(read_only=True)
     preferences           = UserPreferencesSerializer(read_only=True)
 
@@ -99,7 +99,7 @@ class UserMeSerializer(serializers.ModelSerializer):
 
 
 class UserPublicSerializer(serializers.ModelSerializer):
-    """Public view of another user — no sensitive fields."""
+    """Public view of another user no sensitive fields."""
     trips_completed = serializers.SerializerMethodField()
     trips_total     = serializers.SerializerMethodField()
 
@@ -172,7 +172,7 @@ class OnboardingSerializer(serializers.ModelSerializer):
 class UserMeUpdateSerializer(serializers.ModelSerializer):
     """
     PATCH /api/users/me/
-    Post-onboarding profile edits — name, bio, avatar, city, username, settings.
+    Post-onboarding profile edits name, bio, avatar, city, username, settings.
     """
     class Meta:
         model  = User
@@ -205,7 +205,7 @@ class UserMeUpdateSerializer(serializers.ModelSerializer):
                     f"Available again on {next_allowed.strftime('%d %b %Y')}."
                 )
 
-        # Uniqueness — only completed accounts block it
+        # Uniqueness only completed accounts block it
         qs = User.objects.filter(username=value, onboarding_complete=True)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)

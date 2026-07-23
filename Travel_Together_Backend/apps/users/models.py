@@ -91,7 +91,7 @@ class User(AbstractBaseUser):
     created_at            = models.DateTimeField(auto_now_add=True)
     updated_at            = models.DateTimeField(auto_now=True)
 
-    # No password field used — set_unusable_password() called in manager
+    # No password field used set_unusable_password() called in manager
     USERNAME_FIELD  = "email"
     REQUIRED_FIELDS = []
 
@@ -142,7 +142,7 @@ class EmailVerification(models.Model):
         return self.attempt_count >= 5
 
     def __str__(self):
-        return f"{self.user.email} — {self.purpose} ({self.created_at:%Y-%m-%d %H:%M})"
+        return f"{self.user.email} {self.purpose} ({self.created_at:%Y-%m-%d %H:%M})"
 
 
 # ─── Emergency Contact ────────────────────────────────────────────────────────
@@ -173,7 +173,7 @@ class EmergencyContact(models.Model):
         ordering   = ["priority"]
 
     def __str__(self):
-        return f"{self.name} ({self.relationship}) — {self.user.email}"
+        return f"{self.name} ({self.relationship}) {self.user.email}"
 
 
 # ─── Notification Settings ────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ class NotificationSettings(models.Model):
         verbose_name = "Notification Settings"
 
     def __str__(self):
-        return f"Notification settings — {self.user.email}"
+        return f"Notification settings {self.user.email}"
 
 
 # ─── User Preferences (trip style, set during onboarding) ────────────────────
@@ -211,7 +211,7 @@ class UserPreferences(models.Model):
         verbose_name = "User Preferences"
 
     def __str__(self):
-        return f"Preferences — {self.user.email}"
+        return f"Preferences {self.user.email}"
 
 
 # ─── User Location (real-time GPS) ───────────────────────────────────────────
