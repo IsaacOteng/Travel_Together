@@ -74,7 +74,7 @@ class TripListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """My trips — where I'm chief or an approved/pending member."""
+        """My trips where I'm chief or an approved/pending member."""
         memberships = TripMember.objects.filter(user=request.user).values_list("trip_id", flat=True)
         trips = Trip.objects.filter(id__in=memberships).select_related("chief").prefetch_related(
             "images", "tags", "members__user", "saved_by"
@@ -162,7 +162,7 @@ class TripDetailView(APIView):
         if trip.status == Trip.Status.ACTIVE:
             return Response({"detail": "Cannot delete an active trip."}, status=400)
         if trip.status == Trip.Status.COMPLETED:
-            # Completed trips are everyone's permanent travel history — never erase.
+            # Completed trips are everyone's permanent travel history never erase.
             return Response(
                 {"detail": "Completed trips are part of travellers' history and can't be deleted."},
                 status=400,
@@ -187,7 +187,7 @@ class TripDetailView(APIView):
                 status=200,
             )
 
-        # Empty trip — safe to remove entirely.
+        # Empty trip safe to remove entirely.
         for img in trip.images.all():
             _delete_file(img.image_key)
         trip.delete()
@@ -273,7 +273,7 @@ class TripDepartView(APIView):
             trip.status = Trip.Status.ACTIVE
         trip.save(update_fields=["departure_confirmed_at", "status", "updated_at"])
 
-        # The partial is NOT released inline — a grace window opens so stragglers
+        # The partial is NOT released inline a grace window opens so stragglers
         # can check in or report. It releases via the hourly sweep after
         # DEPARTURE_GRACE_HOURS, provided no dispute was raised.
         return Response({
@@ -291,7 +291,7 @@ class TripConfirmView(APIView):
     POST /api/trips/<id>/confirm/
 
     A member confirms the trip took place. Only members who actually attended
-    (checked in at least once) can confirm — a no-show can't vouch, though they
+    (checked in at least once) can confirm a no-show can't vouch, though they
     may still dispute via a report. Recorded as evidence for the grace window.
     """
     permission_classes = [IsAuthenticated]
@@ -852,7 +852,7 @@ class PublicTripListView(APIView):
 
     def get(self, request):
         from django.utils import timezone
-        # Only show trips that haven't started yet — hide anything whose start
+        # Only show trips that haven't started yet hide anything whose start
         # date has passed so travellers can't mistakenly join a past trip
         # (independent of the daily status-flip task).
         trips = Trip.objects.filter(
@@ -1057,7 +1057,7 @@ class IncidentReportView(APIView):
             {
                 "id":            str(r.id),
                 "incident_type": r.incident_type,
-                "description":   r.description,      # the claim — reporter identity withheld
+                "description":   r.description,      # the claim reporter identity withheld
                 "status":        r.status,
                 "created_at":    r.created_at,
                 "response":      r.response,
@@ -1087,7 +1087,7 @@ class IncidentReportView(APIView):
         report = serializer.save(trip=trip, reporter=request.user)
 
         # A trip-level dispute is against the organizer. Default the reported party
-        # to the chief, and notify them so they can present their side — WITHOUT
+        # to the chief, and notify them so they can present their side WITHOUT
         # revealing the reporter's identity (anti-retaliation).
         if not report.reported_user_id and trip.chief_id:
             report.reported_user = trip.chief
@@ -1200,7 +1200,7 @@ class TripGroupConversationView(APIView):
             push_many(
                 recipients=[m.user for m in all_members],
                 notif_type="chat_message",
-                title=f"Group chat started — {trip.title}",
+                title=f"Group chat started {trip.title}",
                 body=f"{request.user.first_name or request.user.username} started the group chat. Tap to join.",
                 sender=request.user,
                 trip=trip,

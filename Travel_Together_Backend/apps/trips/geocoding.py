@@ -1,7 +1,7 @@
 """
 Geocoding utility for TravelTogether trips.
 
-Uses Nominatim (OpenStreetMap) — free, no API key required.
+Uses Nominatim (OpenStreetMap) free, no API key required.
 Respects the 1 req/s rate-limit via a module-level lock + timestamp.
 """
 import time
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # ── Rate-limit state ─────────────────────────────────────────────────────────
 _lock          = threading.Lock()
 _last_call_at  = 0.0
-_MIN_INTERVAL  = 1.1   # seconds — slightly over 1 s to be safe
+_MIN_INTERVAL  = 1.1   # seconds slightly over 1 s to be safe
 
 NOMINATIM_URL  = "https://nominatim.openstreetmap.org/search"
 USER_AGENT     = "TravelTogether/1.0 (contact@traveltogether.app)"
@@ -107,7 +107,7 @@ def geocode(place_name: str) -> Point | None:
         if point:
             return point
 
-    logger.info("Could not geocode %r — map will fall back to client-side.", place_name)
+    logger.info("Could not geocode %r map will fall back to client-side.", place_name)
     return None
 
 

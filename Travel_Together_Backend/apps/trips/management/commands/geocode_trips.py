@@ -38,7 +38,7 @@ class Command(BaseCommand):
         if options["dry_run"]:
             self.stdout.write(
                 self.style.WARNING(
-                    f"{qs.count()} trip(s) need geocoding (dry run — no changes made)."
+                    f"{qs.count()} trip(s) need geocoding (dry run no changes made)."
                 )
             )
             return
@@ -68,6 +68,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"\nDone — {succeeded} geocoded, {failed} unresolvable out of {total} trips."
+                f"\nDone {succeeded} geocoded, {failed} unresolvable out of {total} trips."
             )
         )

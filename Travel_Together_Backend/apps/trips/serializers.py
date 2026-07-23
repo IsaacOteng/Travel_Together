@@ -135,7 +135,7 @@ class TripMemberPreviewSerializer(serializers.ModelSerializer):
 
 class TripMemberCardSerializer(serializers.ModelSerializer):
     """
-    Tier 1 — visible to anyone viewing a public trip (pre-join).
+    Tier 1 visible to anyone viewing a public trip (pre-join).
     First name only, karma level, role, verification badge, trip count.
     No last name, no bio, no contact info.
     """
@@ -170,7 +170,7 @@ class TripMemberCardSerializer(serializers.ModelSerializer):
 
 class TripMemberFullSerializer(TripMemberCardSerializer):
     """
-    Tier 2 — visible only to approved members of the same trip (post-join).
+    Tier 2 visible only to approved members of the same trip (post-join).
     Adds: last name, bio, nationality, city, country, member-since date.
     Still never exposes: email, phone, dob, location data, settings.
     """
@@ -191,7 +191,7 @@ class TripMemberFullSerializer(TripMemberCardSerializer):
 
 
 class TripMemberSerializer(serializers.ModelSerializer):
-    """Legacy — kept for the members management endpoint (/api/trips/{id}/members/)."""
+    """Legacy kept for the members management endpoint (/api/trips/{id}/members/)."""
     user_id        = serializers.UUIDField(source="user.id",               read_only=True)
     username       = serializers.CharField(source="user.username",          read_only=True)
     first_name     = serializers.CharField(source="user.first_name",        read_only=True)
@@ -328,7 +328,7 @@ class TripDetailSerializer(serializers.ModelSerializer):
     tags             = serializers.SlugRelatedField(many=True, read_only=True, slug_field="tag")
     price_covers     = serializers.SlugRelatedField(many=True, read_only=True, slug_field="item")
     itinerary        = ItineraryStopSerializer(many=True, read_only=True)
-    # members is a SerializerMethodField — returns Tier 1 (card) or Tier 2 (full)
+    # members is a SerializerMethodField returns Tier 1 (card) or Tier 2 (full)
     # depending on whether the viewer is an approved trip member.
     members          = serializers.SerializerMethodField()
     viewer_is_member = serializers.SerializerMethodField()

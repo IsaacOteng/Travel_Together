@@ -55,7 +55,7 @@ class Trip(models.Model):
                             )
     departure_confirmed_at  = models.DateTimeField(null=True, blank=True)
     ended_at                = models.DateTimeField(null=True, blank=True)
-    flagged_for_review      = models.BooleanField(default=False)            # anomaly hold — freezes payouts pending admin
+    flagged_for_review      = models.BooleanField(default=False)            # anomaly hold freezes payouts pending admin
     flag_reason             = models.CharField(max_length=200, null=True, blank=True)
     created_at              = models.DateTimeField(auto_now_add=True)
     updated_at              = models.DateTimeField(auto_now=True)
@@ -71,9 +71,9 @@ class Trip(models.Model):
     def __str__(self):
         return self.title
 
-    # ── Capacity helpers — single source of truth for "is a spot taken?" ──
+    # ── Capacity helpers single source of truth for "is a spot taken?" ──
     def occupied_spots(self):
-        """Spots taken or held — the basis for all availability / 'is full' checks.
+        """Spots taken or held the basis for all availability / 'is full' checks.
 
         Counts approved members today; will also include AWAITING_PAYMENT once
         pay-after-approval lands (see TripMember.OCCUPYING_STATUSES).
@@ -108,7 +108,7 @@ class TripImage(models.Model):
         ]
 
     def __str__(self):
-        return f"Image {self.order} — {self.trip.title}"
+        return f"Image {self.order} {self.trip.title}"
 
 
 # ─── Trip Tag ─────────────────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ class TripTag(models.Model):
         unique_together = [("trip", "tag")]
 
     def __str__(self):
-        return f"{self.tag} — {self.trip.title}"
+        return f"{self.tag} {self.trip.title}"
 
 
 # ─── Trip Price Cover ─────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ class TripPriceCover(models.Model):
         unique_together = [("trip", "item")]
 
     def __str__(self):
-        return f"{self.item} — {self.trip.title}"
+        return f"{self.item} {self.trip.title}"
 
 
 # ─── Itinerary Stop ───────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ class TripMember(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.email} — {self.role} @ {self.trip.title}"
+        return f"{self.user.email} {self.role} @ {self.trip.title}"
 
 
 # ─── Saved Trip ───────────────────────────────────────────────────────────────
@@ -312,7 +312,7 @@ class IncidentReport(models.Model):
     evidence_urls    = models.JSONField(default=list)               # up to 5 URLs
     status           = models.CharField(max_length=20, choices=ReportStatus.choices, default=ReportStatus.PENDING)
     reference_number = models.CharField(max_length=20, unique=True, blank=True)
-    # The reported party's (organizer's) side of the story — two-sided disputes.
+    # The reported party's (organizer's) side of the story two-sided disputes.
     response               = models.TextField(null=True, blank=True)
     response_evidence_urls = models.JSONField(default=list)
     responded_at           = models.DateTimeField(null=True, blank=True)
@@ -329,4 +329,4 @@ class IncidentReport(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.reference_number} — {self.incident_type}"
+        return f"{self.reference_number} {self.incident_type}"

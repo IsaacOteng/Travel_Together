@@ -35,8 +35,8 @@ class DiscoverPastTripTests(TestCase):
 
     def test_discover_excludes_started_trips(self):
         future = make_trip(self.chief, days_out=5)
-        today  = make_trip(self.chief, days_out=0)    # starts today — still shown
-        past   = make_trip(self.chief, days_out=-2)   # already started — hidden
+        today  = make_trip(self.chief, days_out=0)    # starts today still shown
+        past   = make_trip(self.chief, days_out=-2)   # already started hidden
 
         ids = [t["id"] for t in self.client.get("/api/public/trips/").json()["results"]]
         self.assertIn(str(future.id), ids)
@@ -135,7 +135,7 @@ class ConfirmCompletionTests(TestCase):
 
 
 class NoShowKarmaTests(TestCase):
-    """Attendees earn karma; no-shows are penalised — but never blocked."""
+    """Attendees earn karma; no-shows are penalised but never blocked."""
 
     @patch("tasks.karma.check_karma_level_up.delay")
     def test_attendee_rewarded_noshow_penalised(self, _delay):
