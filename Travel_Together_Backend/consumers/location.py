@@ -7,7 +7,7 @@ class LocationConsumer(AsyncJsonWebsocketConsumer):
     """
     WebSocket: ws/trips/<trip_id>/locations/
 
-    Auth: same as ChatConsumer — send token first:
+    Auth: same as ChatConsumer send token first:
         { "type": "auth", "token": "<access_token>" }
 
     Incoming (client → server):
@@ -203,7 +203,7 @@ class LocationConsumer(AsyncJsonWebsocketConsumer):
         return loc.updated_at.isoformat()
 
     async def _handle_location_stop(self):
-        """User stopped sharing — clear DB record and notify others."""
+        """User stopped sharing clear DB record and notify others."""
         await self._delete_location()
         await self.channel_layer.group_send(
             self.group_name,

@@ -102,7 +102,7 @@ DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 AUTH_USER_MODEL = "users.User"
 
 # ─── Password Validation ──────────────────────────────────────────────────────
-# Passwordless — no passwords are ever set by users
+# Passwordless no passwords are ever set by users
 AUTH_PASSWORD_VALIDATORS = []
 
 # ─── Internationalisation ─────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ─── Cloudflare R2 (object storage) ──────────────────────────────────────────
 # Set USE_R2=true in production. All four values below are required when enabled.
-# Leave USE_R2 unset (or false) for local development — files go to MEDIA_ROOT.
+# Leave USE_R2 unset (or false) for local development files go to MEDIA_ROOT.
 USE_R2               = env.bool("USE_R2", default=False)
 R2_BUCKET_NAME       = env("R2_BUCKET_NAME",       default="")
 R2_ACCESS_KEY_ID     = env("R2_ACCESS_KEY_ID",     default="")
@@ -136,7 +136,7 @@ CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
     default=["http://localhost:5173", "http://localhost:3000"],
 )
-# Bearer tokens in Authorization header — no cookies, no credentials needed.
+# Bearer tokens in Authorization header no cookies, no credentials needed.
 CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -172,7 +172,7 @@ SIMPLE_JWT = {
     ),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-    # Tokens are sent via Authorization: Bearer header — no cookies needed.
+    # Tokens are sent via Authorization: Bearer header no cookies needed.
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
@@ -189,7 +189,7 @@ if _REDIS_URL:
         },
     }
 else:
-    # No Redis available — use in-process layer (dev only, single worker)
+    # No Redis available use in-process layer (dev only, single worker)
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
@@ -223,7 +223,7 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 from celery.schedules import crontab
 
 CELERY_BEAT_SCHEDULE = {
-    # SOS auto-detection — every 5 minutes
+    # SOS auto-detection every 5 minutes
     "check-stationary-members": {
         "task":     "tasks.sos.check_stationary_members",
         "schedule": crontab(minute="*/5"),
@@ -232,12 +232,12 @@ CELERY_BEAT_SCHEDULE = {
         "task":     "tasks.sos.check_route_deviation",
         "schedule": crontab(minute="*/5"),
     },
-    # SOS escalation — every 15 minutes
+    # SOS escalation every 15 minutes
     "escalate-unresolved-alerts": {
         "task":     "tasks.sos.escalate_unresolved_alerts",
         "schedule": crontab(minute="*/15"),
     },
-    # Trip lifecycle — daily at midnight UTC
+    # Trip lifecycle daily at midnight UTC
     "mark-trips-active": {
         "task":     "tasks.cleanup.mark_trips_active",
         "schedule": crontab(hour=0, minute=0),
@@ -246,12 +246,12 @@ CELERY_BEAT_SCHEDULE = {
         "task":     "tasks.cleanup.mark_trips_completed",
         "schedule": crontab(hour=0, minute=5),
     },
-    # Trip reminders — daily at 10 AM UTC (24h before trips starting tomorrow)
+    # Trip reminders daily at 10 AM UTC (24h before trips starting tomorrow)
     "send-trip-reminders": {
         "task":     "tasks.recap.send_trip_reminders_daily",
         "schedule": crontab(hour=10, minute=0),
     },
-    # Nightly cleanup — 2 AM UTC
+    # Nightly cleanup 2 AM UTC
     "purge-expired-otps": {
         "task":     "tasks.cleanup.purge_expired_otps",
         "schedule": crontab(hour=2, minute=0),
@@ -268,17 +268,17 @@ CELERY_BEAT_SCHEDULE = {
         "task":     "tasks.cleanup.purge_deleted_users",
         "schedule": crontab(hour=2, minute=30),
     },
-    # Lapse approvals whose payment deadline has passed — hourly
+    # Lapse approvals whose payment deadline has passed hourly
     "expire-unpaid-approvals": {
         "task":     "apps.payments.tasks.expire_unpaid_approvals",
         "schedule": crontab(minute=0),
     },
-    # Release partial payouts after the departure grace window — hourly
+    # Release partial payouts after the departure grace window hourly
     "release-due-partials": {
         "task":     "apps.payments.tasks.release_due_partials",
         "schedule": crontab(minute=30),
     },
-    # Release final payouts after the dispute window — daily at 1 AM UTC
+    # Release final payouts after the dispute window daily at 1 AM UTC
     "release-due-payouts": {
         "task":     "apps.payments.tasks.release_due_payouts",
         "schedule": crontab(hour=1, minute=0),
@@ -292,7 +292,7 @@ PAYMENTS_ENABLED      = env.bool("PAYMENTS_ENABLED", default=False)
 # Hours a member has to pay after being approved before the spot is released.
 PAYMENT_DEADLINE_HOURS = env.int("PAYMENT_DEADLINE_HOURS", default=48)
 
-# Paystack — use TEST keys (sk_test_… / pk_test_…); no business cert needed for test mode.
+# Paystack use TEST keys (sk_test_… / pk_test_…); no business cert needed for test mode.
 PAYSTACK_SECRET_KEY   = env("PAYSTACK_SECRET_KEY",   default="")
 PAYSTACK_PUBLIC_KEY   = env("PAYSTACK_PUBLIC_KEY",   default="")
 PAYSTACK_BASE_URL     = env("PAYSTACK_BASE_URL",     default="https://api.paystack.co")
@@ -464,7 +464,7 @@ UNFOLD = {
     },
 }
 
-# ─── GeoDjango (Windows — PostGIS bundle paths) ───────────────────────────────
+# ─── GeoDjango (Windows PostGIS bundle paths) ───────────────────────────────
 # These point to the GDAL/GEOS DLLs that ship with the PostGIS installer.
 # Adjust version numbers if your install differs.
 if os.name == "nt":

@@ -262,7 +262,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """
         Push a lightweight notification.new event to every other member's
         notification channel so their badge and conversation list update live.
-        No DB record is created — this is a transient WS push only.
+        No DB record is created this is a transient WS push only.
         """
         try:
             from consumers.notifications import user_group

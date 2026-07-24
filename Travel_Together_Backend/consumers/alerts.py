@@ -6,10 +6,10 @@ class AlertsConsumer(AsyncJsonWebsocketConsumer):
     """
     WebSocket: ws/trips/<trip_id>/alerts/
 
-    Primarily a server-push channel — the backend broadcasts alerts here
+    Primarily a server-push channel the backend broadcasts alerts here
     when safety or system events occur. Clients connect and listen.
 
-    Auth: same pattern — send token first:
+    Auth: same pattern send token first:
         { "type": "auth", "token": "<access_token>" }
 
     Outgoing event types (server → client):
@@ -166,7 +166,7 @@ class AlertsConsumer(AsyncJsonWebsocketConsumer):
     # ── channel layer → individual client ─────────────────────────────────────
 
     async def trip_alert(self, event):
-        """Generic passthrough — used by backend to push any alert payload."""
+        """Generic passthrough used by backend to push any alert payload."""
         await self.send_json(event["data"])
 
     async def sos_triggered(self, event):
