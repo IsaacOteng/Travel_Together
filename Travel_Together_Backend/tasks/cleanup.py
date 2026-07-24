@@ -1,5 +1,5 @@
 """
-Cleanup tasks — run nightly via Celery Beat
+Cleanup tasks run nightly via Celery Beat
 --------------------------------------------
 purge_expired_otps         — delete used/expired OTP records older than 24h
 purge_deleted_users        — hard-delete users soft-deleted more than 30 days ago

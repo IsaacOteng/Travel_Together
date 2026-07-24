@@ -69,7 +69,7 @@ def generate_trip_recap(self, trip_id: str):
                 recipients = [m.user for m in approved],
                 notif_type = "trip_reminder",
                 title      = "Your trip recap is ready",
-                body       = f"The recap for '{trip.title}' is ready — {len(selected)} moments selected.",
+                body       = f"The recap for '{trip.title}' is ready {len(selected)} moments selected.",
                 trip       = trip,
                 action_url = f"/trips/{trip.id}/recap/",
                 data       = {"streak_count": len(selected)},
@@ -109,7 +109,7 @@ def send_trip_reminder(trip_id: str):
         ampm   = "AM" if st.hour < 12 else "PM"
         start_label += f" at {hour12}:{st.minute:02d} {ampm}"
 
-    title = f"24 hours to go — {destination}!"
+    title = f"24 hours to go {destination}!"
 
     body_parts = [f"Heads up! Your trip “{trip.title}” starts tomorrow ({start_label})."]
     if trip.meeting_point:

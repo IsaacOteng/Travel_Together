@@ -16,7 +16,7 @@ _BODIES = {
         "    {code}\n\n"
         "This code expires in 15 minutes. Do not share it with anyone.\n\n"
         "If you didn't request this, you can safely ignore this email.\n\n"
-        "— The TravelTogether Team"
+        " The TravelTogether Team"
     ),
     "delete_account": (
         "Hi,\n\n"
@@ -24,22 +24,22 @@ _BODIES = {
         "Your confirmation code is:\n\n"
         "    {code}\n\n"
         "This code expires in 15 minutes. If you did not request this, "
-        "please ignore this email — your account is safe.\n\n"
-        "— The TravelTogether Team"
+        "please ignore this email your account is safe.\n\n"
+        " The TravelTogether Team"
     ),
     "deactivate": (
         "Hi,\n\n"
         "Your account deactivation confirmation code is:\n\n"
         "    {code}\n\n"
         "This code expires in 15 minutes.\n\n"
-        "— The TravelTogether Team"
+        " The TravelTogether Team"
     ),
     "email_change": (
         "Hi,\n\n"
         "Your email change confirmation code is:\n\n"
         "    {code}\n\n"
         "This code expires in 15 minutes.\n\n"
-        "— The TravelTogether Team"
+        " The TravelTogether Team"
     ),
 }
 
@@ -48,7 +48,7 @@ def send_otp_email_now(email: str, code: str, purpose: str) -> None:
     """
     Send a purpose-specific OTP email synchronously (no Celery).
 
-    Raises on failure so the caller can decide what to do — the login view logs
+    Raises on failure so the caller can decide what to do the login view logs
     it (keeping its always-200 contract), while the async wrapper below retries.
     OTP is the one task a user actively waits on, so it does not depend on a
     running worker.

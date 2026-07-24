@@ -55,7 +55,7 @@ def award_trip_completion_karma(self, trip_id: str):
                     data       = {"delta": delta, "new_total": member.user.travel_karma},
                 )
             else:
-                # Missed every check-in — a reputational hit to karma (and their
+                # Missed every check-in a reputational hit to karma (and their
                 # reliability score, which is computed from check-ins). NOT a block:
                 # they can still join and travel on future trips.
                 award_karma(
@@ -70,7 +70,7 @@ def award_trip_completion_karma(self, trip_id: str):
                     notif_type = "karma_level",
                     title      = "Missed check-in",
                     body       = f"You didn't check in on '{trip.title}', so {no_show_penalty} karma was deducted. "
-                                 f"It also lowers your reliability score — but you can still join future trips.",
+                                 f"It also lowers your reliability score but you can still join future trips.",
                     trip       = trip,
                     data       = {"delta": -no_show_penalty, "new_total": member.user.travel_karma},
                 )
@@ -145,7 +145,7 @@ def check_karma_level_up(user_id: str):
                 recipient  = user,
                 notif_type = "karma_level",
                 title      = "Level up!",
-                body       = f"Congratulations — you're now a {user.karma_level}!",
+                body       = f"Congratulations you're now a {user.karma_level}!",
                 data       = {"level": user.karma_level, "total": user.travel_karma},
             )
         cache.set(cache_key, user.karma_level, timeout=None)
