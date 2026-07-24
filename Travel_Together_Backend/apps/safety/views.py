@@ -202,7 +202,7 @@ class SOSAlertDetailView(APIView):
         return Response(SOSAlertSerializer(alert).data)
 
     def patch(self, request, trip_id, alert_id):
-        """Resolve or mark false alarm — chief / scout only."""
+        """Resolve or mark false alarm chief / scout only."""
         alert, member, err = self._get_alert(trip_id, alert_id, request.user)
         if err:
             return err

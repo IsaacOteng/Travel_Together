@@ -2,7 +2,7 @@
 python manage.py seed_badges
 
 Seeds (or updates) the 6 achievement badges into the Badge table.
-Safe to run multiple times — uses update_or_create on slug.
+Safe to run multiple times uses update_or_create on slug.
 """
 
 from django.core.management.base import BaseCommand
@@ -77,6 +77,6 @@ class Command(BaseCommand):
                 updated += 1
         self.stdout.write(
             self.style.SUCCESS(
-                f"Done — {created} created, {updated} updated."
+                f"Done {created} created, {updated} updated."
             )
         )

@@ -33,7 +33,7 @@ class Conversation(models.Model):
         verbose_name = "Conversation"
 
     def __str__(self):
-        return f"{self.type} — {self.name or self.id}"
+        return f"{self.type} {self.name or self.id}"
 
 
 # ─── Conversation Member ──────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ class Message(models.Model):
     duration_seconds = models.IntegerField(null=True, blank=True)  # voice messages
     location         = models.PointField(null=True, blank=True)    # location-share messages
     location_address = models.CharField(max_length=300, null=True, blank=True)
-    # Plain UUIDField — NOT a FK. Deleted streaks must not cascade-delete chat history.
+    # Plain UUIDField NOT a FK. Deleted streaks must not cascade-delete chat history.
     # Serializer resolves to streak data or null at read time.
     streak_id        = models.UUIDField(null=True, blank=True)
     is_edited        = models.BooleanField(default=False)

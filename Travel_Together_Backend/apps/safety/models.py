@@ -45,7 +45,7 @@ class SOSAlert(models.Model):
         ]
 
     def __str__(self):
-        return f"SOS [{self.trigger_type}] by {self.member.email} — {self.status}"
+        return f"SOS [{self.trigger_type}] by {self.member.email} {self.status}"
 
 
 # ─── SOS Action ───────────────────────────────────────────────────────────────

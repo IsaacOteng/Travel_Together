@@ -1,5 +1,5 @@
 """
-Karma utility — called by other apps to award or deduct karma and badges.
+Karma utility called by other apps to award or deduct karma and badges.
 
 Usage:
     from apps.karma.utils import award_karma, award_badges
@@ -40,7 +40,7 @@ def award_karma(user, delta, reason, description=None, trip=None):
         trip        = trip,
     )
 
-    # Update total karma (floor at 0 — no negative totals)
+    # Update total karma (floor at 0 no negative totals)
     user.travel_karma = max(0, user.travel_karma + delta)
     user.karma_level  = _calculate_level(user.travel_karma)
     user.save(update_fields=["travel_karma", "karma_level", "updated_at"])
@@ -61,9 +61,9 @@ def _calculate_level(total_karma):
 KARMA_RULES = {
     "trip_completed":    10,
     "checkin_ontime":    5,
-    "group_rating":      None,   # variable — pass delta explicitly
+    "group_rating":      None,   # variable pass delta explicitly
     "streak_engagement": 2,
-    "penalty":           None,   # variable — pass delta explicitly (negative)
+    "penalty":           None,   # variable pass delta explicitly (negative)
 }
 
 
@@ -72,7 +72,7 @@ KARMA_RULES = {
 def award_badges(user, trip=None):
     """
     Check all badge criteria for this user and award any not yet earned.
-    Safe to call multiple times — uses get_or_create to avoid duplicates.
+    Safe to call multiple times uses get_or_create to avoid duplicates.
     Call this after: trip completion, rating submission, role change.
     """
     from apps.trips.models import Trip, TripMember, TripRating, CheckIn, ItineraryStop
@@ -106,15 +106,15 @@ def award_badges(user, trip=None):
     completed_trips  = [m.trip for m in completed_memberships]
     completed_count  = len(completed_trips)
 
-    # 1. First Summit — completed 1+ trip
+    # 1. First Summit completed 1+ trip
     if completed_count >= 1:
         maybe_award("first-summit", completed_trips[0])
 
-    # 2. Road Warrior — 10+ completed trips
+    # 2. Road Warrior 10+ completed trips
     if completed_count >= 10:
         maybe_award("road-warrior")
 
-    # 3. Beach Bum — 3+ completed beach trips (destination or tag)
+    # 3. Beach Bum 3+ completed beach trips (destination or tag)
     beach_count = sum(
         1 for t in completed_trips
         if "beach" in t.destination.lower()
@@ -123,7 +123,7 @@ def award_badges(user, trip=None):
     if beach_count >= 3:
         maybe_award("beach-bum")
 
-    # 5. Globetrotter — 5+ distinct destination cities
+    # 5. Globetrotter 5+ distinct destination cities
     distinct_destinations = len({
         t.destination.split(",")[0].strip().lower()
         for t in completed_trips
@@ -131,7 +131,7 @@ def award_badges(user, trip=None):
     if distinct_destinations >= 5:
         maybe_award("globetrotter")
 
-    # 6. Perfect Attendance — 100% check-ins on at least one completed trip
+    # 6. Perfect Attendance 100% check-ins on at least one completed trip
     for membership in completed_memberships:
         t = membership.trip
         total_stops = ItineraryStop.objects.filter(trip=t).count()
@@ -142,7 +142,7 @@ def award_badges(user, trip=None):
             maybe_award("perfect-attendance", t)
             break
 
-    # 7. 5-Star Traveler — average received rating >= 4.8 with 3+ ratings
+    # 7. 5-Star Traveler average received rating >= 4.8 with 3+ ratings
     overalls = list(
         TripRating.objects.filter(rated_user=user).values_list("overall", flat=True)
     )

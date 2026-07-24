@@ -139,7 +139,7 @@ class MessageListView(APIView):
         if err:
             return err
 
-        qs = conv.messages.order_by("-created_at")  # include deleted — frontend shows placeholder
+        qs = conv.messages.order_by("-created_at")  # include deleted frontend shows placeholder
 
         before = request.query_params.get("before")
         if before:

@@ -22,7 +22,7 @@ from .models import Notification
 def _ws_push(notif):
     """
     Fire-and-forget: push the notification to the recipient's WS channel group.
-    Runs synchronously inside a Django request cycle — uses async_to_sync so it
+    Runs synchronously inside a Django request cycle uses async_to_sync so it
     works even when called from a regular (non-async) Django view.
     Safe to call even if channels / Redis is not running (fails silently).
     """

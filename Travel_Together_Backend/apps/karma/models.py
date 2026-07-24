@@ -81,4 +81,4 @@ class UserBadge(models.Model):
         unique_together = [("user", "badge")]
 
     def __str__(self):
-        return f"{self.user.email} — {self.badge.label}"
+        return f"{self.user.email} {self.badge.label}"

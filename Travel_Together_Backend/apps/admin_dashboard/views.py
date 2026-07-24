@@ -411,13 +411,13 @@ class AdminIncidentDetailView(APIView):
                         reason=f"report {incident.reference_number} upheld")
             incident.status = IncidentReport.ReportStatus.RESOLVED
             incident.save(update_fields=["status", "updated_at"])
-            return Response({"detail": "Report upheld — trip cancelled and members refunded.",
+            return Response({"detail": "Report upheld trip cancelled and members refunded.",
                              "status": incident.status})
 
         if action == "dismiss":
             incident.status = IncidentReport.ReportStatus.DISMISSED
             incident.save(update_fields=["status", "updated_at"])
-            return Response({"detail": "Report dismissed — held payouts will resume.",
+            return Response({"detail": "Report dismissed held payouts will resume.",
                              "status": incident.status})
 
         # Plain status change (e.g. move to under_review while investigating).
@@ -505,7 +505,7 @@ class AdminPaymentsView(APIView):
 
 
 class AdminPaymentRefundView(APIView):
-    """Manual refund — for dispute resolution (e.g. a trip that collapsed after a
+    """Manual refund for dispute resolution (e.g. a trip that collapsed after a
     partial release). Only held payments can be refunded."""
     permission_classes = [IsAdminUser]
 
@@ -543,7 +543,7 @@ class AdminPaymentRefundView(APIView):
 
 class AdminPayoutRisksView(APIView):
     """
-    Ring-detection signal: payout numbers shared by more than one organizer —
+    Ring-detection signal: payout numbers shared by more than one organizer 
     a classic mule/collusion pattern worth a manual look.
     """
     permission_classes = [IsAdminUser]
