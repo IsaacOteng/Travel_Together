@@ -230,7 +230,7 @@ export function MemberProfileSheet({ member, onClose }) {
           </div>
         </div>
 
-        {/* Tier-2: bio + location — only for approved members */}
+        {/* Tier-2: bio + location only for approved members */}
         {isFull ? (
           <>
             {member.bio && (
@@ -247,7 +247,7 @@ export function MemberProfileSheet({ member, onClose }) {
             )}
           </>
         ) : (
-          /* Pre-join — gated hint */
+          /* Pre-join gated hint */
           <div style={{
             background: "rgba(255,107,53,0.07)", border: "1px solid rgba(255,107,53,0.2)",
             borderRadius: 12, padding: "12px 14px",
@@ -327,7 +327,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
       {/* Member cards horizontal scroll */}
       {members.length === 0 ? (
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "8px 0" }}>
-          No members yet — be the first to join.
+          No members yet be the first to join.
         </div>
       ) : (
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}
@@ -362,7 +362,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
                   e.currentTarget.style.background = "rgba(255,255,255,0.04)";
                 }}
               >
-                {/* Avatar wrapper — crown sits on top-right as a hat */}
+                {/* Avatar wrapper crown sits on top-right as a hat */}
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   {m.avatar_url
                     ? <img src={m.avatar_url} alt={displayName}
@@ -380,7 +380,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
                         border: `2px solid ${isChief ? "#FF6B35" : "rgba(255,255,255,0.15)"}`,
                       }}>{initials}</div>
                   }
-                  {/* Crown hat — top-right corner, slightly overlapping */}
+                  {/* Crown hat top-right corner, slightly overlapping */}
                   {isChief && (
                     <span style={{
                       position: "absolute", top: -10, right: -6,
@@ -388,7 +388,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
                       filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.6))",
                     }}>👑</span>
                   )}
-                  {/* Verified dot — bottom-right */}
+                  {/* Verified dot bottom-right */}
                   {m.is_verified && (
                     <div style={{
                       position: "absolute", bottom: -2, right: -2,

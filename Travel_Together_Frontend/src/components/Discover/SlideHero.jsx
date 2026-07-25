@@ -58,7 +58,7 @@ export default function SlideHero({ trip, activeImg, onPrev, onNext, onSetImg, o
           </button>
         </div>
 
-        {/* prev / next — hidden on mobile when hideArrows=true */}
+        {/* prev / next hidden on mobile when hideArrows=true */}
         {!hideArrows && trip.media.length > 1 && (
           <>
             <button

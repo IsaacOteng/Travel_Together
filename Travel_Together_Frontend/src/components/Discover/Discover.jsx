@@ -244,7 +244,7 @@ export default function Discover({ onJoinTrip }) {
 
         <MobileBottomNav />
 
-        {/* FAB — create trip */}
+        {/* FAB create trip */}
         <button
           onClick={() => requireAuth("Create and organise your own trip", () => navigate('/create-trip'))}
           className="fixed bottom-[74px] right-4 z-[150] w-14 h-14 rounded-full border-none cursor-pointer flex items-center justify-center shadow-lg"

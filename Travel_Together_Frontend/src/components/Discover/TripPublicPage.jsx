@@ -133,7 +133,7 @@ export default function TripPublicPage() {
           const res = await tripsApi.get(tripId);
           data = res.data;
         } else {
-          // Public endpoint — no auth required
+          // Public endpoint no auth required
           const res = await fetch(`${API_BASE}/api/public/trips/${tripId}/`);
           if (!res.ok) throw new Error("not found");
           data = await res.json();
@@ -286,7 +286,7 @@ export default function TripPublicPage() {
             background: "linear-gradient(to top, rgba(7,20,34,0.8) 0%, transparent 55%)",
           }} />
 
-          {/* Back arrow — top left */}
+          {/* Back arrow top left */}
           <button
             onClick={() => navigate("/discover")}
             style={{
@@ -301,7 +301,7 @@ export default function TripPublicPage() {
             <ArrowLeft size={18} />
           </button>
 
-          {/* Heart + Share — top right */}
+          {/* Heart + Share top right */}
           <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8 }}>
             <button
               onClick={handleSave}

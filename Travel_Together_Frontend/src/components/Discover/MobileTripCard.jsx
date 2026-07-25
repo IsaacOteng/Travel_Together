@@ -40,7 +40,7 @@ export default function MobileTripCard({ trip, onView, onSave }) {
           style={{ background: "linear-gradient(to top, rgba(13,27,42,0.94) 0%, rgba(13,27,42,0.3) 55%, transparent 100%)" }}
         />
 
-        {/* Tags — top left */}
+        {/* Tags top left */}
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           {trip.tags.slice(0, 2).map(tag => (
             <span
@@ -52,7 +52,7 @@ export default function MobileTripCard({ trip, onView, onSave }) {
           ))}
         </div>
 
-        {/* Price — top right */}
+        {/* Price top right */}
         <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
           <div className={`backdrop-blur-md rounded-lg px-[9px] py-1 text-[12px] font-extrabold text-white
             ${trip.entryPrice === 0 ? "bg-green-500/80" : "bg-[rgba(255,107,53,0.85)]"}`}>
@@ -60,7 +60,7 @@ export default function MobileTripCard({ trip, onView, onSave }) {
           </div>
         </div>
 
-        {/* Title + destination — bottom overlay */}
+        {/* Title + destination bottom overlay */}
         <div className="absolute bottom-0 left-0 right-0 px-4 py-4">
           <h3
             className="m-0 mb-1 text-[22px] font-light text-white font-serif tracking-[-0.4px] leading-tight"

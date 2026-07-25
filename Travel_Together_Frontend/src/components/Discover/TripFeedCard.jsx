@@ -41,13 +41,13 @@ export default function TripFeedCard({ trip, onView, onSave }) {
           />
         )}
 
-        {/* Dark gradient overlay — always visible */}
+        {/* Dark gradient overlay always visible */}
         <div
           className="absolute inset-0"
           style={{ background: "linear-gradient(to top, rgba(13,27,42,0.92) 0%, rgba(13,27,42,0.35) 55%, transparent 100%)" }}
         />
 
-        {/* Tags — top left */}
+        {/* Tags top left */}
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           {trip.tags.slice(0, 2).map(tag => (
             <span
@@ -59,7 +59,7 @@ export default function TripFeedCard({ trip, onView, onSave }) {
           ))}
         </div>
 
-        {/* Price — top right */}
+        {/* Price top right */}
         <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
           <div className={`backdrop-blur-md rounded-lg px-[9px] py-1 text-[11px] font-extrabold text-white
             ${trip.entryPrice === 0 ? "bg-green-500/80" : "bg-[rgba(255,107,53,0.85)]"}`}>
@@ -67,7 +67,7 @@ export default function TripFeedCard({ trip, onView, onSave }) {
           </div>
         </div>
 
-        {/* Title + destination — bottom overlay */}
+        {/* Title + destination bottom overlay */}
         <div className="absolute bottom-0 left-0 right-0 px-4 py-3.5">
           <h3 className="m-0 mb-1 text-[20px] font-light text-white font-serif tracking-[-0.3px] leading-tight"
             style={{ textShadow: "0 1px 6px rgba(0,0,0,0.6)" }}>

@@ -6,7 +6,7 @@ import {
 
 /**
  * In-app travel safety documentation. Opens as an overlay on the Discover page
- * — never navigates away or links to an external URL.
+ * never navigates away or links to an external URL.
  *
  * Props:
  *   open    – boolean
@@ -18,26 +18,26 @@ const SECTIONS = [
     icon: BadgeCheck,
     title: "Before you join a trip",
     points: [
-      "Open the organiser's profile and confirm the verified badge — every chief is identity-checked before they can publish.",
+      "Open the organiser's profile and confirm the verified badge every chief is identity-checked before they can publish.",
       "Check their karma score and star rating, plus how many trips they've successfully hosted.",
       "Read the full itinerary, meeting point and what the entry price covers so there are no surprises.",
-      "Browse who else is going — established travellers with their own karma are a good sign.",
+      "Browse who else is going established travellers with their own karma are a good sign.",
     ],
   },
   {
     icon: ShieldCheck,
     title: "What verification & karma mean",
     points: [
-      "Identity-verified: the organiser confirmed a government ID — it does not vouch for the trip itself, so still use your judgement.",
+      "Identity-verified: the organiser confirmed a government ID it does not vouch for the trip itself, so still use your judgement.",
       "Travel karma is earned from completed trips and positive ratings; a higher score reflects a longer, well-reviewed history.",
-      "A brand-new account with no trips or reviews isn't a red flag on its own — just ask more questions before committing.",
+      "A brand-new account with no trips or reviews isn't a red flag on its own just ask more questions before committing.",
     ],
   },
   {
     icon: MapPin,
     title: "Before you depart",
     points: [
-      "Add at least one emergency contact in Settings — they can be alerted if you ever trigger an SOS.",
+      "Add at least one emergency contact in Settings they can be alerted if you ever trigger an SOS.",
       "Share the trip itinerary and meeting point with someone who isn't travelling with you.",
       "Pack essentials: charged phone + power bank, water, any medication, and a copy of your ID.",
       "Confirm the meeting time and pick-up details with the group chat the night before.",
@@ -49,7 +49,7 @@ const SECTIONS = [
     points: [
       "Stay with the group and check in at each itinerary stop so the chief can account for everyone.",
       "Keep your phone reachable and location sharing on for the duration of the trip.",
-      "Trust your instincts — if a situation feels unsafe, speak up to the chief or a scout immediately.",
+      "Trust your instincts if a situation feels unsafe, speak up to the chief or a scout immediately.",
       "Look out for fellow travellers; safety is a shared responsibility within the group.",
     ],
   },
@@ -57,7 +57,7 @@ const SECTIONS = [
     icon: Bell,
     title: "Emergencies & SOS",
     points: [
-      "Trigger an in-app SOS from the trip screen if you feel unsafe — it alerts the chief, your group and your emergency contacts with your location.",
+      "Trigger an in-app SOS from the trip screen if you feel unsafe it alerts the chief, your group and your emergency contacts with your location.",
       "The app also watches for unusual patterns (e.g. a member separated from the group for too long) and can raise an alert automatically.",
       "For any real-world emergency, always contact local emergency services first, then raise the in-app SOS.",
     ],
@@ -68,7 +68,7 @@ const SECTIONS = [
     points: [
       "Report any organiser or member who behaves inappropriately using the report option on their profile or the trip page.",
       "Reports are confidential and reviewed by the Travel Together safety team.",
-      "Rate your trip honestly afterwards — your feedback protects the next traveller.",
+      "Rate your trip honestly afterwards your feedback protects the next traveller.",
     ],
   },
   {
@@ -138,7 +138,7 @@ export default function SafetyGuideModal({ open, onClose }) {
           {/* intro */}
           <p className="text-[12.5px] text-white/55 leading-[1.7] m-0">
             Travel Together connects you with identity-verified organisers and groups across Ghana.
-            Verification helps, but your own judgement keeps you safest — here's how to make every trip a safe one.
+            Verification helps, but your own judgement keeps you safest here's how to make every trip a safe one.
           </p>
 
           {SECTIONS.map(({ icon: Icon, title, points }) => (
@@ -176,7 +176,7 @@ export default function SafetyGuideModal({ open, onClose }) {
               ))}
             </div>
             <p className="text-[10.5px] text-white/40 leading-snug mt-3 mb-0">
-              In a real-world emergency, always call local services first — then raise an in-app SOS so your group and contacts are alerted.
+              In a real-world emergency, always call local services first then raise an in-app SOS so your group and contacts are alerted.
             </p>
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function SafetyGuideModal({ open, onClose }) {
             className="w-full py-3 rounded-xl text-[13.5px] font-bold cursor-pointer border-none text-white transition-all hover:-translate-y-px"
             style={{ background: "linear-gradient(135deg,#3b82f6,#60a5fa)", boxShadow: "0 4px 16px rgba(59,130,246,0.35)" }}
           >
-            Got it — keep me safe
+            Got it keep me safe
           </button>
         </div>
       </div>

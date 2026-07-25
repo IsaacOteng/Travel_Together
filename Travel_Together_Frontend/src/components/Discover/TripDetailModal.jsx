@@ -134,7 +134,7 @@ export default function TripDetailModal({ trip, onClose, onSave, onShare, onAskO
             {/* RIGHT COL */}
             <div className="w-[220px] flex-shrink-0 flex flex-col gap-3.5">
 
-              {/* entry price — FIRST */}
+              {/* entry price FIRST */}
               <div className="bg-white/5 rounded-2xl border border-white/[0.08] p-4">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-1.5">
@@ -161,7 +161,7 @@ export default function TripDetailModal({ trip, onClose, onSave, onShare, onAskO
                 )}
               </div>
 
-              {/* organiser — SECOND */}
+              {/* organiser SECOND */}
               <div className="bg-white/5 rounded-2xl border border-white/[0.08] p-4">
                 <div className="text-[9px] text-white/35 tracking-[0.08em] uppercase mb-2.5">Trip organiser</div>
                 <div className="flex items-center gap-2.5 mb-2.5">
