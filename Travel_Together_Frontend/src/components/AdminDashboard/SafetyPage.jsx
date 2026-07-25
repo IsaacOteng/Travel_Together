@@ -312,12 +312,12 @@ function IncidentDrawer({ incident, onClose, onUpdate }) {
             <>
               <div className="grid grid-cols-2 gap-2">
                 <button disabled={busy}
-                  onClick={() => run({ action: "uphold" }, "Upheld — refunded & cancelled")}
+                  onClick={() => run({ action: "uphold" }, "Upheld refunded & cancelled")}
                   className="py-2.5 rounded-xl text-xs font-bold bg-red-500/15 text-red-300 border border-red-500/25 hover:bg-red-500/25 transition-colors disabled:opacity-40">
                   Uphold (refund all)
                 </button>
                 <button disabled={busy}
-                  onClick={() => run({ action: "dismiss" }, "Dismissed — payouts resume")}
+                  onClick={() => run({ action: "dismiss" }, "Dismissed payouts resume")}
                   className="py-2.5 rounded-xl text-xs font-bold bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-40">
                   Dismiss
                 </button>

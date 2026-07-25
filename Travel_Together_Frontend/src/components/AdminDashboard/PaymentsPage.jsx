@@ -13,7 +13,7 @@ function PayoutRiskPanel() {
     <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4">
       <div className="flex items-center gap-2 mb-2">
         <AlertTriangle size={15} className="text-amber-400" />
-        <p className="text-sm font-bold text-amber-300">Payout risk — shared numbers</p>
+        <p className="text-sm font-bold text-amber-300">Payout risk shared numbers</p>
       </div>
       <p className="text-xs text-amber-200/60 mb-3">These payout numbers are used by more than one organizer (possible mule / collusion).</p>
       <div className="flex flex-col gap-2">

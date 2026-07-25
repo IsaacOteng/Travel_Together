@@ -71,7 +71,7 @@ function TripDrawer({ tripId, onClose, onUpdate }) {
           <p className="text-slate-400 text-sm">Select a new status for this trip.</p>
           <select value={status} onChange={e => setStatus(e.target.value)}
             className="w-full bg-[#060f1a] border border-white/6 rounded-xl px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-[#FF6B35]/50">
-            <option value="">— choose status —</option>
+            <option value=""> choose status </option>
             {STATUSES.filter(Boolean).map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
           </select>
         </div>
@@ -108,7 +108,7 @@ export default function TripsPage() {
 
   const clearFlag = (id) => {
     adminApi.updateTrip(id, { flagged_for_review: false })
-      .then(() => { toast.success("Flag cleared — payout can resume"); load(); })
+      .then(() => { toast.success("Flag cleared payout can resume"); load(); })
       .catch(() => toast.error("Failed to clear flag"));
   };
 
