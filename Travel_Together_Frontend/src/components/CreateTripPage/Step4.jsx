@@ -6,7 +6,7 @@ import PayoutSetup from './PayoutSetup.jsx';
 import { tripsApi } from '../../services/api.js';
 
 /* ══════════════════════════════════════════
-   STEP 4 — PREVIEW & PUBLISH
+   STEP 4 PREVIEW & PUBLISH
 ══════════════════════════════════════════ */
 export default function Step4({ form, onBack, onPublish }) {
   const [publishing, setPublishing] = useState(false);
@@ -171,7 +171,7 @@ export default function Step4({ form, onBack, onPublish }) {
       {/* Entry price breakdown */}
       <PricePill form={form} />
 
-      {/* Payout method — only relevant for paid trips */}
+      {/* Payout method only relevant for paid trips */}
       {!isFree && <PayoutSetup />}
 
       {/* Publish */}

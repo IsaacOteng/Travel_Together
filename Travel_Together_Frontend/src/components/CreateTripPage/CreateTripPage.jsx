@@ -8,7 +8,7 @@ import Step4 from './Step4.jsx';
 import SuccessScreen from './SuccessScreen.jsx';
 
 /* ══════════════════════════════════════════
-   ROOT — MODAL
+   ROOT MODAL
 ══════════════════════════════════════════ */
 export default function CreateTripPage({ onClose, onGoToDashboard }) {
   const [step,      setStep]      = useState(1);

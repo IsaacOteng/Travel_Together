@@ -11,7 +11,7 @@ const PROVIDERS = [
 
 /**
  * Collected during trip creation, but stored on the organizer's account (per-user)
- * and reused for future trips — keeps a stable payout identity for fraud
+ * and reused for future trips keeps a stable payout identity for fraud
  * monitoring. Editable anytime in Settings.
  */
 export default function PayoutSetup() {
@@ -56,7 +56,7 @@ export default function PayoutSetup() {
       </div>
       <p className="text-[11px] text-white/35 mb-3 leading-snug">
         Your trip earnings are released here after the trip ends. Saved to your account and
-        reused for future trips — change anytime in Settings.
+        reused for future trips change anytime in Settings.
       </p>
 
       {current?.configured && !editing ? (

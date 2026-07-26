@@ -4,7 +4,7 @@ import { TAGS, COVERS_OPTIONS } from './constants.js';
 import { ProgressBar, SectionHead, Label, TTInput, TTSelect, PrimaryBtn, GhostBtn, Err } from './uiComponents.jsx';
 
 /* ══════════════════════════════════════════
-   STEP 2 — LOGISTICS + PRICING
+   STEP 2 LOGISTICS + PRICING
 ══════════════════════════════════════════ */
 export default function Step2({ form, patch, onNext, onBack }) {
   const [touched, setTouched]   = useState({});

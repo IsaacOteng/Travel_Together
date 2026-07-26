@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 /* ══════════════════════════════════════════
-   FLOATING ACTION BUTTON — drop into Discover
+   FLOATING ACTION BUTTON drop into Discover
 ══════════════════════════════════════════ */
 export function CreateTripFAB({ onClick }) {
   const [hov, setHov] = useState(false);

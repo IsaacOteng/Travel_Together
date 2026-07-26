@@ -4,7 +4,7 @@ import { ProgressBar, SectionHead, PrimaryBtn, GhostBtn } from './uiComponents.j
 import StopCard from './StopCard.jsx';
 
 /* ══════════════════════════════════════════
-   STEP 3 — ITINERARY
+   STEP 3 ITINERARY
 ══════════════════════════════════════════ */
 export default function Step3({ form, patch, onNext, onBack }) {
   const stops = form.stops || [{ ...EMPTY_STOP }];

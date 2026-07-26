@@ -5,7 +5,7 @@ import { ProgressBar, SectionHead, Label, TTInput, TTTextarea, PrimaryBtn, Err }
 const MAX_PHOTOS = 5;
 
 /* ══════════════════════════════════════════
-   STEP 1 — BASICS
+   STEP 1 BASICS
 ══════════════════════════════════════════ */
 export default function Step1({ form, patch, onNext, onSkipToItinerary }) {
   const [touched, setTouched] = useState({});
@@ -55,7 +55,7 @@ export default function Step1({ form, patch, onNext, onSkipToItinerary }) {
     <div className="animate-[fadeUp_.22s_ease_both]">
       <ProgressBar step={1} total={4} />
       <SectionHead icon="✈️" title="Tell us about your trip"
-        sub="Give it a name and destination — this is what travellers see first." />
+        sub="Give it a name and destination this is what travellers see first." />
 
       {/* Photo uploader */}
       <div className="mb-5">
@@ -198,11 +198,11 @@ export default function Step1({ form, patch, onNext, onSkipToItinerary }) {
         <Err msg={touched.description ? errs.description : ""} />
       </div>
 
-      {/* What's planned — trip checklist */}
+      {/* What's planned trip checklist */}
       <div className="mb-6">
         <Label>What's planned</Label>
         <p className="text-[10px] text-white/30 mb-2.5 -mt-0.5 leading-relaxed">
-          A quick checklist of what travellers will do — e.g. the beach, feeding turtles, an aquarium visit.
+          A quick checklist of what travellers will do e.g. the beach, feeding turtles, an aquarium visit.
         </p>
 
         {highlights.length > 0 && (
