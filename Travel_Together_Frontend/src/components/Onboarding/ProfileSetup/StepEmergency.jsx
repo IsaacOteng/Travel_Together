@@ -6,7 +6,7 @@ import { inputBase } from "./buttons";
 import { RELATIONSHIPS } from "./constants";
 
 /* ══════════════════════════════════════════════════
-   STEP 4 — Emergency Contact
+   STEP 4 Emergency Contact
 ══════════════════════════════════════════════════ */
 export const StepEmergency = ({ form, patch }) => {
   const [touched, setTouched] = useState({});
@@ -25,7 +25,7 @@ export const StepEmergency = ({ form, patch }) => {
         sub="Used only for SOS alerts. Never shown publicly or to other travelers."
       />
 
-      {/* Safety notice — matches the info cards in GlobalDetails style */}
+      {/* Safety notice matches the info cards in GlobalDetails style */}
       <div className="flex gap-3 bg-orange-50 border-[1.5px] border-orange-100 rounded-xl px-4 py-3 mb-5">
         <span className="text-base mt-0.5 shrink-0">🛡️</span>
         <div>
@@ -54,9 +54,9 @@ export const StepEmergency = ({ form, patch }) => {
       {/* Phone */}
       <div className="mb-4">
         <Label>Phone number <span className="text-[#FF6B35]">*</span></Label>
-        <Hint>For SOS emergency alerts only — never shown publicly.</Hint>
+        <Hint>For SOS emergency alerts only never shown publicly.</Hint>
         <div className="flex gap-2">
-          {/* dial code — matches tt-dial-btn style */}
+          {/* dial code matches tt-dial-btn style */}
           <div className="flex items-center gap-1.5 rounded-[10px] border-[1.5px] border-gray-200 bg-white px-3 py-2.5 shrink-0">
             <span className="text-base">🇬🇭</span>
             <span className="text-[13px] text-gray-600 font-medium">+233</span>

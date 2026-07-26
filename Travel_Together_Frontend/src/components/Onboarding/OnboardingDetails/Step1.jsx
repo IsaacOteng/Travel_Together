@@ -6,7 +6,7 @@ import { Ok } from "./Ok";
 import { NationalitySelect } from "./NationalitySelect";
 
 /* ─────────────────────────────────────────────
-  STEP 1 — Personal details
+  STEP 1 Personal details
 ───────────────────────────────────────────── */
 export function Step1({ form, patch, countries, loadingCountries, onNext, submitting }) {
   const [t, setT] = useState({});  // touched
@@ -43,7 +43,7 @@ export function Step1({ form, patch, countries, loadingCountries, onNext, submit
       <ProgressBar step={1} total={3}/>
       <SectionHead icon="👤" title="Nice to meet you"/>
 
-      {/* First + Last name — two columns via inline CSS grid */}
+      {/* First + Last name two columns via inline CSS grid */}
       <div className="tt-row2">
         <div>
           <label className="tt-label">First Name <span className="tt-label-required">*</span></label>
@@ -63,7 +63,7 @@ export function Step1({ form, patch, countries, loadingCountries, onNext, submit
         </div>
       </div>
 
-      {/* DOB + Gender — two columns */}
+      {/* DOB + Gender two columns */}
       <div className="tt-row2">
         <div>
           <label className="tt-label">Date of Birth <span className="tt-label-required">*</span></label>

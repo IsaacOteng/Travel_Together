@@ -5,7 +5,7 @@ import { Label, Hint, Err, Ok } from "./atoms";
 import { inputBase } from "./buttons";
 
 /* ══════════════════════════════════════════════════
-   STEP 1 — Photo & Bio
+   STEP 1 Photo & Bio
 ══════════════════════════════════════════════════ */
 export const StepPhotoBio = ({ form, patch }) => {
   const fileRef            = useRef();
@@ -127,7 +127,7 @@ export const StepPhotoBio = ({ form, patch }) => {
         </div>
         <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleCover(e.target.files[0])} />
 
-        {/* Avatar — overlapping the cover bottom edge */}
+        {/* Avatar overlapping the cover bottom edge */}
         <div className="bg-white px-4 pb-3 flex items-end gap-3" style={{ paddingTop: 0 }}>
           <div
             onClick={() => fileRef.current?.click()}

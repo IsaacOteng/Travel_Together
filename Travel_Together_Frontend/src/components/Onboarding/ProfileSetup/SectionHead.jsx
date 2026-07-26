@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════
-   SECTION HEADING  — matches tt-heading exactly
+   SECTION HEADING matches tt-heading exactly
    gradient icon badge (28×28, radius-lg) + Georgia serif title
 ══════════════════════════════════════════════════ */
 export const SectionHead = ({ icon, title, sub }) => (

@@ -22,9 +22,9 @@ export function GpsBtn({ onDetect }) {
             d.address?.country || ""
           );
           setSt("done");
-        } catch { setErr("Could not resolve — enter manually."); setSt("error"); }
+        } catch { setErr("Could not resolve enter manually."); setSt("error"); }
       },
-      () => { setErr("Access denied — enter manually."); setSt("error"); }
+      () => { setErr("Access denied enter manually."); setSt("error"); }
     );
   };
 
@@ -49,7 +49,7 @@ export function GpsBtn({ onDetect }) {
             <path d="M6 1v1.5M6 9.5V11M1 6h1.5M9.5 6H11" stroke="#FF6B35" strokeWidth="1.2" strokeLinecap="round"/>
           </svg>
         )}
-        {st === "done" ? "Location detected — edit if needed"
+        {st === "done" ? "Location detected edit if needed"
           : st === "detecting" ? "Detecting…"
           : "Use my current location"}
       </button>

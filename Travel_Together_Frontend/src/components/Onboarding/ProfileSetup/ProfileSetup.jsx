@@ -56,7 +56,7 @@ async function saveStep(stepId, form) {
         relationship: ec.relationship || "Other",
         priority:     1,
       });
-      // Final step — mark onboarding complete
+      // Final step mark onboarding complete
       await usersApi.onboardingStep({ onboarding_complete: true });
       break;
     }
@@ -66,7 +66,7 @@ async function saveStep(stepId, form) {
 }
 
 /* ══════════════════════════════════════════════════
-   ROOT — matches tt-page layout exactly
+   ROOT matches tt-page layout exactly
 ══════════════════════════════════════════════════ */
 export default function ProfileSetup({ onComplete }) {
   const [step,       setStep]       = useState(0);
@@ -110,13 +110,13 @@ export default function ProfileSetup({ onComplete }) {
 
   return (
     <>
-      {/* keyframe styles — mirrors Globalstyles.jsx animations */}
+      {/* keyframe styles mirrors Globalstyles.jsx animations */}
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
         @keyframes popIn  { from { opacity:0; transform:scale(.72); }     to { opacity:1; transform:scale(1);    } }
       `}</style>
 
-      {/* tt-page — exact background from Globalstyles */}
+      {/* tt-page exact background from Globalstyles */}
       <div
         className="min-h-screen flex flex-col"
         style={{
@@ -206,7 +206,7 @@ export default function ProfileSetup({ onComplete }) {
                       disabled={submitting}
                       className="w-full mt-3 text-[11px] text-gray-400 hover:text-[#5576a0] transition text-center cursor-pointer disabled:opacity-40"
                     >
-                      Skip for now — you can update this later
+                      Skip for now you can update this later
                     </button>
                   )}
                 </div>

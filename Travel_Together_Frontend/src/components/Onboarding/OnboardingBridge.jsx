@@ -20,7 +20,7 @@ export default function OnboardingBridge({ firstName = "traveler", onContinue })
   return (
     <div className="tt-page">
 
-      {/* topbar — identical to OnboardingDetails */}
+      {/* topbar identical to OnboardingDetails */}
       <header className="tt-topbar">
         <div className="tt-logo">
           <img src="/src/assets/official_logo_nobg.png" alt="Logo"

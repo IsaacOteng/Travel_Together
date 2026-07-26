@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════
-   SHARED ATOMS — mirrors tt-label / tt-hint / tt-err / tt-ok
+   SHARED ATOMS mirrors tt-label / tt-hint / tt-err / tt-ok
 ══════════════════════════════════════════════════ */
 export const Label = ({ children }) => (
   <label className="block text-[10px] font-bold tracking-widest uppercase text-gray-500 mb-1.5">

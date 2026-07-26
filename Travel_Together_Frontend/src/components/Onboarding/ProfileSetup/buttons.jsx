@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════
-   INPUT / TEXTAREA — matches tt-input / tt-textarea
+   INPUT / TEXTAREA matches tt-input / tt-textarea
    1.5px border, radius-[10px], focus orange ring
 ══════════════════════════════════════════════════ */
 export const inputBase =
@@ -8,7 +8,7 @@ export const inputBase =
   "hover:border-gray-300 focus:border-[#FF6B35] focus:shadow-[0_0_0_3px_rgba(255,107,53,.10)] placeholder:text-gray-300";
 
 /* ══════════════════════════════════════════════════
-   BUTTONS — matches tt-btn-primary / tt-btn-ghost / tt-btn-row
+   BUTTONS matches tt-btn-primary / tt-btn-ghost / tt-btn-row
 ══════════════════════════════════════════════════ */
 export const BtnPrimary = ({ children, onClick, disabled }) => (
   <button

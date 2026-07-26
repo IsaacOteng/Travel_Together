@@ -116,7 +116,7 @@ export const StepPersonalDetails = ({ form, patch }) => {
       {/* Phone */}
       <div className="mb-2">
         <Label>Phone number <span className="text-[#FF6B35]">*</span></Label>
-        <Hint>For SOS emergency alerts only — never shown publicly.</Hint>
+        <Hint>For SOS emergency alerts only never shown publicly.</Hint>
         <PhoneInput
           phoneNumber={form.phoneNumber || ""}
           dialCode={form.dialCode || "+233"}

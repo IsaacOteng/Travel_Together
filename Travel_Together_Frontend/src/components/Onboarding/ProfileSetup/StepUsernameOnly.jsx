@@ -53,7 +53,7 @@ export const StepUsernameOnly = ({ form, patch }) => {
           : status === "available" && val
           ? <Ok msg={`@${val} is available`} />
           : status === "taken"
-          ? <Err msg="That username is already taken — try another" />
+          ? <Err msg="That username is already taken try another" />
           : null
         }
       </div>

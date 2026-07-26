@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 /* ─────────────────────────────────────────────
-  HOOK — countries  (restcountries, CORS-safe)
+  HOOK countries  (restcountries, CORS-safe)
     Uses country names for nationality (100% reliable)
 ───────────────────────────────────────────── */
 export function useCountries() {

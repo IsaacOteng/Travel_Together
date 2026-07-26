@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════
-   PROGRESS BAR  — matches tt-progress-* exactly
+   PROGRESS BAR matches tt-progress-* exactly
    thin 3px track, orange fill, step label + pct
 ══════════════════════════════════════════════════ */
 export const ProgressBar = ({ step, total }) => {

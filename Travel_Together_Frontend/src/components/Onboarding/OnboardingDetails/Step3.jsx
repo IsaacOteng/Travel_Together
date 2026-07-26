@@ -6,7 +6,7 @@ import { Ok } from "./Ok";
 import { useUsername } from "./useUsername";
 
 /* ─────────────────────────────────────────────
-  STEP 3 — Username
+  STEP 3 Username
 ───────────────────────────────────────────── */
 export function Step3({ form, patch, onNext, onBack, submitting }) {
   const status = useUsername(form.username || "");
@@ -30,7 +30,7 @@ export function Step3({ form, patch, onNext, onBack, submitting }) {
     <div className="tt-fadeUp">
       <ProgressBar step={3} total={3}/>
       <SectionHead icon="✦" title="Pick your username"
-        sub="How fellow travelers find and recognise you — changeable anytime from your profile settings."/>
+        sub="How fellow travelers find and recognise you changeable anytime from your profile settings."/>
 
       <div style={{ marginBottom: 16 }}>
         <label className="tt-label">Username <span className="tt-label-required">*</span></label>
@@ -67,9 +67,9 @@ export function Step3({ form, patch, onNext, onBack, submitting }) {
           </div>
         </div>
         {status === "available" && <Ok  msg={`@${form.username} is available!`}/>}
-        {status === "taken"     && <Err msg={`@${form.username} is taken — try a suggestion below.`}/>}
+        {status === "taken"     && <Err msg={`@${form.username} is taken try a suggestion below.`}/>}
         {status === "invalid"   && <Err msg="3–20 chars · lowercase letters, numbers, dots or underscores"/>}
-        {!form.username && <div style={{ fontSize:11, color:"#9ca3af", marginTop:5 }}>Letters, numbers, underscores &amp; dots — no spaces</div>}
+        {!form.username && <div style={{ fontSize:11, color:"#9ca3af", marginTop:5 }}>Letters, numbers, underscores &amp; dots no spaces</div>}
       </div>
 
       {(status === "taken" || !form.username) && suggestions.length > 0 && (
@@ -87,7 +87,7 @@ export function Step3({ form, patch, onNext, onBack, submitting }) {
 
       <div className="tt-rules">
         {["Visible to all travelers on the platform",
-          "Unique — no two travelers share the same username",
+          "Unique no two travelers share the same username",
           "Can be changed anytime from profile settings"].map(r => (
           <div key={r} className="tt-rule">
             <span className="tt-rule-dot">✦</span>{r}

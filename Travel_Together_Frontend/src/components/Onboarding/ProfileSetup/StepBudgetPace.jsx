@@ -3,7 +3,7 @@ import { Label } from "./atoms";
 import { BUDGET_TIERS, GROUP_SIZES, PACE_OPTIONS } from "./constants";
 
 /* ══════════════════════════════════════════════════
-    STEP 3 — Budget & Pace
+    STEP 3 Budget & Pace
 ══════════════════════════════════════════════════ */
 export const StepBudgetPace = ({ form, patch }) => {
   const budget = form.budget ?? 1;
@@ -14,7 +14,7 @@ export const StepBudgetPace = ({ form, patch }) => {
     <div>
       <SectionHead icon="💰" title="Budget & travel pace" sub="Matching these makes for much happier trips." />
 
-      {/* Budget slider — sits inside a #fafafa card like tt-rules */}
+      {/* Budget slider sits inside a #fafafa card like tt-rules */}
       <div className="rounded-xl border-[1.5px] border-gray-100 bg-[#fafafa] px-4 py-4 mb-5">
         <div className="flex justify-between items-center mb-3">
           <Label>Budget range</Label>

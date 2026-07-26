@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 /* ─────────────────────────────────────────────
   NATIONALITY SELECT
-  Uses country NAMES — always populated, no empty lists
+  Uses country NAMES always populated, no empty lists
   Type-to-search dropdown, names only, no flags
 ───────────────────────────────────────────── */
 export function NationalitySelect({ value, onChange, countries, loading, hasError }) {
@@ -12,7 +12,7 @@ export function NationalitySelect({ value, onChange, countries, loading, hasErro
   const wrapRef  = useRef(null);
   const inputRef = useRef(null);
 
-  // Use "nationality" options — 250 countries, always populated
+  // Use "nationality" options 250 countries, always populated
   const filtered = (() => {
     const q = query.trim().toLowerCase();
     if (!q) return countries.slice(0, 4);
@@ -84,7 +84,7 @@ export function NationalitySelect({ value, onChange, countries, loading, hasErro
         )}
       </div>
 
-      {/* dropdown — show when open, whether loading or not */}
+      {/* dropdown show when open, whether loading or not */}
       {open && (
         <div className="tt-dropdown">
           {loading ? (

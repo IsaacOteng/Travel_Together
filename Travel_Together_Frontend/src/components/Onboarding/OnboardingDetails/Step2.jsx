@@ -7,7 +7,7 @@ import { CountrySelect } from "./CountrySelect";
 import { PhoneInput } from "./PhoneInput";
 
 /* ─────────────────────────────────────────────
-  STEP 2 — Location & Contact
+  STEP 2 Location & Contact
 ───────────────────────────────────────────── */
 export function Step2({ form, patch, countries, loadingCountries, onNext, onBack, submitting }) {
   const [t, setT] = useState({});
@@ -57,7 +57,7 @@ export function Step2({ form, patch, countries, loadingCountries, onNext, onBack
         <div className="tt-divider-line"/>
       </div>
 
-      {/* City + Country — two columns */}
+      {/* City + Country two columns */}
       <div className="tt-row2">
         <div>
           <label className="tt-label">City / Town <span className="tt-label-required">*</span></label>
@@ -91,7 +91,7 @@ export function Step2({ form, patch, countries, loadingCountries, onNext, onBack
       {/* Phone */}
       <div style={{ marginBottom:14 }}>
         <label className="tt-label">Phone Number <span className="tt-label-required">*</span></label>
-        <p className="tt-hint">For SOS emergency alerts only — never shown publicly.</p>
+        <p className="tt-hint">For SOS emergency alerts only never shown publicly.</p>
         <PhoneInput
           phoneNumber={form.phoneNumber || ""}
           dialCode={form.dialCode || "+233"}

@@ -1,7 +1,7 @@
 import { TRIP_TYPES, PACE_OPTIONS } from "./constants";
 
 /* ══════════════════════════════════════════════════
-   SUCCESS — matches tt-success-check + tt-summary
+   SUCCESS matches tt-success-check + tt-summary
 ══════════════════════════════════════════════════ */
 export const SuccessScreen = ({ form, onContinue }) => {
   const ec = form.emergencyContact || {};
@@ -39,7 +39,7 @@ export const SuccessScreen = ({ form, onContinue }) => {
         Welcome to Travel Together. Your preferences are saved and your profile is live.
       </p>
 
-      {/* Summary — matches tt-summary */}
+      {/* Summary matches tt-summary */}
       {rows.length > 0 && (
         <div className="rounded-[14px] border-[1.5px] border-gray-100 bg-[#fafafa] px-4.5 py-1 mb-6 text-left">
           {rows.map(([label, value]) => (

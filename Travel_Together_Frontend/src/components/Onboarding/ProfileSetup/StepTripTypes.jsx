@@ -3,7 +3,7 @@ import { SectionHead } from "./SectionHead";
 import { TRIP_TYPES } from "./constants";
 
 /* ══════════════════════════════════════════════════
-   STEP 2 — Trip Types
+   STEP 2 Trip Types
 ══════════════════════════════════════════════════ */
 export const StepTripTypes = ({ form, patch }) => {
   const selected = form.tripTypes || [];
@@ -20,7 +20,7 @@ export const StepTripTypes = ({ form, patch }) => {
       <SectionHead
         icon="🗺️"
         title="What kind of trips?"
-        sub="Pick everything that excites you — this powers your group recommendations."
+        sub="Pick everything that excites you this powers your group recommendations."
       />
 
       <div className="grid grid-cols-3 gap-3 mb-4">
