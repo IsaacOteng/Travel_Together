@@ -31,7 +31,7 @@ export default function PayButton({ tripId, amount, onPaid, compact = false }) {
         onPaid?.();
         return;
       }
-    } catch { /* transient — keep polling */ }
+    } catch { /* transient keep polling */ }
     if (triesRef.current >= 30) clearInterval(pollRef.current);   // stop auto-poll after ~100s
   };
 
@@ -52,7 +52,7 @@ export default function PayButton({ tripId, amount, onPaid, compact = false }) {
     }
   };
 
-  // Compact (row-sized) variant — a single small button for use in list rows.
+  // Compact (row-sized) variant a single small button for use in list rows.
   if (compact) {
     if (phase === "paid") {
       return (
@@ -86,7 +86,7 @@ export default function PayButton({ tripId, amount, onPaid, compact = false }) {
     return (
       <div className="w-full py-[13px] rounded-xl text-[13px] font-semibold text-center flex items-center justify-center gap-1.5"
         style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1.5px solid rgba(74,222,128,0.25)" }}>
-        <Check size={15} /> Payment confirmed — you're in!
+        <Check size={15} /> Payment confirmed you're in!
       </div>
     );
   }
@@ -102,7 +102,7 @@ export default function PayButton({ tripId, amount, onPaid, compact = false }) {
           onClick={checkStatus}
           className="w-full py-2.5 rounded-xl text-[12px] font-semibold text-white/60 bg-white/[0.06] border border-white/10 cursor-pointer flex items-center justify-center gap-1.5 hover:text-white/85 hover:border-white/20 transition-all"
         >
-          <RefreshCw size={13} /> I've paid — check now
+          <RefreshCw size={13} /> I've paid check now
         </button>
       </div>
     );

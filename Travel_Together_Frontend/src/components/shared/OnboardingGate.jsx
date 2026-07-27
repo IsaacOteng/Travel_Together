@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 /* ────────────────────────────────────────────────────────────────
-   OnboardingGateModal — shown when an incomplete user triggers
+   OnboardingGateModal shown when an incomplete user triggers
    a gated action (join trip, open chat, create trip)
 ──────────────────────────────────────────────────────────────── */
 function OnboardingGateModal({ onClose }) {

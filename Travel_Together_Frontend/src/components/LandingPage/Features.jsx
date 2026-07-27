@@ -11,7 +11,7 @@ export default function Features() {
             Group travel,<br />done properly.
           </h2>
           <p className="text-[15px] text-white/40 leading-relaxed">
-            Every feature is built around one idea — that travelling with others should be easier, safer, and more memorable than going alone.
+            Every feature is built around one idea that travelling with others should be easier, safer, and more memorable than going alone.
           </p>
         </Reveal>
 

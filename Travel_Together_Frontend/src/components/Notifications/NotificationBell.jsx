@@ -1,7 +1,7 @@
 import { Bell } from "lucide-react";
 
 /*
-  NotificationBell — drop-in bell icon with unread count badge.
+  NotificationBell drop-in bell icon with unread count badge.
 
   Props:
     count   – number of unread notifications (default 0)

@@ -50,7 +50,7 @@ export function JoinedRow({ trip, onNavigate, onViewGroup, onLeave }) {
           <div className="flex items-center gap-1.5">
             <span className={`text-[10px] leading-tight max-w-[150px] ${within7 ? "text-red-400/90 font-semibold" : "text-white/45"}`}>
               {within7
-                ? "You're within 7 days of the trip — leaving means no refund."
+                ? "You're within 7 days of the trip leaving means no refund."
                 : "You'll be refunded, minus a small processing fee."}
             </span>
             <button onClick={doLeave} disabled={leaving}
@@ -93,7 +93,7 @@ export function JoinedRow({ trip, onNavigate, onViewGroup, onLeave }) {
               </button>
             ) : null}
 
-            {/* Leave group — for in-group (approved) members on upcoming trips */}
+            {/* Leave group for in-group (approved) members on upcoming trips */}
             {approved && !isCompleted && (
               <button onClick={() => setConfirmLeave(true)} title="Leave group"
                 className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 border border-white/[0.08] bg-white/[0.04] hover:text-red-400 hover:border-red-400/30 transition-colors cursor-pointer shrink-0">

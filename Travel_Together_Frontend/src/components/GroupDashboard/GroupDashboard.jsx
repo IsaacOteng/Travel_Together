@@ -245,7 +245,7 @@ export default function GroupDashboard() {
         }
       };
 
-      ws.onerror = () => { /* onclose fires next — reconnect handled there */ };
+      ws.onerror = () => { /* onclose fires next reconnect handled there */ };
     };
 
     connect();
@@ -513,7 +513,7 @@ export default function GroupDashboard() {
       {checkedIn && pendingStop && (
         <div className="mt-3 px-3 py-2 bg-emerald-500/[0.07] border border-emerald-500/20 rounded-xl flex items-center gap-2 text-[12px] text-emerald-400/80 font-semibold">
           <CheckCircle size={13} className="text-emerald-400 flex-shrink-0" />
-          Checked in{pendingStop ? ` — next: ${pendingStop.name}` : ""}
+          Checked in{pendingStop ? ` next: ${pendingStop.name}` : ""}
         </div>
       )}
     </div>
@@ -586,7 +586,7 @@ export default function GroupDashboard() {
     try {
       await tripsApi.depart(tripId);
       setTrip(prev => prev ? { ...prev, status: "active", departureConfirmedAt: new Date().toISOString() } : prev);
-      setDepartMsg("Departure confirmed — the trip is now live.");
+      setDepartMsg("Departure confirmed the trip is now live.");
     } catch (err) {
       setDepartMsg(err?.response?.data?.detail || "Couldn't mark the trip as departed.");
     } finally {
@@ -726,7 +726,7 @@ export default function GroupDashboard() {
     try {
       const { data } = await pollsApi.create(tripId, payload);
       setPolls(prev => [data, ...prev]);
-    } catch { /* ignore — modal stays closed */ }
+    } catch { /* ignore modal stays closed */ }
   }
 
   async function handleApprove(memberId) {
@@ -880,7 +880,7 @@ export default function GroupDashboard() {
           <AlertTriangle size={13} className="text-red-400" />
         </div>
         <p className="flex-1 text-[12px] text-red-300/80 leading-snug">
-          Location access is blocked. Enable it in your browser settings — it&apos;s required while the trip is active.
+          Location access is blocked. Enable it in your browser settings it&apos;s required while the trip is active.
         </p>
         <button
           onClick={() => navigator.geolocation?.getCurrentPosition(() => setLocPerms("granted"), () => {})}
@@ -896,7 +896,7 @@ export default function GroupDashboard() {
           <MapPin size={13} className="text-[#FF6B35]" />
         </div>
         <p className="flex-1 text-[12px] text-white/60 leading-snug">
-          <span className="text-[#FF6B35] font-semibold">Trip is live</span> — your location is required so the group can see you.
+          <span className="text-[#FF6B35] font-semibold">Trip is live</span> your location is required so the group can see you.
         </p>
         <button
           onClick={() => wsSendLocationRef.current?.()}

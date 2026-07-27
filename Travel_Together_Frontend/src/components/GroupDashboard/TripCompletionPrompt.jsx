@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 
 /**
  * Shown to a member on a completed trip: confirm it happened, or report a problem.
- * Silence (not responding within the grace window) counts as approval — this is
+ * Silence (not responding within the grace window) counts as approval this is
  * the member's chance to object. Reporting freezes the organizer's payout.
  */
 export default function TripCompletionPrompt({ tripId }) {
@@ -39,7 +39,7 @@ export default function TripCompletionPrompt({ tripId }) {
     return (
       <div className="rounded-2xl border border-green-400/25 bg-green-400/[0.06] px-4 py-3 mb-4 flex items-center gap-2.5">
         <CheckCircle size={16} className="text-green-400 shrink-0" />
-        <p className="text-[12.5px] text-green-300/90">Thanks — you confirmed this trip happened.</p>
+        <p className="text-[12.5px] text-green-300/90">Thanks you confirmed this trip happened.</p>
       </div>
     );
   }
@@ -73,7 +73,7 @@ export default function TripCompletionPrompt({ tripId }) {
       ) : (
         <div className="flex flex-col gap-2">
           <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
-            placeholder="What went wrong? Be specific (min 50 characters) — this freezes the payout for review."
+            placeholder="What went wrong? Be specific (min 50 characters) this freezes the payout for review."
             className="w-full rounded-xl px-3 py-2.5 text-[12.5px] text-white bg-white/[0.06] border border-white/10 outline-none placeholder:text-white/25 focus:border-[#FF6B35] resize-none" />
           <div className="flex gap-2">
             <button onClick={submitReport} disabled={busy}

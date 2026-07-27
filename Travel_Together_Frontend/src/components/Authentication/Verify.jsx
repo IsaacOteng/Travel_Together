@@ -70,7 +70,7 @@ const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
             let msg;
 
             if (!err.response) {
-                msg = "Network error — check your connection and try again.";
+                msg = "Network error check your connection and try again.";
             } else if (status === 429 || detail.toLowerCase().includes("too many")) {
                 msg = "Too many attempts. Please request a new code.";
                 setResendCooldown(0);
@@ -216,7 +216,7 @@ const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
                 </div>
             </div>
 
-            {/* RIGHT SIDE — full-height image */}
+            {/* RIGHT SIDE full-height image */}
             <div
                 className="hidden lg:block lg:w-[49%] bg-cover bg-center"
                 style={{

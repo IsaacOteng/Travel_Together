@@ -12,7 +12,7 @@ const PROVIDERS = [
 
 /**
  * Organizer's payout destination (where escrowed funds are sent after a trip).
- * The name need not match identity — accountability comes from verification.
+ * The name need not match identity accountability comes from verification.
  */
 export default function PayoutMethodCard() {
   const [loading, setLoading] = useState(true);

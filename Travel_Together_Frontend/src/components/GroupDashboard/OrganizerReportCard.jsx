@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 
 /**
  * Shown to the organizer (chief) when a concern has been raised about their trip.
- * They see the claim (reporter identity withheld) and can submit their side —
+ * They see the claim (reporter identity withheld) and can submit their side 
  * the two-sided dispute. Payouts stay frozen until the admin resolves it.
  */
 export default function OrganizerReportCard({ tripId }) {
@@ -59,7 +59,7 @@ export default function OrganizerReportCard({ tripId }) {
           ) : (
             <div className="flex flex-col gap-2">
               <textarea value={text[r.id] || ""} onChange={e => setText(t => ({ ...t, [r.id]: e.target.value }))} rows={3}
-                placeholder="Explain what happened — include receipts, photos, or the real itinerary if you can."
+                placeholder="Explain what happened include receipts, photos, or the real itinerary if you can."
                 className="w-full rounded-lg px-3 py-2 text-[12px] text-white bg-white/[0.06] border border-white/10 outline-none placeholder:text-white/25 focus:border-amber-400/60 resize-none" />
               <button onClick={() => respond(r.id)} disabled={busy === r.id}
                 className="self-end px-4 py-2 rounded-lg text-[12px] font-bold text-[#071422] bg-amber-400 cursor-pointer disabled:opacity-50">

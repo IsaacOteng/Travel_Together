@@ -146,7 +146,7 @@ export default function SignUp({ onVerify }) {
                 </div>
             </div>
 
-            {/* RIGHT — image */}
+            {/* RIGHT image */}
             <div
                 className="hidden lg:block lg:w-[49%] bg-cover bg-center"
                 style={{

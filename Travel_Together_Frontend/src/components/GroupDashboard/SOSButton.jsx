@@ -43,7 +43,7 @@ export default function SOSButton({ onFire }) {
         : phase === "loading" ? "text-white/50"
         : "text-white/30"}`}>
         {phase === "success" ? "Alert sent ✓"
-        : phase === "error"  ? "Failed — tap to retry"
+        : phase === "error"  ? "Failed tap to retry"
         : phase === "loading"? "Sending alert…"
         : "Tap to activate"}
       </span>

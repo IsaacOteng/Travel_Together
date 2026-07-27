@@ -25,7 +25,7 @@ const TRIP = {
 const STEPS = [
   { icon: Bell,    text: "Turn on notifications so you don't miss trip updates" },
   { icon: Shield,  text: "Add an emergency contact in Settings for your safety"  },
-  { icon: MapPin,  text: "Allow location access when prompted — it powers safety features" },
+  { icon: MapPin,  text: "Allow location access when prompted it powers safety features" },
 ];
 
 /* ─── CONFETTI BURST ──────────────────────── */
