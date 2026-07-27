@@ -107,7 +107,7 @@ export default function App() {
         <Route path="/verify"  element={<VerifyRoute />} />
         <Route path="/trip/:tripId" element={<TripPublicPage />} />
 
-        {/* Onboarding — token exists but onboarding not complete */}
+        {/* Onboarding token exists but onboarding not complete */}
         <Route path="/onboarding" element={<ProtectedRoute><OnboardingRoute /></ProtectedRoute>} />
 
         {/* Main app */}

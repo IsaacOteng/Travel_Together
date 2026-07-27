@@ -6,7 +6,7 @@ const ChatUnreadContext = createContext(null);
 
 /**
  * Maintains a live total of unread chat messages across all conversations.
- * This is separate from the notification bell — chat badge lives on the Chat nav item.
+ * This is separate from the notification bell chat badge lives on the Chat nav item.
  *
  * Exposed API:
  *   totalChatUnread  — sum of unread counts across all conversations
@@ -41,7 +41,7 @@ export function ChatUnreadProvider({ children }) {
     return () => clearInterval(id);
   }, [user, fetchUnread]);
 
-  // Refetch whenever the tab regains focus — catches missed messages while the
+  // Refetch whenever the tab regains focus catches missed messages while the
   // tab was in the background (only matters when ChatPage isn't mounted).
   useEffect(() => {
     if (!user) return;
@@ -57,7 +57,7 @@ export function ChatUnreadProvider({ children }) {
 
   const totalChatUnread = Object.values(unreadMap).reduce((a, b) => a + b, 0);
 
-  /** Call when the user opens a conversation — clears its badge contribution */
+  /** Call when the user opens a conversation clears its badge contribution */
   const markConvRead = useCallback((convId) => {
     setUnreadMap(prev => ({ ...prev, [String(convId)]: 0 }));
   }, []);
@@ -71,7 +71,7 @@ export function ChatUnreadProvider({ children }) {
   }, []);
 
   /**
-   * Primary sync path — call this whenever ChatPage's conversations state changes.
+   * Primary sync path call this whenever ChatPage's conversations state changes.
    * Accepts the normalised conversation array (objects with `id` and `unread` fields).
    * This ensures the badge and the conversation list always show the same numbers.
    */

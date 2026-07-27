@@ -19,7 +19,7 @@ export const tokenStore = {
   clear:          ()      => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(REFRESH_KEY); },
 };
 
-// ─── Request interceptor — attach Bearer token ────────────────────────────────
+// ─── Request interceptor attach Bearer token ────────────────────────────────
 
 api.interceptors.request.use((config) => {
   const token = tokenStore.getAccess();
@@ -27,7 +27,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── Response interceptor — auto-refresh on 401 ───────────────────────────────
+// ─── Response interceptor auto-refresh on 401 ───────────────────────────────
 
 let _refreshing   = false;
 let _refreshQueue = [];
@@ -48,7 +48,7 @@ api.interceptors.response.use(
     }
 
     // No refresh token means the user is a guest or already logged out.
-    // Reject silently — do NOT dispatch session-expired (would redirect guests).
+    // Reject silently do NOT dispatch session-expired (would redirect guests).
     const refresh = tokenStore.getRefresh();
     if (!refresh) {
       return Promise.reject(error);
@@ -82,7 +82,7 @@ api.interceptors.response.use(
     } catch (refreshError) {
       _processQueue(refreshError, null);
       tokenStore.clear();
-      // Authenticated user's session genuinely expired — let the app know
+      // Authenticated user's session genuinely expired let the app know
       window.dispatchEvent(new Event("tt:session-expired"));
       return Promise.reject(refreshError);
     } finally {

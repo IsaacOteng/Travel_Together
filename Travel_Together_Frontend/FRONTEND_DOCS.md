@@ -1,4 +1,4 @@
-# Travel Together — Frontend Documentation
+# Travel Together Frontend Documentation
 > For backend developers wiring the Django API to this React frontend.
 
 ---
@@ -36,7 +36,7 @@ Dev server runs on `http://localhost:5173`
 ```
 src/
 ├── App.jsx                          # Route definitions + route wrappers
-├── main.jsx                         # Entry point — wraps app in BrowserRouter
+├── main.jsx                         # Entry point wraps app in BrowserRouter
 ├── assets/                          # Static images (logo, signup photo)
 ├── Globalstyles.css                 # Shared CSS classes (onboarding)
 │
@@ -86,7 +86,7 @@ src/
         ├── Step1.jsx                # Cover photos (file upload)
         ├── Step2.jsx                # Title, destination, dates, group size
         ├── Step3.jsx                # Itinerary / stops
-        ├── Step4.jsx                # Price, karma, rules — publish
+        ├── Step4.jsx                # Price, karma, rules publish
         └── SuccessScreen.jsx        # Post-publish confirmation
 ```
 
@@ -253,16 +253,16 @@ Active tab highlighted in orange (`#FF6B35`) based on current pathname.
 - Renders a login/signup form (single form, backend decides new vs returning)
 - Props: `onVerify(email)`, `onSignIn()`
 - On submit: calls `onVerify(email)` which stores email in sessionStorage and navigates to `/verify`
-- **Wire:** `POST /api/auth/signup/` — on success call `onVerify(email)`
+- **Wire:** `POST /api/auth/signup/` on success call `onVerify(email)`
 
 ---
 
 ### `Verify.jsx`
 - 6-box OTP input, auto-advances on each digit
 - Props: `email`, `onVerified()`, `onBack()`
-- **Hardcoded check at line 61** — only `"111111"` passes in dev
+- **Hardcoded check at line 61** only `"111111"` passes in dev
 - `TODO` comment marks the exact replacement point
-- **Wire:** `POST /api/auth/verify/` with `{ email, code }` — on success store JWT and call `onVerified()`
+- **Wire:** `POST /api/auth/verify/` with `{ email, code }` on success store JWT and call `onVerified()`
 
 ---
 
@@ -277,14 +277,14 @@ Active tab highlighted in orange (`#FF6B35`) based on current pathname.
 ### `ProfileSetup.jsx`
 - Avatar selection, bio, emergency contact
 - Props: `onComplete()`
-- **Wire:** `PATCH /api/users/me/` — on success call `onComplete()`
+- **Wire:** `PATCH /api/users/me/` on success call `onComplete()`
 
 ---
 
 ### `Discover.jsx`
 - Loads trip feed, filter pills, search
-- Saved state is local (optimistic) — needs API backing
-- Props: `onJoinTrip()` — called from TripDetailModal when user sends join request
+- Saved state is local (optimistic) needs API backing
+- Props: `onJoinTrip()` called from TripDetailModal when user sends join request
 - `savedCount` passed to `AppNav` from local state
 - **Wire:**
   - `GET /api/trips/?filter=&search=` for feed
@@ -335,7 +335,7 @@ Active tab highlighted in orange (`#FF6B35`) based on current pathname.
 
 ### `ProfilePage.jsx`
 - Shows karma ring + breakdown, achievement badges, reliability stats, trip history
-- Edit Profile modal — `onSave(formData)` updates local state (needs API backing)
+- Edit Profile modal `onSave(formData)` updates local state (needs API backing)
 - Settings button → `/settings`
 - Props: none (uses `useNavigate` internally)
 - **Wire:**
@@ -460,7 +460,7 @@ Form object shape at publish:
 
 ## Backend Wiring Guide
 
-### Step 1 — Install axios (or use fetch)
+### Step 1 Install axios (or use fetch)
 ```bash
 npm install axios
 ```
@@ -484,9 +484,9 @@ export default client;
 
 ---
 
-### Step 2 — Wire Auth (start here)
+### Step 2 Wire Auth (start here)
 
-**`Verify.jsx` — line 61, replace the hardcoded check:**
+**`Verify.jsx` line 61, replace the hardcoded check:**
 
 ```js
 // BEFORE (mock)
@@ -507,7 +507,7 @@ try {
 }
 ```
 
-**`SignUp.jsx` — on form submit:**
+**`SignUp.jsx` on form submit:**
 ```js
 const res = await client.post('/auth/signup/', { email, password });
 sessionStorage.setItem('tt_email', email);
@@ -516,9 +516,9 @@ onVerify(email);
 
 ---
 
-### Step 3 — Wire the Trip Feed
+### Step 3 Wire the Trip Feed
 
-**`Discover/constants.js`** — currently exports a static `TRIPS` array.
+**`Discover/constants.js`** currently exports a static `TRIPS` array.
 
 Replace in `Discover.jsx`:
 ```js
@@ -536,7 +536,7 @@ The `saved` boolean on each trip will come from the API (Django annotates it bas
 
 ---
 
-### Step 4 — Wire Save/Unsave
+### Step 4 Wire Save/Unsave
 
 **`Discover.jsx` — `handleSave` function:**
 ```js
@@ -563,9 +563,9 @@ const handleSave = async id => {
 
 ---
 
-### Step 5 — Wire Dashboard Sections
+### Step 5 Wire Dashboard Sections
 
-**`Dashboard.jsx`** — replace mock arrays:
+**`Dashboard.jsx`** replace mock arrays:
 ```js
 const [joinedTrips,  setJoinedTrips]  = useState([]);
 const [savedTrips,   setSavedTrips]   = useState([]);
@@ -589,9 +589,9 @@ useEffect(() => {
 
 ---
 
-### Step 6 — Wire Create Trip
+### Step 6 Wire Create Trip
 
-**`CreateTripPage/Step4.jsx`** — replace the `setTimeout`:
+**`CreateTripPage/Step4.jsx`** replace the `setTimeout`:
 ```js
 // BEFORE
 setTimeout(() => { setPublishing(false); onPublish(); }, 1600);
@@ -616,7 +616,7 @@ try {
 
 ---
 
-### Step 7 — Add Route Protection
+### Step 7 Add Route Protection
 
 In `App.jsx`, add a `PrivateRoute` wrapper:
 
@@ -723,4 +723,4 @@ client.interceptors.response.use(
 
 ---
 
-*Document generated for Travel Together v1.0 frontend — April 2026*
+*Document generated for Travel Together v1.0 frontend April 2026*

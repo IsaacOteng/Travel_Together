@@ -3,7 +3,7 @@ venv/
 .venv/
 env/
 
-# Environment variables — NEVER commit these
+# Environment variables NEVER commit these
 .env
 .env.*
 !.env.example
@@ -36,6 +36,6 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 
-# Firebase service account — extra safety net
+# Firebase service account extra safety net
 *firebase-adminsdk*.json
 *service-account*.json

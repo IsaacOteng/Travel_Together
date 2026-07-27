@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
         const { data } = await usersApi.getMe();
         setUser(data);
       } catch {
-        // Token expired or invalid — clear and show landing
+        // Token expired or invalid clear and show landing
         tokenStore.clear();
       } finally {
         setLoading(false);
@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("tt:session-expired", handler);
   }, [navigate]);
 
-  // ── login — called after verifyOtp / googleAuth / appleAuth ──────────────
+  // ── login called after verifyOtp / googleAuth / appleAuth ──────────────
   const login = useCallback(async ({ access, refresh, is_new_user }) => {
     tokenStore.set(access, refresh);
 
@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
       userData = data;
       setUser(data);
     } catch {
-      // Profile fetch failed — tokens stored, user will retry on next load
+      // Profile fetch failed tokens stored, user will retry on next load
     }
 
     // Only go to onboarding if explicitly a new user OR if we have profile data
@@ -72,17 +72,17 @@ export function AuthProvider({ children }) {
     navigate("/", { replace: true });
   }, [navigate]);
 
-  // ── updateUser — for local optimistic updates after profile edits ─────────
+  // ── updateUser for local optimistic updates after profile edits ─────────
   const updateUser = useCallback((patch) => {
     setUser((prev) => prev ? { ...prev, ...patch } : prev);
   }, []);
 
-  // ── refreshUser — re-fetches full user from backend ──────────────────────
+  // ── refreshUser re-fetches full user from backend ──────────────────────
   const refreshUser = useCallback(async () => {
     try {
       const { data } = await usersApi.getMe();
       setUser(data);
-    } catch { /* ignore — user stays as-is */ }
+    } catch { /* ignore user stays as-is */ }
   }, []);
 
   return (

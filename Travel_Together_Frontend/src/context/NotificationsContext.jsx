@@ -102,7 +102,7 @@ export function NotificationsProvider({ children }) {
   }, [user]);
 
   // ── helpers exposed to consumers ──────────────────────────────────────────
-  // chat_message notifications are handled by ChatUnreadContext — exclude them from the bell badge
+  // chat_message notifications are handled by ChatUnreadContext exclude them from the bell badge
   const unreadCount = items.filter(n => !n.is_read && n.notification_type !== "chat_message").length;
 
   const markRead = useCallback((id) => {

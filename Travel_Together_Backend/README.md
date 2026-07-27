@@ -1,4 +1,4 @@
-# TravelTogether — Backend
+# TravelTogether Backend
 
 Django + DRF + Django Channels + Celery + PostGIS backend for the TravelTogether group travel app.
 
@@ -51,7 +51,7 @@ Session management:
 
 ### JWT cookies
 
-Both tokens are set as **httpOnly, SameSite=Lax** cookies — never in the response body.
+Both tokens are set as **httpOnly, SameSite=Lax** cookies never in the response body.
 
 | Cookie | Lifetime | Purpose |
 |---|---|---|
@@ -66,7 +66,7 @@ The refresh token uses a **rolling window**. Every time `POST /api/auth/token/re
 
 - A user who opens the app daily will **never need to log in again**
 - A user who goes inactive for exactly 30 days will be prompted to log in
-- The frontend axios interceptor should catch `401` responses, silently call `/token/refresh/`, and retry the original request — the user never sees a login screen unless their refresh token has genuinely expired
+- The frontend axios interceptor should catch `401` responses, silently call `/token/refresh/`, and retry the original request the user never sees a login screen unless their refresh token has genuinely expired
 
 ```
 Access token expires  →  frontend calls /token/refresh/  →  new 15min access token
@@ -87,11 +87,11 @@ when `onboarding_complete` is `False` on the user record. The frontend uses this
 ### OTP security
 
 - Codes are **6 digits**, generated with `secrets.randbelow` (cryptographically secure)
-- Stored **bcrypt-hashed** — plaintext is never written to the database
+- Stored **bcrypt-hashed** plaintext is never written to the database
 - **15-minute TTL** via `expires_at` field
 - **Locked after 5 wrong attempts** (`attempt_count` on `EmailVerification`)
 - **Rate limited**: max 3 sends per email per 15-minute window, enforced in Redis
-- `send-otp` always returns `{ "email_sent": true }` regardless of whether the email exists — **no email enumeration**
+- `send-otp` always returns `{ "email_sent": true }` regardless of whether the email exists **no email enumeration**
 - Previous unused OTPs are invalidated when a new one is issued
 
 ### Google Sign In
@@ -103,7 +103,7 @@ when `onboarding_complete` is `False` on the user record. The frontend uses this
 
 ### Apple Sign In
 
-- Frontend passes the Apple `id_token` — Apple only provides name on the **first** sign-in, so the frontend must also forward `first_name` and `last_name` at that point
+- Frontend passes the Apple `id_token` Apple only provides name on the **first** sign-in, so the frontend must also forward `first_name` and `last_name` at that point
 - Backend fetches Apple's JWKS from `https://appleid.apple.com/auth/keys` and verifies the RS256 JWT signature
 - Checks `iss` = `https://appleid.apple.com` and `aud` = `APPLE_APP_BUNDLE_ID`
 - Lookup order: `apple_uid` first, then `email` (handles users who signed up via OTP)
@@ -111,7 +111,7 @@ when `onboarding_complete` is `False` on the user record. The frontend uses this
 ### Account deletion
 
 Requires the authenticated user to provide a fresh OTP sent with `purpose=delete_account`:
-1. Call `POST /api/auth/send-otp/` (the frontend must trigger a separate "send deletion code" call — this is not the login OTP)
+1. Call `POST /api/auth/send-otp/` (the frontend must trigger a separate "send deletion code" call this is not the login OTP)
 2. Call `DELETE /api/auth/account/` with `{ "email": "...", "code": "..." }`
 
 The account is **soft-deleted** (`is_active=False`, `deleted_at` set). The `permanent_delete_accounts` Celery task handles final data purge after the grace period.
@@ -132,7 +132,7 @@ DATABASE_URL=postgis://user:pass@localhost:5433/travel_together
 # Redis
 REDIS_URL=redis://localhost:6379/0
 
-# JWT lifetimes (optional — defaults shown)
+# JWT lifetimes (optional defaults shown)
 JWT_ACCESS_TOKEN_LIFETIME_MINUTES=15
 JWT_REFRESH_TOKEN_LIFETIME_DAYS=30
 

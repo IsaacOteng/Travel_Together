@@ -1,4 +1,4 @@
-# TravelTogether — Frontend
+# TravelTogether Frontend
 
 React + Vite + Tailwind CSS frontend for the TravelTogether group travel app.
 
@@ -46,7 +46,7 @@ TravelTogether uses **passwordless authentication only**.
 ### Session management
 
 - JWT tokens are stored via `tokenStore` (in-memory + localStorage)
-- Axios interceptor automatically calls `POST /api/auth/token/refresh/` on any `401` response and retries the original request — the user never sees a login screen mid-session
+- Axios interceptor automatically calls `POST /api/auth/token/refresh/` on any `401` response and retries the original request the user never sees a login screen mid-session
 - On app load, `AuthContext` checks for a stored token and calls `GET /api/users/me/` to restore the session
 - `is_new_user: true` in the auth response routes new users to `/onboarding`, returning users go straight to `/discover`
 

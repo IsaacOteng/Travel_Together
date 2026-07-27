@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Leaflet map fix — ensure tiles load correctly in Vite */
+/* Leaflet map fix ensure tiles load correctly in Vite */
 .leaflet-container { z-index: 0; }
 .leaflet-pane,
 .leaflet-tile,

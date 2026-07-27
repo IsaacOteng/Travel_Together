@@ -41,7 +41,7 @@
 
   <hr/>
 
-  <label>Image — pick a file and send</label>
+  <label>Image pick a file and send</label>
   <input type="file" id="imageFile" accept="image/*" />
   <button onclick="uploadAndSend('image')">Upload &amp; Send Image</button>
 
@@ -87,7 +87,7 @@
 
     ws.onopen = () => {
       setStatus('Connected', 'green');
-      log('Connected — authenticating...', 'ok');
+      log('Connected authenticating...', 'ok');
       ws.send(JSON.stringify({ type: 'auth', token }));
     };
     ws.onmessage = (e) => {
@@ -207,7 +207,7 @@
         preview.innerHTML = `<audio controls src="${url}"></audio><small>${duration}s recorded</small>`;
 
         document.getElementById('sendVoiceBtn').style.display = 'inline';
-        document.getElementById('voiceStatus').textContent = `Ready (${duration}s) — preview above`;
+        document.getElementById('voiceStatus').textContent = `Ready (${duration}s) preview above`;
         log(`Recorded ${duration}s of audio`, 'ok');
       };
 
@@ -217,7 +217,7 @@
       document.getElementById('voiceStatus').textContent = 'Recording...';
       document.getElementById('sendVoiceBtn').style.display = 'none';
       document.getElementById('audioPreview').innerHTML = '';
-      log('Recording started — click Stop when done', 'ok');
+      log('Recording started click Stop when done', 'ok');
     } catch (err) {
       log('Microphone error: ' + err.message, 'err');
     }
