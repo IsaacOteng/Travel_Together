@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   MapPin, Settings, Edit3, Star,
-  CheckCircle, Award, Map, Calendar, X,
-  ArrowLeft, Flag, UserCheck, Clock, TrendingUp,
+  CheckCircle, Award, Map, Calendar,
+  ArrowLeft, Flag, UserCheck, Clock,
   MessageCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +11,7 @@ import MobileBottomNav from "../shared/MobileBottomNav.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { usersApi } from "../../services/api.js";
 import api from "../../services/api.js";
-import { karmaApi, tripsApi, chatApi } from "../../services/api.js";
+import { karmaApi, chatApi } from "../../services/api.js";
 import LevelBadge from "./LevelBadge.jsx";
 import StatCard from "./StatCard.jsx";
 import BadgeCard from "./BadgeCard.jsx";
@@ -26,6 +26,13 @@ const globalStyles = `
   ::-webkit-scrollbar{width:4px}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
 `;
+
+const COVER_FALLBACK = {
+  backgroundImage:
+    "radial-gradient(circle at 18% 40%, rgba(255,107,53,0.55) 0%, transparent 55%)," +
+    "radial-gradient(circle at 70% 60%, rgba(74,222,128,0.35) 0%, transparent 55%)," +
+    "radial-gradient(circle at 92% 20%, rgba(96,165,250,0.35) 0%, transparent 50%)",
+};
 
 export default function ProfilePage({ isOwner = true, userId = null }) {
   const navigate             = useNavigate();
@@ -182,24 +189,40 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
         .finally(() => { if (!cancelled) setLoading(false); });
       return () => { cancelled = true; };
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, effectiveIsOwner]);
 
   const earnedBadges   = badges.filter(b => b.earned);
   const activeTrips    = myTrips.filter(t => t.status === "active" || t.status === "published");
   const completedTrips = myTrips.filter(t => t.status === "completed");
 
+  const checkinDisplay = checkinRate === null ? "—" : dataLoaded ? `${checkinRate}%` : "—";
+  const checkinSub     = checkinRate === null ? "no check-ins recorded" : "on-time arrivals";
+  const ratingDisplay  = avgRating  === null ? "—" : dataLoaded ? (avgRating || "—") : "—";
+  const ratingSub      = ratingsCount ? `${ratingsCount} rating${ratingsCount !== 1 ? "s" : ""}` : "no ratings yet";
+
+  const reliabilityColor =
+    checkinRate === null || checkinRate === 0 ? "rgba(255,255,255,0.3)"
+    : checkinRate >= 80 ? "#4ade80"
+    : checkinRate >= 50 ? "#fbbf24" : "#fb923c";
+
+  const reliabilityGradient =
+    (checkinRate ?? 0) >= 80 ? "linear-gradient(90deg,#4ade80,#22c55e)"
+    : (checkinRate ?? 0) >= 50 ? "linear-gradient(90deg,#fbbf24,#f59e0b)"
+    : "linear-gradient(90deg,#fb923c,#f97316)";
+
   const BadgesSection = (
     <Section title="Achievement Badges" icon={Award} iconColor="#fbbf24"
-      action={earnedBadges.length > 0 ? <span className="text-[10px] text-white/30">{earnedBadges.length} earned</span> : null}>
+      action={earnedBadges.length > 0
+        ? <span className="text-[10px] uppercase tracking-widest text-white/25 whitespace-nowrap">{earnedBadges.length} earned</span>
+        : null}>
       {!dataLoaded ? (
-        <p className="text-[13px] text-white/25 text-center py-6">Loading…</p>
+        <p className="text-[13px] text-white/25 py-6">Loading…</p>
       ) : badges.length === 0 ? (
-        <p className="text-[13px] text-white/25 text-center py-6">
+        <p className="text-[13px] text-white/25 py-6">
           {effectiveIsOwner ? "Complete trips to earn badges." : "No badges earned yet."}
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-2 gap-y-3">
           {badges.filter(b => b.slug !== "social-butterfly" && b.slug !== "scout-master").map(b => (
             <BadgeCard key={b.slug} badge={{ ...b, id: b.slug, desc: b.description }} />
           ))}
@@ -208,38 +231,26 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
     </Section>
   );
 
-  const checkinDisplay = checkinRate === null ? "—" : dataLoaded ? `${checkinRate}%` : "—";
-  const checkinSub     = checkinRate === null ? "no check-ins recorded" : "on-time arrivals";
-  const ratingDisplay  = avgRating  === null ? "—" : dataLoaded ? (avgRating || "—") : "—";
-  const ratingSub      = ratingsCount ? `${ratingsCount} rating${ratingsCount !== 1 ? "s" : ""}` : "no ratings yet";
-
   const StatsSection = (
-    <Section title="Reliability Stats" icon={CheckCircle} iconColor="#4ade80">
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <StatCard icon={Map}         label="Trips"         value={d(tripsTotal)}   sub={dataLoaded ? `${tripsCompleted} completed` : "—"} color="#FF6B35" />
-        <StatCard icon={CheckCircle} label="Check-in Rate" value={checkinDisplay}  sub={checkinSub}  color="#4ade80" />
-        <StatCard icon={Star}        label="Avg Rating"    value={ratingDisplay}   sub={ratingSub}   color="#fbbf24" />
+    <Section title="Reliability" icon={CheckCircle} iconColor="#4ade80">
+      <div className="flex flex-wrap items-start divide-x divide-white/[0.07] mb-8">
+        <StatCard icon={Map}         label="Trips"         value={d(tripsTotal)}  sub={dataLoaded ? `${tripsCompleted} completed` : "—"} color="#FF6B35" />
+        <StatCard icon={CheckCircle} label="Check-in Rate" value={checkinDisplay} sub={checkinSub} color="#4ade80" />
+        <StatCard icon={Star}        label="Avg Rating"    value={ratingDisplay}  sub={ratingSub}  color="#fbbf24" />
       </div>
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[12px] font-bold text-white/70">Overall Reliability</span>
-          <span className="text-[20px] font-black font-serif"
-            style={{ color: checkinRate === null || checkinRate === 0 ? "rgba(255,255,255,0.25)" : checkinRate >= 80 ? "#4ade80" : checkinRate >= 50 ? "#fbbf24" : "#fb923c" }}>
+
+      <div className="max-w-[560px]">
+        <div className="flex items-baseline justify-between mb-2.5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/35">Overall</span>
+          <span className="text-[15px] font-black font-serif" style={{ color: reliabilityColor }}>
             {checkinRate === null ? "—" : `${checkinRate}%`}
           </span>
         </div>
-        <div className="h-3 bg-white/[0.06] rounded-full overflow-hidden">
+        <div className="h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all duration-1000"
-            style={{
-              width: checkinRate ? `${checkinRate}%` : "0%",
-              background: (checkinRate ?? 0) >= 80
-                ? "linear-gradient(90deg,#4ade80,#22c55e)"
-                : (checkinRate ?? 0) >= 50
-                  ? "linear-gradient(90deg,#fbbf24,#f59e0b)"
-                  : "linear-gradient(90deg,#fb923c,#f97316)",
-            }} />
+            style={{ width: checkinRate ? `${checkinRate}%` : "0%", background: reliabilityGradient }} />
         </div>
-        <div className="flex justify-between mt-2 text-[10px] text-white/20">
+        <div className="flex justify-between mt-2 text-[10.5px] text-white/20">
           <span>{checkinRate === null ? "Check-in data not available" : "Based on itinerary check-ins"}</span>
           {!!checkinRate && checkinRate > 0 && (
             <span className="font-semibold" style={{ color: checkinRate >= 80 ? "rgba(74,222,128,0.7)" : "rgba(251,191,36,0.7)" }}>
@@ -252,26 +263,29 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
   );
 
   const TripHistorySection = (
-    <Section title={`Trip History (${myTrips.length})`} icon={Calendar} iconColor="#a855f7">
+    <Section title="Trip History" icon={Calendar} iconColor="#a855f7"
+      action={myTrips.length > 0
+        ? <span className="text-[10px] uppercase tracking-widest text-white/25 whitespace-nowrap">{myTrips.length} total</span>
+        : null}>
       {!dataLoaded ? (
-        <p className="text-[13px] text-white/25 text-center py-6">Loading…</p>
+        <p className="text-[13px] text-white/25 py-6">Loading…</p>
       ) : myTrips.length === 0 ? (
-        <p className="text-[13px] text-white/25 col-span-full text-center py-6">No trips yet.</p>
+        <p className="text-[13px] text-white/25 py-6">No trips yet.</p>
       ) : (
         <>
           {activeTrips.length > 0 && (
-            <div className="mb-5">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-2.5">Active / Upcoming</div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {activeTrips.map(t => <TripCard key={t.id} trip={t} onClick={() => navigate(`/trip/${t.id}`)} isOwner={effectiveIsOwner} />)}
+            <div className="mb-8">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Active / Upcoming</div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {activeTrips.map(t => <TripCard key={t.id} trip={t} onClick={() => navigate(`/trip/${t.id}`)} />)}
               </div>
             </div>
           )}
           {completedTrips.length > 0 && (
             <>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-2.5">Completed</div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {completedTrips.map(t => <TripCard key={t.id} trip={t} onClick={() => navigate(`/trip/${t.id}`)} isOwner={effectiveIsOwner} />)}
+              <div className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Completed</div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {completedTrips.map(t => <TripCard key={t.id} trip={t} onClick={() => navigate(`/trip/${t.id}`)} />)}
               </div>
             </>
           )}
@@ -301,23 +315,82 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
     );
   }
 
-  const ProfileMeta = ({ avatarSize = "mobile" }) => (
-    <>
-      <div className="relative">
-        {profileUser?.avatar_url
-          ? <img src={profileUser.avatar_url} alt={displayName}
-              className={`${avatarSize === "desktop" ? "w-16 h-16" : "w-20 h-20"} rounded-full object-cover ring-4 ring-[#0d1b2a]`} />
-          : <div className={`${avatarSize === "desktop" ? "w-16 h-16 text-lg" : "w-20 h-20 text-2xl"} bg-[#4ade80] rounded-full flex items-center justify-center font-black text-white font-serif ring-4 ring-[#0d1b2a]`}>
-              {initials}
-            </div>
-        }
-        {verified && (
-          <div className={`absolute -bottom-1 -right-1 ${avatarSize === "desktop" ? "w-5 h-5" : "w-6 h-6"} bg-[#FF6B35] rounded-full flex items-center justify-center border-2 border-[#0d1b2a]`}>
-            <UserCheck size={avatarSize === "desktop" ? 10 : 12} className="text-white" />
+  const Avatar = ({ size }) => (
+    <div className="relative shrink-0">
+      {profileUser?.avatar_url
+        ? <img src={profileUser.avatar_url} alt={displayName}
+            className="rounded-full object-cover ring-4 ring-[#071422]"
+            style={{ width: size, height: size }} />
+        : <div className="bg-linear-to-br from-[#4ade80] to-[#22c55e] rounded-full flex items-center justify-center font-black text-white font-serif ring-4 ring-[#071422]"
+            style={{ width: size, height: size, fontSize: size * 0.34 }}>
+            {initials}
           </div>
-        )}
-      </div>
-    </>
+      }
+      {verified && (
+        <div className="absolute bottom-0.5 right-0.5 bg-[#FF6B35] rounded-full flex items-center justify-center border-2 border-[#071422]"
+          style={{ width: size * 0.28, height: size * 0.28 }}>
+          <UserCheck size={size * 0.15} className="text-white" />
+        </div>
+      )}
+    </div>
+  );
+
+  const MetaLine = ({ compact = false }) => (
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-white/40 ${compact ? "text-[12px]" : "text-[12.5px]"}`}>
+      <span className="text-white/30">@{profileUser?.username}</span>
+      {(profileUser?.city || profileUser?.country) && (
+        <span className="flex items-center gap-1.5">
+          <MapPin size={11} className="text-[#FF6B35]/70" />
+          {profileUser?.city}{profileUser?.country ? `, ${profileUser.country}` : ""}
+        </span>
+      )}
+      {nationality && (
+        <span className="flex items-center gap-1.5"><Flag size={11} className="text-white/25" />{nationality}</span>
+      )}
+      <span className="flex items-center gap-1.5 text-white/25"><Clock size={11} />Joined {joinDate}</span>
+    </div>
+  );
+
+  const ActionButton = ({ compact = false }) =>
+    effectiveIsOwner ? (
+      <button onClick={() => setEditing(true)}
+        className={`flex items-center gap-1.5 rounded-full bg-white/[0.06] text-white/60 font-semibold cursor-pointer hover:bg-white/[0.12] hover:text-white transition-colors
+          ${compact ? "px-3.5 py-2 text-[12px]" : "px-5 py-2.5 text-[12.5px]"}`}>
+        <Edit3 size={13} /> Edit Profile
+      </button>
+    ) : (
+      <button onClick={handleMessage} disabled={dmLoading}
+        className={`flex items-center gap-1.5 rounded-full bg-[#FF6B35] text-white font-semibold cursor-pointer hover:bg-[#ff7d4d] transition-colors disabled:opacity-50
+          ${compact ? "px-3.5 py-2 text-[12px]" : "px-5 py-2.5 text-[12.5px]"}`}>
+        <MessageCircle size={13} /> {dmLoading ? "Opening…" : "Message"}
+      </button>
+    );
+
+  const Cover = ({ height }) => (
+    <div className="absolute inset-x-0 top-0 overflow-hidden" style={{ height }}>
+      {profileUser?.cover_url
+        ? <img src={profileUser.cover_url} alt="" className="w-full h-full object-cover"
+            style={{ objectPosition: profileUser.cover_position || "50% 50%" }} />
+        : <div className="w-full h-full opacity-70" style={COVER_FALLBACK} />
+      }
+      <div className="absolute inset-0 bg-linear-to-b from-[#071422]/30 via-[#071422]/70 to-[#071422]" />
+    </div>
+  );
+
+  const HeroStats = ({ compact = false }) => (
+    <div className={`flex flex-wrap items-center gap-y-4 ${compact ? "gap-x-7" : "gap-x-10"}`}>
+      {[
+        { val: d(tripsTotal),     label: "Trips"       },
+        { val: karma,             label: "Karma"       },
+        { val: checkinDisplay,    label: "Reliability" },
+        { val: d(avgRating ?? 0), label: "Rating"      },
+      ].map(s => (
+        <div key={s.label} className="flex flex-col">
+          <span className={`font-black text-white font-serif leading-none tracking-tight ${compact ? "text-[22px]" : "text-[26px]"}`}>{s.val}</span>
+          <span className="text-[9.5px] text-white/30 font-bold uppercase tracking-[0.16em] mt-1.5">{s.label}</span>
+        </div>
+      ))}
+    </div>
   );
 
   if (mobile) {
@@ -328,106 +401,55 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
           <EditModal onClose={() => setEditing(false)} onSave={handleSaveProfile} initialData={editProfile} />
         )}
 
-        <header className="sticky top-0 z-40 h-14 bg-[#071422]/95 backdrop-blur-xl border-b border-white/[0.06] flex items-center px-4 justify-between">
+        <header className="sticky top-0 z-40 h-14 bg-[#071422]/85 backdrop-blur-xl flex items-center px-4 justify-between">
           <button onClick={() => navigate(-1)} className="bg-transparent border-none cursor-pointer text-white/40 flex"><ArrowLeft size={20} /></button>
-          <span className="text-[14px] font-bold text-white">Profile</span>
+          <span className="text-[13px] font-bold uppercase tracking-widest text-white/60">Profile</span>
           {effectiveIsOwner
             ? <button onClick={() => navigate("/settings")} className="bg-transparent border-none cursor-pointer text-white/40 flex"><Settings size={18} /></button>
             : <div className="w-[18px]" />
           }
         </header>
 
-        <div className="p-3.5 flex flex-col gap-3">
-          <div className="relative bg-gradient-to-br from-[#0d1b2a] to-[#071422] border border-white/[0.07] rounded-2xl overflow-hidden">
-            <div className="h-24 relative overflow-hidden">
-              {profileUser?.cover_url
-                ? <img src={profileUser.cover_url} alt="Cover" className="w-full h-full object-cover"
-                    style={{ objectPosition: profileUser.cover_position || "50% 50%" }} />
-                : <>
-                    <div className="absolute inset-0 bg-linear-to-r from-[#FF6B35]/20 via-[#4ade80]/10 to-[#60a5fa]/10" />
-                    <div className="absolute inset-0 opacity-30"
-                      style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #FF6B35 0%, transparent 50%), radial-gradient(circle at 80% 50%, #4ade80 0%, transparent 50%)" }} />
-                  </>
-              }
+        <div className="relative -mt-14">
+          <Cover height={200} />
+          <div className="relative px-5 pt-[132px]">
+            <div className="flex items-end justify-between mb-4">
+              <Avatar size={82} />
+              <ActionButton compact />
             </div>
-            <div className="px-5 pb-5">
-              <div className="relative -mt-10 mb-3 flex items-end justify-between">
-                <ProfileMeta avatarSize="mobile" />
-                {effectiveIsOwner ? (
-                  <button onClick={() => setEditing(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/15 bg-white/[0.07] text-white/60 text-[12px] font-semibold cursor-pointer hover:bg-white/15 hover:text-white/90 transition-all">
-                    <Edit3 size={13} /> Edit Profile
-                  </button>
-                ) : (
-                  <button onClick={handleMessage} disabled={dmLoading}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#FF6B35]/30 bg-[#FF6B35]/10 text-[#FF6B35] text-[12px] font-semibold cursor-pointer hover:bg-[#FF6B35]/20 transition-all disabled:opacity-50">
-                    <MessageCircle size={13} /> {dmLoading ? "Opening…" : "Message"}
-                  </button>
-                )}
-              </div>
 
-              <div className="mb-3">
-                <div className="flex items-center gap-2.5 mb-1">
-                  <h1 className="text-[20px] font-bold text-white font-serif tracking-tight">{displayName}</h1>
-                  <LevelBadge level={level} />
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-white/40 mb-1">
-                  <span className="text-white/30">@{profileUser?.username}</span>
-                  {(profileUser?.city || profileUser?.country) && (
-                    <>
-                      <span className="text-white/15">·</span>
-                      <MapPin size={11} className="text-[#FF6B35]/60" />
-                      <span>{profileUser?.city}{profileUser?.country ? `, ${profileUser.country}` : ""}</span>
-                    </>
-                  )}
-                  {nationality && (
-                    <>
-                      <span className="text-white/15">·</span>
-                      <Flag size={11} className="text-white/30" />
-                      <span>{nationality}</span>
-                    </>
-                  )}
-                </div>
-                {profileUser?.bio && <p className="text-[13px] text-white/55 leading-relaxed">{profileUser.bio}</p>}
-              </div>
+            <div className="flex items-center gap-2.5 mb-2 flex-wrap">
+              <h1 className="text-[24px] font-bold text-white font-serif tracking-tight leading-none">{displayName}</h1>
+              <LevelBadge level={level} />
+            </div>
+            <MetaLine compact />
+            {profileUser?.bio && <p className="text-[13.5px] text-white/55 leading-relaxed mt-3">{profileUser.bio}</p>}
 
-              <div className="flex gap-3 pt-3 border-t border-white/[0.06] flex-wrap">
-                {[
-                  { val: d(tripsTotal),     label: "Trips"       },
-                  { val: karma,             label: "Karma"       },
-                  { val: checkinDisplay,    label: "Reliability" },
-                  { val: d(avgRating ?? 0), label: "Rating"      },
-                ].map(s => (
-                  <div key={s.label} className="flex flex-col items-center min-w-[56px]">
-                    <span className="text-[17px] font-black text-white font-serif leading-none">{s.val}</span>
-                    <span className="text-[9px] text-white/30 font-medium uppercase tracking-wider mt-0.5">{s.label}</span>
-                  </div>
-                ))}
-                <div className="ml-auto flex items-center gap-1.5 text-[10px] text-white/25">
-                  <Clock size={10} />
-                  <span>Joined {joinDate}</span>
-                </div>
-              </div>
+            <div className="mt-6 pt-5 border-t border-white/[0.07]">
+              <HeroStats compact />
             </div>
           </div>
+        </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {[
-              { id: "profile", label: "Overview" },
-              { id: "badges",  label: "Badges"   },
-              { id: "trips",   label: "Trips"    },
-            ].map(t => (
-              <button key={t.id} onClick={() => setMobileTab(t.id)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-bold border cursor-pointer transition-all
-                  ${mobileTab === t.id ? "bg-[#FF6B35] border-[#FF6B35] text-white" : "bg-transparent border-white/20 text-white/50"}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex gap-6 px-5 mt-7 border-b border-white/[0.07]">
+          {[
+            { id: "profile", label: "Overview" },
+            { id: "badges",  label: "Badges"   },
+            { id: "trips",   label: "Trips"    },
+          ].map(t => (
+            <button key={t.id} onClick={() => setMobileTab(t.id)}
+              className={`relative pb-3 bg-transparent border-none text-[12px] font-bold uppercase tracking-widest cursor-pointer transition-colors
+                ${mobileTab === t.id ? "text-white" : "text-white/30"}`}>
+              {t.label}
+              {mobileTab === t.id && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[#FF6B35] rounded-full" />}
+            </button>
+          ))}
+        </div>
 
-          {mobileTab === "profile" && <>{StatsSection}</>}
-          {mobileTab === "badges"  && <>{BadgesSection}</>}
-          {mobileTab === "trips"   && <>{TripHistorySection}</>}
+        <div className="px-5 pt-7">
+          {mobileTab === "profile" && StatsSection}
+          {mobileTab === "badges"  && BadgesSection}
+          {mobileTab === "trips"   && TripHistorySection}
         </div>
 
         <MobileBottomNav />
@@ -445,86 +467,44 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
       <AppNav rightExtra={
         effectiveIsOwner ? (
           <button onClick={() => navigate("/settings")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.05] text-white/50 text-[12px] font-semibold cursor-pointer hover:bg-white/10 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] text-white/50 text-[12px] font-semibold cursor-pointer hover:bg-white/[0.12] hover:text-white/80 transition-colors">
             <Settings size={13} /> Settings
           </button>
         ) : null
       } />
 
-      <div className="max-w-[1200px] mx-auto px-6 py-6 flex gap-6">
+      <div className="relative">
+        <Cover height={340} />
 
-        <div className="w-[300px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-[76px]">
-          <div className="bg-[#0d1b2a] border border-white/[0.07] rounded-2xl overflow-hidden">
-            <div className="h-20 relative overflow-hidden">
-              {profileUser?.cover_url
-                ? <img src={profileUser.cover_url} alt="Cover" className="w-full h-full object-cover"
-                    style={{ objectPosition: profileUser.cover_position || "50% 50%" }} />
-                : <>
-                    <div className="absolute inset-0 bg-linear-to-r from-[#FF6B35]/20 via-[#4ade80]/10 to-[#60a5fa]/10" />
-                    <div className="absolute inset-0 opacity-30"
-                      style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #FF6B35 0%, transparent 50%), radial-gradient(circle at 80% 50%, #4ade80 0%, transparent 50%)" }} />
-                  </>
-              }
+        <div className="relative max-w-[1080px] mx-auto px-8 pt-[196px] pb-20">
+          <div className="flex items-end gap-6">
+            <Avatar size={128} />
+            <div className="flex-1 min-w-0 pb-1">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <h1 className="text-[34px] font-bold text-white font-serif tracking-tight leading-none">{displayName}</h1>
+                <LevelBadge level={level} />
+              </div>
+              <MetaLine />
             </div>
-            <div className="px-4 pb-4">
-              <div className="relative -mt-8 mb-3 flex items-end justify-between">
-                <ProfileMeta avatarSize="desktop" />
-                {effectiveIsOwner ? (
-                  <button onClick={() => setEditing(true)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-white/15 bg-white/[0.07] text-white/50 text-[11px] font-semibold cursor-pointer hover:bg-white/15 transition-all">
-                    <Edit3 size={11} /> Edit
-                  </button>
-                ) : (
-                  <button onClick={handleMessage} disabled={dmLoading}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#FF6B35]/30 bg-[#FF6B35]/10 text-[#FF6B35] text-[11px] font-semibold cursor-pointer hover:bg-[#FF6B35]/20 transition-all disabled:opacity-50">
-                    <MessageCircle size={11} /> {dmLoading ? "Opening…" : "Message"}
-                  </button>
-                )}
-              </div>
-              <div className="mb-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[15px] font-bold text-white font-serif">{displayName}</span>
-                  <LevelBadge level={level} />
-                </div>
-                <div className="text-[11px] text-white/35 mb-0.5">@{profileUser?.username}</div>
-                {(profileUser?.city || profileUser?.country) && (
-                  <div className="flex items-center gap-1 text-[11px] text-white/35 mb-0.5">
-                    <MapPin size={10} className="text-[#FF6B35]/60" />
-                    {profileUser?.city}{profileUser?.country ? `, ${profileUser.country}` : ""}
-                  </div>
-                )}
-                {nationality && (
-                  <div className="flex items-center gap-1 text-[11px] text-white/35 mb-2">
-                    <Flag size={10} className="text-white/30" />
-                    {nationality}
-                  </div>
-                )}
-                {!nationality && (profileUser?.city || profileUser?.country) && <div className="mb-2" />}
-                {profileUser?.bio && <p className="text-[12px] text-white/50 leading-relaxed">{profileUser.bio}</p>}
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.06]">
-                {[
-                  { val: d(tripsTotal),     label: "Trips"      },
-                  { val: karma,             label: "Karma"      },
-                  { val: checkinDisplay,    label: "Reliability"},
-                  { val: d(avgRating ?? 0), label: "Avg Rating" },
-                ].map(s => (
-                  <div key={s.label} className="text-center py-1.5 bg-white/[0.03] rounded-xl">
-                    <div className="text-[16px] font-black text-white font-serif leading-none">{s.val}</div>
-                    <div className="text-[9px] text-white/25 uppercase tracking-wider mt-0.5">{s.label}</div>
-                  </div>
-                ))}
-              </div>
+            <div className="pb-2">
+              <ActionButton />
             </div>
           </div>
-        </div>
 
-        <div className="flex-1 min-w-0 flex flex-col gap-5">
-          {StatsSection}
-          {BadgesSection}
-          {TripHistorySection}
-        </div>
+          {profileUser?.bio && (
+            <p className="mt-5 max-w-[620px] text-[14px] text-white/55 leading-relaxed">{profileUser.bio}</p>
+          )}
 
+          <div className="mt-8 py-6 border-y border-white/[0.07]">
+            <HeroStats />
+          </div>
+
+          <div className="mt-12 flex flex-col gap-14">
+            {StatsSection}
+            {BadgesSection}
+            {TripHistorySection}
+          </div>
+        </div>
       </div>
     </div>
   );
