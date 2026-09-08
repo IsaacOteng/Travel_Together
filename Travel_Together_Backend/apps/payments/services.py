@@ -66,7 +66,7 @@ def start_member_payment(trip, member, approved_by=None):
     from apps.notifications.utils import push
     from .models import Payment
 
-    hours    = getattr(settings, "PAYMENT_DEADLINE_HOURS", 48)
+    hours    = settings.PAYMENT_DEADLINE_HOURS
     deadline = timezone.now() + timedelta(hours=hours)
 
     payment = Payment.objects.create(
@@ -117,66 +117,81 @@ def confirm_payment(payment, fee=None, paid_amount=None, currency=None):
     """
     import logging
     from decimal import Decimal
+    from django.db import transaction
     from apps.trips.models import TripMember
     from .models import Payment
 
-    if payment.status == Payment.Status.HELD:
-        return payment  # already confirmed safe to call again (idempotent)
-
-    if currency is not None and str(currency).upper() != str(payment.currency).upper():
-        logging.getLogger(__name__).error(
-            "Payment %s currency mismatch: charged %s, expected %s not confirming.",
-            payment.id, currency, payment.currency,
+    # The webhook and VerifyPaymentView both land here, often at the same moment
+    # (Paystack fires the webhook while the member is being redirected back). The
+    # idempotency guard below is a read-modify-write, so without a row lock both
+    # callers can read PENDING, both proceed, and the member is admitted twice
+    # double notifications, and a second pass at the member-state transition.
+    # Re-read under the lock so the guard sees whatever the other caller committed.
+    with transaction.atomic():
+        payment = (
+            Payment.objects
+            .select_for_update()
+            .select_related("trip", "user")
+            .get(pk=payment.pk)
         )
-        return payment
 
-    if paid_amount is not None:
-        try:
-            paid = Decimal(str(paid_amount))
-        except (TypeError, ValueError, ArithmeticError):
-            paid = Decimal("0")
-        # Overpayment is fine; underpayment is not.
-        if paid < payment.amount:
+        if payment.status == Payment.Status.HELD:
+            return payment  # already confirmed safe to call again (idempotent)
+
+        if currency is not None and str(currency).upper() != str(payment.currency).upper():
             logging.getLogger(__name__).error(
-                "Payment %s underpaid: charged %s, expected %s not confirming.",
-                payment.id, paid, payment.amount,
+                "Payment %s currency mismatch: charged %s, expected %s not confirming.",
+                payment.id, currency, payment.currency,
             )
             return payment
 
-    payment.status  = Payment.Status.HELD
-    payment.paid_at = timezone.now()
-    if fee is not None:
-        payment.fee = fee
-    payment.save(update_fields=["status", "paid_at", "fee", "updated_at"])
+        if paid_amount is not None:
+            try:
+                paid = Decimal(str(paid_amount))
+            except (TypeError, ValueError, ArithmeticError):
+                paid = Decimal("0")
+            # Overpayment is fine; underpayment is not.
+            if paid < payment.amount:
+                logging.getLogger(__name__).error(
+                    "Payment %s underpaid: charged %s, expected %s not confirming.",
+                    payment.id, paid, payment.amount,
+                )
+                return payment
 
-    member = (
-        TripMember.objects
-        .select_related("user")
-        .filter(trip=payment.trip, user=payment.user)
-        .first()
-    )
-    if member and member.status == TripMember.Status.AWAITING_PAYMENT:
-        member.status = TripMember.Status.APPROVED
-        member.save(update_fields=["status"])
-        admit_member_to_group(payment.trip, member, approved_by=payment.trip.chief)
+        payment.status  = Payment.Status.HELD
+        payment.paid_at = timezone.now()
+        if fee is not None:
+            payment.fee = fee
+        payment.save(update_fields=["status", "paid_at", "fee", "updated_at"])
 
-        # Tell the organizer the member paid and is now in the group.
-        trip = payment.trip
-        if trip.chief and trip.chief_id != payment.user_id:
-            from apps.notifications.utils import push
-            name = member.user.first_name or member.user.username or "A member"
-            push(
-                recipient  = trip.chief,
-                notif_type = "payment_received",
-                title      = "Payment received",
-                body       = f"{name} paid and joined \"{trip.title}\".",
-                sender     = member.user,
-                trip       = trip,
-                action_url = f"/group-dashboard/{trip.id}",
-                data       = {"trip_id": str(trip.id)},
-            )
+        member = (
+            TripMember.objects
+            .select_related("user")
+            .filter(trip=payment.trip, user=payment.user)
+            .first()
+        )
+        if member and member.status == TripMember.Status.AWAITING_PAYMENT:
+            member.status = TripMember.Status.APPROVED
+            member.save(update_fields=["status"])
+            admit_member_to_group(payment.trip, member, approved_by=payment.trip.chief)
 
-    return payment
+            # Tell the organizer the member paid and is now in the group.
+            trip = payment.trip
+            if trip.chief and trip.chief_id != payment.user_id:
+                from apps.notifications.utils import push
+                name = member.user.first_name or member.user.username or "A member"
+                push(
+                    recipient  = trip.chief,
+                    notif_type = "payment_received",
+                    title      = "Payment received",
+                    body       = f"{name} paid and joined \"{trip.title}\".",
+                    sender     = member.user,
+                    trip       = trip,
+                    action_url = f"/group-dashboard/{trip.id}",
+                    data       = {"trip_id": str(trip.id)},
+                )
+
+        return payment
 
 
 # ─── Refunds ──────────────────────────────────────────────────────────────────
@@ -184,7 +199,7 @@ def confirm_payment(payment, fee=None, paid_amount=None, currency=None):
 def is_refund_eligible(trip):
     """Option-A cutoff: refundable only if the trip is still ≥ REFUND_CUTOFF_DAYS away."""
     days_out = (trip.date_start - timezone.now().date()).days
-    return days_out >= getattr(settings, "REFUND_CUTOFF_DAYS", 7)
+    return days_out >= settings.REFUND_CUTOFF_DAYS
 
 
 def refund_payment(payment, reason="", notify=True, force=False):
@@ -240,7 +255,7 @@ def handle_member_leaving(trip, user):
       • held + eligible (≥ cutoff)  → refund (minus fee)
       • held + too late / no-show   → forfeit; money stays in escrow for the organizer
     """
-    if not getattr(settings, "PAYMENTS_ENABLED", False):
+    if not settings.PAYMENTS_ENABLED:
         return None
 
     from .models import Payment
@@ -270,7 +285,7 @@ def refund_removed_member(trip, user):
     at payout. Returns the refunded amount, or None if there was nothing to
     refund.
     """
-    if not getattr(settings, "PAYMENTS_ENABLED", False):
+    if not settings.PAYMENTS_ENABLED:
         return None
 
     from .models import Payment
@@ -321,13 +336,27 @@ def cancel_trip(trip, by_organizer=False, reason=""):
     trip.status = Trip.Status.CANCELLED
     trip.save(update_fields=["status", "updated_at"])
 
-    # Clawback: any payout already released to the organizer can't be pulled back
+    # Clawback: money that actually reached the organizer can't be pulled back
     # from escrow (it's gone), so it becomes a debt recovered from their future
     # payouts. We never cover this from our commission.
+    #
+    # Only PAID and PROCESSING count as "reached them". A PENDING payout was
+    # recorded but never sent (no payout method configured, or no Paystack keys),
+    # so charging the organizer for it would invent a debt for money they never
+    # received. Cancel those rows instead they must not be paid out manually
+    # after the trip they belong to has been cancelled.
     from decimal import Decimal
     from .models import Payout
+
+    Payout.objects.filter(trip=trip, status=Payout.Status.PENDING).update(
+        status=Payout.Status.FAILED
+    )
+
     released = sum(
-        (po.amount for po in Payout.objects.filter(trip=trip).exclude(status=Payout.Status.FAILED)),
+        (po.amount for po in Payout.objects.filter(
+            trip=trip,
+            status__in=[Payout.Status.PAID, Payout.Status.PROCESSING],
+        )),
         Decimal("0"),
     )
     if released > 0 and trip.chief:
@@ -338,7 +367,7 @@ def cancel_trip(trip, by_organizer=False, reason=""):
         from apps.karma.utils import award_karma
         award_karma(
             user        = trip.chief,
-            delta       = -getattr(settings, "ORGANIZER_CANCEL_KARMA_PENALTY", 25),
+            delta       = -settings.ORGANIZER_CANCEL_KARMA_PENALTY,
             reason      = "penalty",
             description = f"Cancelled trip: {trip.title}",
             trip        = trip,
@@ -356,7 +385,7 @@ def _organizer_share(trip):
         (p.amount for p in Payment.objects.filter(trip=trip, status=Payment.Status.HELD)),
         Decimal("0"),
     )
-    commission = (held_total * Decimal(getattr(settings, "PLATFORM_COMMISSION_PERCENT", 10)) / 100)
+    commission = (held_total * Decimal(settings.PLATFORM_COMMISSION_PERCENT) / 100)
     return held_total, commission, (held_total - commission)
 
 
@@ -445,7 +474,7 @@ def _organizer_is_established(user):
         return True
     from apps.trips.models import Trip
     completed = Trip.objects.filter(chief=user, status=Trip.Status.COMPLETED).count()
-    return completed >= getattr(settings, "PARTIAL_RELEASE_MIN_COMPLETED_TRIPS", 2)
+    return completed >= settings.PARTIAL_RELEASE_MIN_COMPLETED_TRIPS
 
 
 def release_partial_payout(trip):
@@ -462,7 +491,7 @@ def release_partial_payout(trip):
     _, _, organizer_total = _organizer_share(trip)
     if organizer_total <= 0:
         return None
-    pct     = Decimal(getattr(settings, "PARTIAL_RELEASE_PERCENT", 50)) / 100
+    pct     = Decimal(settings.PARTIAL_RELEASE_PERCENT) / 100
     partial = (organizer_total * pct).quantize(Decimal("0.01"))
     if partial <= 0:
         return None

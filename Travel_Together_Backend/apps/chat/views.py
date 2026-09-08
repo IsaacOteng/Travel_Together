@@ -7,11 +7,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 
+from apps.users.models import User
 from .models import Conversation, ConversationMember, Message, MessageReadReceipt
 from .serializers import (
     ConversationListSerializer, ConversationDetailSerializer,
     MessageSerializer, MessageSendSerializer, DMCreateSerializer,
 )
+from .utils import users_share_a_trip, DM_NOT_ALLOWED_DETAIL
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -25,6 +27,35 @@ def _require_member(conversation, user):
     if not m:
         return None, Response({"detail": "Not a member of this conversation."}, status=403)
     return m, None
+
+
+def _dm_partner(conversation, user):
+    """The other participant in a DM, or None if this isn't a two-person DM."""
+    if conversation.type != Conversation.Type.DM:
+        return None
+    membership = (
+        ConversationMember.objects
+        .filter(conversation=conversation)
+        .exclude(user=user)
+        .select_related("user")
+        .first()
+    )
+    return membership.user if membership else None
+
+
+def _require_dm_still_allowed(conversation, user):
+    """
+    Guard for writing into a DM. Returns a Response to bail out with, or None.
+
+    Group conversations are governed by trip membership already and are not
+    affected.
+    """
+    if conversation.type != Conversation.Type.DM:
+        return None
+    partner = _dm_partner(conversation, user)
+    if partner and users_share_a_trip(user, partner):
+        return None
+    return Response({"detail": DM_NOT_ALLOWED_DETAIL}, status=403)
 
 
 # ─── Conversation list + create DM ───────────────────────────────────────────
@@ -54,6 +85,13 @@ class ConversationListView(APIView):
         other_id = serializer.validated_data["user_id"]
         if str(other_id) == str(request.user.id):
             return Response({"detail": "You cannot DM yourself."}, status=400)
+
+        # A user id is guessable and this endpoint took any of them, so anyone
+        # could open a thread with any stranger. DMs are for people actually
+        # travelling together see users_share_a_trip.
+        other = User.objects.filter(id=other_id).first()
+        if not other or not users_share_a_trip(request.user, other):
+            return Response({"detail": DM_NOT_ALLOWED_DETAIL}, status=403)
 
         # Find existing DM between the two users
         my_convs = ConversationMember.objects.filter(
@@ -183,6 +221,13 @@ class MessageListView(APIView):
         except Conversation.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
         _, err = _require_member(conv, request.user)
+        if err:
+            return err
+
+        # Re-check on every send, not just at creation: a thread opened before
+        # this rule existed (or before someone left the trip) must not stay open
+        # as a permanent back channel.
+        err = _require_dm_still_allowed(conv, request.user)
         if err:
             return err
 

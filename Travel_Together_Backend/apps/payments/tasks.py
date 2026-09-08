@@ -55,7 +55,7 @@ def release_due_partials():
     from .models import Payout
     from .services import release_partial_payout
 
-    cutoff = timezone.now() - timedelta(hours=getattr(settings, "DEPARTURE_GRACE_HOURS", 6))
+    cutoff = timezone.now() - timedelta(hours=settings.DEPARTURE_GRACE_HOURS)
     trips = Trip.objects.filter(
         departure_confirmed_at__isnull=False,
         departure_confirmed_at__lt=cutoff,
@@ -84,7 +84,7 @@ def release_due_payouts():
     from .models import Payout
     from .services import release_final_payout
 
-    cutoff = timezone.now() - timedelta(hours=getattr(settings, "DISPUTE_WINDOW_HOURS", 48))
+    cutoff = timezone.now() - timedelta(hours=settings.DISPUTE_WINDOW_HOURS)
     trips = Trip.objects.filter(
         status=Trip.Status.COMPLETED,
         ended_at__isnull=False,
