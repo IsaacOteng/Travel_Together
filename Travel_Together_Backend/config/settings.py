@@ -167,8 +167,11 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
         minutes=env.int("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=15)
     ),
+    # 60 days, and rolling: every refresh issues a fresh 60-day token, so this
+    # is really "log in again after 60 days of NOT opening the app". Someone who
+    # uses it even once a month is never asked to log in again.
     "REFRESH_TOKEN_LIFETIME": timedelta(
-        days=env.int("JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=30)
+        days=env.int("JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=60)
     ),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -176,11 +179,30 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+# How long a just-rotated refresh token still answers, returning the same new
+# pair it was already swapped for.
+#
+# Rotation makes a refresh token single-use, which is right for security and
+# brutal in a browser: the app fires several requests at once on load (profile,
+# notifications, unread counts), React StrictMode double-mounts every effect in
+# dev, and a second tab has its own copy of the token. Any two of those racing
+# means one arrives with a token that was valid when it was picked up and
+# blacklisted by the time it landed. Without this window that is a hard logout,
+# which is exactly the "why am I always signed out?" symptom.
+#
+# Replays inside the window are answered from cache, so the window does not
+# extend how long a stolen token is useful it only stops us punishing the
+# legitimate client for its own concurrency.
+JWT_REFRESH_REPLAY_GRACE_SECONDS = env.int("JWT_REFRESH_REPLAY_GRACE_SECONDS", default=60)
+
 # ─── Apple Sign In ────────────────────────────────────────────────────────────
 APPLE_APP_BUNDLE_ID = env("APPLE_APP_BUNDLE_ID", default="")
 
 # ─── Channels (WebSocket) + Cache ────────────────────────────────────────────
 _REDIS_URL = env("REDIS_URL", default="")
+# Published under its real name too: apps.users.utils needs it for the OTP rate
+# limiter, and reaching for CELERY_BROKER_URL instead only worked by coincidence.
+REDIS_URL = _REDIS_URL
 if _REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
@@ -308,6 +330,7 @@ ORGANIZER_CANCEL_KARMA_PENALTY = env.int("ORGANIZER_CANCEL_KARMA_PENALTY", defau
 NO_SHOW_KARMA_PENALTY          = env.int("NO_SHOW_KARMA_PENALTY",          default=10)   # karma docked for missing every check-in (reputational only, not a block)
 ANOMALY_MIN_CHECKIN_PERCENT    = env.int("ANOMALY_MIN_CHECKIN_PERCENT",    default=20)   # a completed trip below this check-in rate is auto-flagged for review
 DEPARTURE_QUORUM_PERCENT    = env.int("DEPARTURE_QUORUM_PERCENT",    default=70)   # % of approved members who must check in before the organizer can depart / get the partial
+CHECKIN_ACCURACY_TOLERANCE_METERS = env.int("CHECKIN_ACCURACY_TOLERANCE_METERS", default=100)  # max GPS-accuracy slack added to a stop's geofence radius (stops a client claiming huge "accuracy" to bypass the fence)
 PARTIAL_RELEASE_MIN_COMPLETED_TRIPS = env.int("PARTIAL_RELEASE_MIN_COMPLETED_TRIPS", default=2)  # completed trips before an unverified organizer earns a partial release
 
 # ─── Email ────────────────────────────────────────────────────────────────────
@@ -336,18 +359,40 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-# ─── Production security headers ─────────────────────────────────────────────
-# These are safe to set in all environments; they only take effect over HTTPS.
-if not DEBUG:
-    SECURE_SSL_REDIRECT          = True
-    SECURE_HSTS_SECONDS          = 31536000   # 1 year
+# ─── Security headers ────────────────────────────────────────────────────────
+# Split by what each setting actually depends on.
+#
+# These first three need no HTTPS and have no downside, so they are always on
+# (previously they sat behind `if not DEBUG`, which meant they were off during
+# every local run the one environment where a developer might notice them).
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER   = True
+X_FRAME_OPTIONS             = "DENY"
+
+# These REQUIRE HTTPS. Tying them to `not DEBUG` is a trap: running with
+# DEBUG=False over plain http (a local demo, a staging box without TLS) makes
+# SECURE_SSL_REDIRECT bounce every request to an https:// URL that isn't
+# listening, and the app appears dead. So they are gated on an explicit flag
+# set it to true only where TLS actually terminates.
+# Whether X-Forwarded-For may be believed when identifying the caller's IP.
+# Any client can set that header, so it is only meaningful behind a reverse
+# proxy that overwrites it. Leaving this off makes get_client_ip fall back to
+# REMOTE_ADDR, which cannot be forged turn it on ONLY when a proxy you control
+# terminates the connection, or the per-IP OTP rate limit becomes bypassable by
+# sending a different header value each request.
+TRUST_PROXY_HEADERS = env.bool("TRUST_PROXY_HEADERS", default=False)
+
+ENABLE_HTTPS_SECURITY = env.bool("ENABLE_HTTPS_SECURITY", default=False)
+if ENABLE_HTTPS_SECURITY:
+    SECURE_SSL_REDIRECT            = True
+    SECURE_HSTS_SECONDS            = 31536000   # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD          = True
-    SESSION_COOKIE_SECURE        = True
-    CSRF_COOKIE_SECURE           = True
-    SECURE_BROWSER_XSS_FILTER   = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS              = "DENY"
+    SECURE_HSTS_PRELOAD            = True
+    SESSION_COOKIE_SECURE          = True
+    CSRF_COOKIE_SECURE             = True
+    # Behind a reverse proxy Django must be told how to detect the original
+    # scheme, or it will redirect-loop even when TLS is present.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # ─── Unfold Admin UI ─────────────────────────────────────────────────────────
 UNFOLD = {

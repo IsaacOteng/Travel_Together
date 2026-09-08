@@ -47,5 +47,11 @@ urlpatterns = [
     path("social/", include("social_django.urls", namespace="social")),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Always serve MEDIA_ROOT. Gating this on DEBUG meant every previously-uploaded
+# avatar and trip photo 404'd the moment DEBUG was turned off; gating it on
+# USE_R2 did the same the moment R2 was switched on, because files uploaded
+# before the switch still had /media/ URLs stored in the database. In production
+# MEDIA_ROOT is empty (everything lives in R2), so this route matches nothing
+# there -- it only rescues files that predate the move to object storage.
+# Use `manage.py migrate_media_to_r2` to push any such leftovers into R2.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

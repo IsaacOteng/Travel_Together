@@ -12,6 +12,7 @@ import jwt
 from jwt.algorithms import RSAAlgorithm
 
 from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 
 from rest_framework import status
@@ -72,6 +73,64 @@ def _token_response(refresh: RefreshToken) -> dict:
         "access":  str(refresh.access_token),
         "refresh": str(refresh),
     }
+
+
+# ─── Refresh-token rotation replay window ─────────────────────────────────────
+#
+# See JWT_REFRESH_REPLAY_GRACE_SECONDS in settings for why this exists at all.
+
+def _rotation_cache_key(jti: str) -> str:
+    return f"jwt_rotated:{jti}"
+
+
+def _token_jti(raw_token: str):
+    """
+    The jti of a refresh token, read WITHOUT the blacklist/expiry checks.
+
+    RefreshToken(raw) raises for exactly the tokens we care about here (already
+    rotated, therefore blacklisted), so we parse with verify=False. The
+    signature is still ours the value only ever indexes a cache entry we
+    wrote ourselves, and a forged token simply won't match one.
+    """
+    try:
+        return RefreshToken(raw_token, verify=False).payload.get("jti")
+    except Exception:
+        return None
+
+
+def _remember_rotation(old_refresh, payload: dict) -> None:
+    """Record what a just-spent refresh token was exchanged for."""
+    grace = getattr(settings, "JWT_REFRESH_REPLAY_GRACE_SECONDS", 60)
+    if grace <= 0:
+        return
+    jti = old_refresh.payload.get("jti")
+    if not jti:
+        return
+    try:
+        cache.set(_rotation_cache_key(jti), payload, timeout=grace)
+    except Exception:
+        # A cache outage must not break signing in it only costs us the
+        # tolerance, putting us back to strict single-use rotation.
+        logging.getLogger(__name__).warning("Could not record token rotation.", exc_info=True)
+
+
+def _replayed_pair(raw_token: str):
+    """
+    The pair a token was already swapped for, if that happened moments ago.
+
+    Returns None when this isn't a recent replay, in which case the caller
+    should treat the token as dead.
+    """
+    grace = getattr(settings, "JWT_REFRESH_REPLAY_GRACE_SECONDS", 60)
+    if grace <= 0:
+        return None
+    jti = _token_jti(raw_token)
+    if not jti:
+        return None
+    try:
+        return cache.get(_rotation_cache_key(jti))
+    except Exception:
+        return None
 
 
 # ─── Deleted-account reactivation ─────────────────────────────────────────────
@@ -288,6 +347,14 @@ class TokenRefreshView(APIView):
             old_refresh = RefreshToken(refresh_token)
             user_id = old_refresh["user_id"]
         except (TokenError, KeyError):
+            # It failed verification. Before calling it a dead session, check
+            # whether this is simply a replay of a token we rotated moments ago
+            # (see _replayed_pair) and hand back the same pair we already
+            # issued. Only a token that is genuinely expired, forged, or long
+            # since rotated falls through to 401.
+            replay = _replayed_pair(refresh_token)
+            if replay:
+                return Response(replay, status=status.HTTP_200_OK)
             return Response(
                 {"detail": "Session expired. Please log in again."},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -301,12 +368,13 @@ class TokenRefreshView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # Issue a brand-new token pair rolls the 30-day window forward
+        # Issue a brand-new token pair rolls the 60-day window forward
         new_refresh = _issue_tokens(user)
+        payload     = _token_response(new_refresh)
 
         # Retire the token that was just spent. Without this a refresh token is
-        # replayable for its full 30-day life: stealing one would grant a
-        # permanent session that logging out could not revoke. SIMPLE_JWT's
+        # replayable for its full life: stealing one would grant a permanent
+        # session that logging out could not revoke. SIMPLE_JWT's
         # ROTATE_REFRESH_TOKENS/BLACKLIST_AFTER_ROTATION only apply to
         # SimpleJWT's own view, which this one replaces, so rotation has to be
         # done explicitly here.
@@ -316,7 +384,11 @@ class TokenRefreshView(APIView):
             # token_blacklist app not installed nothing to retire.
             pass
 
-        return Response(_token_response(new_refresh), status=status.HTTP_200_OK)
+        # Remember what this token was swapped for, so a racing duplicate of the
+        # same request gets the same answer instead of being logged out.
+        _remember_rotation(old_refresh, payload)
+
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 # ─── Google OAuth ─────────────────────────────────────────────────────────────
