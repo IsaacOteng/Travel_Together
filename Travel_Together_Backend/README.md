@@ -12,7 +12,7 @@ Django + DRF + Django Channels + Celery + PostGIS backend for the TravelTogether
 | Real-time | Django Channels 4 + Daphne (ASGI) |
 | Task queue | Celery 5 + Redis |
 | Database | PostgreSQL + PostGIS (GeoDjango) |
-| Auth | Passwordless OTP · Google OAuth · Apple Sign In · JWT (httpOnly cookies) |
+| Auth | Passwordless OTP · Firebase (Google) · JWT (Bearer tokens) |
 
 ---
 
@@ -25,16 +25,17 @@ TravelTogether uses **passwordless authentication only**. No passwords are ever 
 ```
 Email OTP flow:
   POST /api/auth/send-otp/    →  email delivered (or silently rate-limited)
-  POST /api/auth/verify-otp/  →  JWT cookies set, { is_new_user } returned
+  POST /api/auth/verify-otp/  →  { access, refresh, is_new_user } returned
 
 Google / Apple:
-  POST /api/auth/google/      →  verify id_token server-side → JWT cookies set
-  POST /api/auth/apple/       →  verify id_token server-side → JWT cookies set
+  POST /api/auth/firebase/    →  verify Firebase id_token server-side → { access, refresh }
+  POST /api/auth/google/      →  verify id_token server-side → { access, refresh }
+  POST /api/auth/apple/       →  verify id_token server-side → { access, refresh }
 
 Session management:
-  POST /api/auth/token/refresh/  →  rotate refresh token, reset cookies
-  POST /api/auth/logout/         →  clear both cookies
-  DELETE /api/auth/account/      →  fresh OTP required, soft-deletes account
+  POST /api/auth/token/refresh/  →  rotate refresh token (old one is blacklisted)
+  POST /api/auth/logout/         →  blacklist the supplied refresh token
+  DELETE /api/auth/account/      →  soft-deletes the authenticated account
 ```
 
 ### Endpoints
@@ -42,23 +43,47 @@ Session management:
 | Method | URL | Auth required | Description |
 |---|---|---|---|
 | POST | `/api/auth/send-otp/` | No | Send 6-digit OTP to email |
-| POST | `/api/auth/verify-otp/` | No | Verify OTP, receive JWT cookies |
-| POST | `/api/auth/token/refresh/` | No (cookie) | Rotate refresh token |
+| POST | `/api/auth/verify-otp/` | No | Verify OTP, receive access + refresh tokens |
+| POST | `/api/auth/token/refresh/` | No (refresh token in body) | Rotate refresh token |
 | POST | `/api/auth/google/` | No | Sign in with Google id_token |
 | POST | `/api/auth/apple/` | No | Sign in with Apple id_token |
-| POST | `/api/auth/logout/` | No | Clear JWT cookies |
-| DELETE | `/api/auth/account/` | Yes | Delete account (OTP confirmation) |
+| POST | `/api/auth/logout/` | No (refresh token in body) | Blacklist the refresh token |
+| DELETE | `/api/auth/account/` | Yes | Soft-delete the authenticated account |
 
-### JWT cookies
+### JWT tokens
 
-Both tokens are set as **httpOnly, SameSite=Lax** cookies never in the response body.
+Both tokens are returned **in the response body** and sent back as a header:
 
-| Cookie | Lifetime | Purpose |
+```
+Authorization: Bearer <access_token>
+```
+
+| Token | Lifetime | Purpose |
 |---|---|---|
-| `access_token` | 15 minutes | Authenticates API requests |
-| `refresh_token` | 30 days (rolling) | Issues a new token pair on every refresh |
+| `access` | 15 minutes | Authenticates API requests |
+| `refresh` | 30 days (rolling) | Issues a new token pair on every refresh |
 
-The custom `CookieJWTAuthentication` class (`apps/users/authentication.py`) reads the access token from the cookie. It falls back to the `Authorization: Bearer` header for Postman/curl testing.
+Authentication is standard `rest_framework_simplejwt.JWTAuthentication`
+(`apps/users/authentication.py`), which keeps the backend client-agnostic: web,
+mobile or curl all just send the header, and `CORS_ALLOW_CREDENTIALS` stays off.
+
+**Known trade-off:** because the tokens live in the response body, the web client
+stores them in `localStorage`, which is readable by any successful XSS. Moving to
+httpOnly cookies would remove that exposure at the cost of CSRF handling and
+cookie management for non-browser clients. Revocation (below) limits the blast
+radius in the meantime.
+
+### Token revocation
+
+`ROTATE_REFRESH_TOKENS` / `BLACKLIST_AFTER_ROTATION` in `SIMPLE_JWT` only govern
+SimpleJWT's own view, which this project replaces so rotation is performed
+explicitly in `TokenRefreshView`:
+
+- Every refresh issues a new pair **and blacklists the token that was spent**, so
+  a refresh token is single-use. A replay returns `401`.
+- `POST /api/auth/logout/` must be given the refresh token in the body; it
+  blacklists it, ending the session server-side.
+- Access tokens are not revocable they simply expire (15 minutes).
 
 ### Persistent sessions (stay logged in)
 
@@ -110,9 +135,10 @@ when `onboarding_complete` is `False` on the user record. The frontend uses this
 
 ### Account deletion
 
-Requires the authenticated user to provide a fresh OTP sent with `purpose=delete_account`:
-1. Call `POST /api/auth/send-otp/` (the frontend must trigger a separate "send deletion code" call this is not the login OTP)
-2. Call `DELETE /api/auth/account/` with `{ "email": "...", "code": "..." }`
+`DELETE /api/auth/account/` authenticates with the access token alone; **no OTP
+step is currently implemented**. (A `delete_account` OTP purpose exists on
+`EmailVerification` and is the intended hardening re-confirming identity before
+a destructive action but the view does not yet require it.)
 
 The account is **soft-deleted** (`is_active=False`, `deleted_at` set). The `permanent_delete_accounts` Celery task handles final data purge after the grace period.
 
@@ -123,8 +149,16 @@ The account is **soft-deleted** (`is_active=False`, `deleted_at` set). The `perm
 ```env
 # Core
 SECRET_KEY=
-DEBUG=True
+DEBUG=False
 ALLOWED_HOSTS=localhost,127.0.0.1
+# HTTPS-only hardening (SSL redirect, HSTS, secure cookies).
+# Enable ONLY where TLS terminates DEBUG=False alone does not turn these on,
+# so the app still runs over plain http locally.
+ENABLE_HTTPS_SECURITY=False
+
+# Geofencing: max GPS-accuracy slack added to a stop's own radius when
+# validating a check-in (stops a client claiming huge "accuracy" to bypass it).
+CHECKIN_ACCURACY_TOLERANCE_METERS=100
 
 # Database
 DATABASE_URL=postgis://user:pass@localhost:5433/travel_together

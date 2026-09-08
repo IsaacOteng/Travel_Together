@@ -247,6 +247,12 @@ class CheckIn(models.Model):
     location_at_checkin  = models.PointField()
     accuracy_meters      = models.FloatField(null=True, blank=True)
     is_late              = models.BooleanField(default=False)
+    # Geofence audit trail. distance_meters is how far the member actually was
+    # from the stop; is_verified is False only when the stop has no coordinates
+    # to check against (nothing to verify), since out-of-range attempts are
+    # rejected outright rather than stored.
+    distance_meters      = models.FloatField(null=True, blank=True)
+    is_verified          = models.BooleanField(default=False)
     checked_in_at        = models.DateTimeField(auto_now_add=True)
 
     class Meta:

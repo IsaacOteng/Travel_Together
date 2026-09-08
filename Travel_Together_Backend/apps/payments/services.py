@@ -100,19 +100,48 @@ def start_member_payment(trip, member, approved_by=None):
     return payment
 
 
-def confirm_payment(payment, fee=None):
+def confirm_payment(payment, fee=None, paid_amount=None, currency=None):
     """
     Called when Paystack confirms the charge (wired to the webhook in Phase 3).
     Marks the payment held and admits the member to the group. Idempotent.
 
     `fee` (GHS, optional) is the Paystack processing fee, recorded so refunds can
     deduct it from the member (the platform never eats the fee).
+
+    `paid_amount` (GHS) and `currency` come from Paystack's own payload. When
+    supplied they are checked against what we asked for: a "success" event only
+    says money moved, not that the RIGHT money moved. Without this, a charge
+    settled for a smaller amount (or in another currency) would admit the member
+    at full price and inflate the organizer's escrow share. Mismatches are
+    refused and logged rather than silently confirmed.
     """
+    import logging
+    from decimal import Decimal
     from apps.trips.models import TripMember
     from .models import Payment
 
     if payment.status == Payment.Status.HELD:
         return payment  # already confirmed safe to call again (idempotent)
+
+    if currency is not None and str(currency).upper() != str(payment.currency).upper():
+        logging.getLogger(__name__).error(
+            "Payment %s currency mismatch: charged %s, expected %s not confirming.",
+            payment.id, currency, payment.currency,
+        )
+        return payment
+
+    if paid_amount is not None:
+        try:
+            paid = Decimal(str(paid_amount))
+        except (TypeError, ValueError, ArithmeticError):
+            paid = Decimal("0")
+        # Overpayment is fine; underpayment is not.
+        if paid < payment.amount:
+            logging.getLogger(__name__).error(
+                "Payment %s underpaid: charged %s, expected %s not confirming.",
+                payment.id, paid, payment.amount,
+            )
+            return payment
 
     payment.status  = Payment.Status.HELD
     payment.paid_at = timezone.now()
@@ -222,6 +251,36 @@ def handle_member_leaving(trip, user):
             return refund_payment(held, reason="left_trip")
         return None  # forfeit stays held, flows to organizer at payout
 
+    pending = Payment.objects.filter(trip=trip, user=user, status=Payment.Status.PENDING).first()
+    if pending:
+        pending.status = Payment.Status.FAILED
+        pending.save(update_fields=["status", "updated_at"])
+    return None
+
+
+def refund_removed_member(trip, user):
+    """
+    Called when the ORGANIZER removes a member. Always refunds held money,
+    ignoring the departure cutoff.
+
+    This is deliberately not `handle_member_leaving`. That function applies the
+    forfeit rule, which only makes sense when the member chose to walk away. A
+    removal is the organizer's decision, so applying the same rule would let an
+    organizer approve a member, collect the fee, remove them, and keep the money
+    at payout. Returns the refunded amount, or None if there was nothing to
+    refund.
+    """
+    if not getattr(settings, "PAYMENTS_ENABLED", False):
+        return None
+
+    from .models import Payment
+
+    held = Payment.objects.filter(trip=trip, user=user, status=Payment.Status.HELD).first()
+    if held:
+        return refund_payment(held, reason="removed_by_organizer")
+
+    # Approved but never paid nothing was taken, so just close the pending row
+    # out so it can't be paid after the fact.
     pending = Payment.objects.filter(trip=trip, user=user, status=Payment.Status.PENDING).first()
     if pending:
         pending.status = Payment.Status.FAILED
