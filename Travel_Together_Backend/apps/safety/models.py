@@ -19,7 +19,13 @@ class SOSAlert(models.Model):
     trip                       = models.ForeignKey("trips.Trip", on_delete=models.CASCADE, related_name="sos_alerts")
     member                     = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="sos_alerts")
     trigger_type               = models.CharField(max_length=15, choices=TriggerType.choices)
-    location                   = models.PointField()                     # PostGIS, spatial_index=True by default
+    # Nullable on purpose. An SOS must be able to fire when the device has no
+    # fix (location services off, indoors, permission denied) someone in
+    # trouble without GPS still needs help, and a required field here is what
+    # pushed callers into sending a placeholder 0,0 instead, which reads as a
+    # real position in the Gulf of Guinea. Null means "we genuinely don't know",
+    # which responders can act on; a fake coordinate is worse than none.
+    location                   = models.PointField(null=True, blank=True)  # PostGIS, spatial_index=True by default
     accuracy_meters            = models.FloatField(null=True, blank=True)
     deviation_distance_m       = models.FloatField(null=True, blank=True)  # deviation trigger only
     stationary_minutes         = models.IntegerField(null=True, blank=True) # stationary trigger only

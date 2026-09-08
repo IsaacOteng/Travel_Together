@@ -394,3 +394,179 @@ class RemovedMemberRefundTests(TestCase):
         m.refresh_from_db()
         self.assertEqual(m.status, TripMember.Status.REMOVED)
         self.assertIsNotNone(m.removed_at)
+
+
+# ─── Approval is not idempotent, so it must not be repeatable ────────────────
+
+class DoubleApprovalTests(TestCase):
+    """
+    Approving admits to the group chat and, on a paid trip, opens a Payment row.
+    Re-approving would bill the member a second time, so it must be refused.
+    """
+
+    def setUp(self):
+        self.client    = APIClient()
+        self.chief     = make_user("chief@t.co")
+        self.trip      = make_trip(self.chief, entry_price="100.00")
+        member(self.trip, self.chief, role=TripMember.Role.CHIEF)
+        self.applicant = make_user("applicant@t.co")
+        self.pending   = member(self.trip, self.applicant, TripMember.Status.PENDING)
+        self.url       = f"/api/trips/{self.trip.id}/members/{self.applicant.id}/"
+        self.client.force_authenticate(self.chief)
+
+    def _approve(self):
+        return self.client.patch(self.url, {"action": "approve"}, format="json")
+
+    @override_settings(PAYMENTS_ENABLED=True)
+    def test_second_approval_does_not_create_a_second_payment(self):
+        self.assertEqual(self._approve().status_code, 200)
+        res = self._approve()
+
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(
+            Payment.objects.filter(trip=self.trip, user=self.applicant).count(), 1,
+        )
+
+    @override_settings(PAYMENTS_ENABLED=False)
+    def test_cannot_re_approve_an_approved_member(self):
+        self.assertEqual(self._approve().status_code, 200)
+        res = self._approve()
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("already approved", res.json()["detail"])
+
+    @override_settings(PAYMENTS_ENABLED=False)
+    def test_cannot_approve_a_removed_member(self):
+        self.pending.status = TripMember.Status.REMOVED
+        self.pending.save()
+
+        res = self._approve()
+        self.assertEqual(res.status_code, 400)
+        self.pending.refresh_from_db()
+        self.assertEqual(self.pending.status, TripMember.Status.REMOVED)
+
+    @override_settings(PAYMENTS_ENABLED=False)
+    def test_rejected_applicant_can_still_be_approved(self):
+        self.pending.status = TripMember.Status.REJECTED
+        self.pending.save()
+
+        self.assertEqual(self._approve().status_code, 200)
+        self.pending.refresh_from_db()
+        self.assertEqual(self.pending.status, TripMember.Status.APPROVED)
+
+
+# ─── Clawback must only chase money that actually moved ──────────────────────
+
+@override_settings(PAYMENTS_ENABLED=True, PAYSTACK_SECRET_KEY="")
+class ClawbackTests(TestCase):
+    def setUp(self):
+        self.chief = make_user("chief@t.co")
+        self.trip  = make_trip(self.chief)
+        member(self.trip, self.chief, role=TripMember.Role.CHIEF)
+
+    def _payout(self, status, amount="50.00"):
+        return Payout.objects.create(
+            trip=self.trip, organizer=self.chief,
+            amount=Decimal(amount), kind=Payout.Kind.PARTIAL, status=status,
+        )
+
+    def test_pending_payout_creates_no_debt(self):
+        # PENDING = recorded but never sent (no payout method / no keys). The
+        # organizer never received it, so it must not become a debt.
+        self._payout(Payout.Status.PENDING)
+        services.cancel_trip(self.trip, by_organizer=True)
+
+        self.chief.refresh_from_db()
+        self.assertEqual(self.chief.clawback_owed or Decimal("0"), Decimal("0"))
+
+    def test_pending_payout_is_cancelled_not_left_payable(self):
+        po = self._payout(Payout.Status.PENDING)
+        services.cancel_trip(self.trip, by_organizer=True)
+
+        po.refresh_from_db()
+        self.assertEqual(po.status, Payout.Status.FAILED)
+
+    def test_paid_and_processing_payouts_do_create_debt(self):
+        self._payout(Payout.Status.PAID,       "40.00")
+        self._payout(Payout.Status.PROCESSING, "25.00")
+        services.cancel_trip(self.trip, by_organizer=True)
+
+        self.chief.refresh_from_db()
+        self.assertEqual(self.chief.clawback_owed, Decimal("65.00"))
+
+    def test_failed_payout_creates_no_debt(self):
+        self._payout(Payout.Status.FAILED)
+        services.cancel_trip(self.trip, by_organizer=True)
+
+        self.chief.refresh_from_db()
+        self.assertEqual(self.chief.clawback_owed or Decimal("0"), Decimal("0"))
+
+
+# ─── confirm_payment is called twice by design (webhook + verify) ────────────
+
+@override_settings(PAYMENTS_ENABLED=True)
+class ConfirmPaymentIdempotencyTests(TestCase):
+    def setUp(self):
+        self.chief     = make_user("chief@t.co")
+        self.trip      = make_trip(self.chief)
+        member(self.trip, self.chief, role=TripMember.Role.CHIEF)
+        self.applicant = make_user("applicant@t.co")
+        self.member    = member(self.trip, self.applicant,
+                                TripMember.Status.AWAITING_PAYMENT)
+        self.payment   = Payment.objects.create(
+            trip=self.trip, user=self.applicant, amount=Decimal("100.00"),
+            status=Payment.Status.PENDING, paystack_ref="tt_ref",
+        )
+
+    def test_second_confirmation_admits_only_once(self):
+        from apps.notifications.models import Notification
+
+        services.confirm_payment(self.payment, paid_amount=Decimal("100.00"))
+        services.confirm_payment(self.payment, paid_amount=Decimal("100.00"))
+
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.status, TripMember.Status.APPROVED)
+        self.assertEqual(
+            Notification.objects.filter(recipient=self.chief,
+                                        notification_type="payment_received").count(),
+            1,
+        )
+
+    def test_stale_in_memory_object_cannot_reconfirm(self):
+        # The webhook and the verify view each hold their own instance. One
+        # commits; the other's copy still says PENDING. Re-reading under the row
+        # lock is what stops the second one going through again.
+        stale = Payment.objects.get(pk=self.payment.pk)
+        services.confirm_payment(self.payment, paid_amount=Decimal("100.00"))
+
+        self.assertEqual(stale.status, Payment.Status.PENDING)   # stale copy
+        result = services.confirm_payment(stale, paid_amount=Decimal("100.00"))
+        self.assertEqual(result.status, Payment.Status.HELD)
+
+        from apps.notifications.models import Notification
+        self.assertEqual(
+            Notification.objects.filter(recipient=self.chief,
+                                        notification_type="payment_received").count(),
+            1,
+        )
+
+
+# ─── Configured settings must actually be the ones used ─────────────────────
+
+class SettingsAreHonouredTests(TestCase):
+    """
+    These read settings.X directly rather than getattr(settings, "X", <default>).
+    A stale in-code fallback silently diverging from settings.py is the bug this
+    guards against (commission was 10 in code vs 5 in settings).
+    """
+
+    @override_settings(PLATFORM_COMMISSION_PERCENT=20)
+    def test_commission_percent_comes_from_settings(self):
+        chief = make_user("chief@t.co")
+        trip  = make_trip(chief)
+        member(trip, chief, role=TripMember.Role.CHIEF)
+        held_payment(trip, make_user("a@t.co"), amount="100.00")
+
+        held, commission, organizer_total = services._organizer_share(trip)
+        self.assertEqual(held, Decimal("100.00"))
+        self.assertEqual(commission, Decimal("20.00"))
+        self.assertEqual(organizer_total, Decimal("80.00"))
