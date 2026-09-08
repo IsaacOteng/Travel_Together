@@ -90,7 +90,7 @@ class UserMeSerializer(serializers.ModelSerializer):
             "date_of_birth", "gender", "nationality", "city", "country",
             "dial_code", "phone_number", "bio", "avatar_url", "cover_url", "cover_position",
             "travel_karma", "karma_level", "email_verified",
-            "is_verified_traveller", "onboarding_complete",
+            "is_verified_traveller", "onboarding_complete", "is_staff",
             "location_mode", "sos_sensitivity", "two_factor_enabled",
             "username_changed_at", "name_changed_at",
             "created_at", "notification_settings", "preferences",

@@ -43,6 +43,8 @@ from .utils import (
     get_client_ip,
     is_otp_rate_limited,
     increment_otp_rate,
+    is_ip_rate_limited,
+    increment_ip_rate,
     generate_unique_username,
     clear_otp_rate,
 )
@@ -72,6 +74,38 @@ def _token_response(refresh: RefreshToken) -> dict:
     }
 
 
+# ─── Deleted-account reactivation ─────────────────────────────────────────────
+
+def _reactivate_if_deleted(user: User) -> bool:
+    """
+    Bring a soft-deleted account back as a blank slate. Returns True if it did.
+
+    AccountDeleteView only sets is_active=False (Celery purges later), so a
+    deleted user's row still matches on email. Every sign-in path has to run
+    this, not just the OTP one: JWTAuthentication rejects an inactive user, so
+    minting tokens for one hands the caller a session that 401s on its very next
+    request an invisible "logged in but nothing works" loop. Reactivating here
+    also means the account can't be resurrected with its old profile still
+    attached, which is the thing deletion was asked to remove.
+    """
+    if user.is_active:
+        return False
+
+    user.is_active           = True
+    user.deleted_at          = None
+    user.onboarding_complete = False
+    user.avatar_url          = None
+    user.cover_url           = None
+    if not user.username:                       # deletion frees the username
+        user.username = generate_unique_username(user.email)
+    user.save(update_fields=[
+        "is_active", "deleted_at", "onboarding_complete",
+        "avatar_url", "cover_url", "username",
+    ])
+    EmergencyContact.objects.filter(user=user).delete()
+    return True
+
+
 # ─── OTP: Send ────────────────────────────────────────────────────────────────
 
 class SendOTPView(APIView):
@@ -88,25 +122,22 @@ class SendOTPView(APIView):
         email = serializer.validated_data["email"]
         ip    = get_client_ip(request)
 
-        # Rate limit check still return 200 to prevent enumeration
-        if not is_otp_rate_limited(email):
+        # Two gates: this address, and this caller. The per-IP gate is what stops
+        # a script walking a list of addresses one send each stays under the
+        # per-email limit forever, while creating an account and sending mail from
+        # our domain to every stranger on the list.
+        #
+        # Either way the response is an unconditional 200 below: telling a caller
+        # they were throttled, or that an address does or doesn't exist, is the
+        # enumeration leak this endpoint is built to avoid.
+        if not is_otp_rate_limited(email) and not is_ip_rate_limited(ip):
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={"is_active": True},
             )
-            if not created and not user.is_active:
-                # Reactivate a previously deleted account full fresh start
-                user.is_active           = True
-                user.deleted_at          = None
-                user.onboarding_complete = False
-                user.avatar_url          = None
-                user.cover_url           = None
-                user.save(update_fields=["is_active", "deleted_at", "onboarding_complete", "avatar_url", "cover_url"])
-                # Clear all data tied to the old account
-                from .models import EmergencyContact
-                EmergencyContact.objects.filter(user=user).delete()
+            if not created and _reactivate_if_deleted(user):
                 clear_otp_rate(email)   # reset rate limit so OTP can be sent immediately
-                created = True  # treat as new so username is (re)generated below
+                created = True  # treat as new below
             if created and not user.username:
                 user.username = generate_unique_username(email)
                 user.save(update_fields=["username"])
@@ -130,6 +161,7 @@ class SendOTPView(APIView):
             )
 
             increment_otp_rate(email)
+            increment_ip_rate(ip)
             # Send synchronously OTP is the one task a user actively waits on,
             # so it must not depend on a running Celery worker. A send failure is
             # logged, never fatal: we keep the always-200 contract (enumeration
@@ -209,6 +241,9 @@ class VerifyOTPView(APIView):
         otp.is_used = True
         otp.save(update_fields=["is_used"])
 
+        # A code issued before the account was deleted can still land here.
+        _reactivate_if_deleted(user)
+
         if not user.email_verified:
             user.email_verified = True
             user.save(update_fields=["email_verified"])
@@ -268,6 +303,19 @@ class TokenRefreshView(APIView):
 
         # Issue a brand-new token pair rolls the 30-day window forward
         new_refresh = _issue_tokens(user)
+
+        # Retire the token that was just spent. Without this a refresh token is
+        # replayable for its full 30-day life: stealing one would grant a
+        # permanent session that logging out could not revoke. SIMPLE_JWT's
+        # ROTATE_REFRESH_TOKENS/BLACKLIST_AFTER_ROTATION only apply to
+        # SimpleJWT's own view, which this one replaces, so rotation has to be
+        # done explicitly here.
+        try:
+            old_refresh.blacklist()
+        except AttributeError:
+            # token_blacklist app not installed nothing to retire.
+            pass
+
         return Response(_token_response(new_refresh), status=status.HTTP_200_OK)
 
 
@@ -278,6 +326,12 @@ def _verify_google_token(id_token: str) -> dict:
     Verify a Google id_token using Google's tokeninfo endpoint.
     Returns the token payload dict on success, raises ValueError on failure.
     """
+    # Fail fast before spending a network round-trip: without a client id there
+    # is no audience to validate against, so no token could ever be accepted.
+    client_id = settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+    if not client_id:
+        raise ValueError("Google sign-in is not configured on this server.")
+
     url = f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
     try:
         with urllib.request.urlopen(url, timeout=5) as resp:
@@ -287,8 +341,10 @@ def _verify_google_token(id_token: str) -> dict:
     except Exception as e:
         raise ValueError(f"Google token verification error: {e}")
 
-    client_id = settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
-    if client_id and payload.get("aud") != client_id:
+    # The audience check is what ties this token to OUR app. Without it any
+    # valid Google id_token minted for ANY OAuth client would be accepted
+    # hence the unconditional check, and the fail-closed guard above.
+    if payload.get("aud") != client_id:
         raise ValueError("Google token audience mismatch.")
     if payload.get("email_verified") != "true":
         raise ValueError("Google email not verified.")
@@ -334,6 +390,8 @@ class GoogleAuthView(APIView):
             },
         )
 
+        _reactivate_if_deleted(user)
+
         # Sync google_uid if missing (user signed up via OTP first)
         if not user.google_uid:
             user.google_uid = google_uid
@@ -374,21 +432,27 @@ def _verify_apple_token(id_token: str) -> dict:
     Verify an Apple id_token using Apple's public JWKS.
     Returns the decoded payload dict on success, raises ValueError on failure.
     """
+    # Same rule as Google, checked first: without a bundle id there is nothing
+    # binding the token to our app, so refuse rather than decoding with
+    # verify_aud off.
+    bundle_id = settings.APPLE_APP_BUNDLE_ID
+    if not bundle_id:
+        raise ValueError("Apple sign-in is not configured on this server.")
+
     try:
         header = jwt.get_unverified_header(id_token)
     except Exception:
         raise ValueError("Invalid Apple token format.")
 
     public_key = _fetch_apple_public_key(header["kid"])
-    bundle_id  = settings.APPLE_APP_BUNDLE_ID
 
     try:
         payload = jwt.decode(
             id_token,
             public_key,
             algorithms=["RS256"],
-            audience=bundle_id if bundle_id else None,
-            options={"verify_aud": bool(bundle_id)},
+            audience=bundle_id,
+            options={"verify_aud": True},
         )
     except jwt.ExpiredSignatureError:
         raise ValueError("Apple token has expired.")
@@ -451,6 +515,8 @@ class AppleAuthView(APIView):
                 username=generate_unique_username(email),
             )
         else:
+            _reactivate_if_deleted(user)
+
             # Sync apple_uid if missing
             update_fields = []
             if not user.apple_uid:
@@ -492,9 +558,10 @@ class FirebaseAuthView(APIView):
             get_firebase_app()
             decoded = firebase_auth.verify_id_token(id_token)
         except Exception as e:
+            # Log the real reason; don't hand verifier internals to the caller.
             import logging; logging.getLogger(__name__).exception("Firebase token verification failed")
             return Response(
-                {"detail": f"Firebase token verification failed: {e}"},
+                {"detail": "Could not verify that sign-in. Please try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -507,6 +574,20 @@ class FirebaseAuthView(APIView):
         if not email:
             return Response(
                 {"detail": "Email not available from this sign-in provider."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # The email address is this view's ONLY join key: an account is matched,
+        # and then signed into, purely on `email` below. So the provider must have
+        # actually proven the address belongs to the person signing in. Google and
+        # Apple do; a Firebase email/password (or custom) account does not its
+        # holder types any address they like. Without this check, registering
+        # victim@example.com in the Firebase project is enough to take over that
+        # user's Travel Together account. GoogleAuthView enforces the same rule.
+        if not decoded.get("email_verified", False):
+            return Response(
+                {"detail": "This sign-in method hasn't verified your email address. "
+                           "Sign in with Google, Apple, or an emailed code instead."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -532,6 +613,8 @@ class FirebaseAuthView(APIView):
             user.username = generate_unique_username(email)
             user.save()
         else:
+            _reactivate_if_deleted(user)
+
             update_fields = []
             if "google" in provider and not user.google_uid:
                 user.google_uid = uid

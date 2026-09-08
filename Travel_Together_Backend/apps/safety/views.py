@@ -67,11 +67,17 @@ class TriggerSOSView(APIView):
             trip=trip, member=request.user, status=SOSAlert.AlertStatus.ACTIVE
         ).update(status=SOSAlert.AlertStatus.RESOLVED, resolved_by=request.user)
 
+        # No fix is a valid state, not an error: the alert must still reach the
+        # group. `location` stays null so every consumer can say "location
+        # unavailable" rather than trusting a placeholder coordinate.
+        lat, lng = d.get("latitude"), d.get("longitude")
+        has_fix  = lat is not None and lng is not None
+
         alert = SOSAlert.objects.create(
             trip                 = trip,
             member               = request.user,
             trigger_type         = d["trigger_type"],
-            location             = Point(x=d["longitude"], y=d["latitude"], srid=4326),
+            location             = Point(x=lng, y=lat, srid=4326) if has_fix else None,
             accuracy_meters      = d.get("accuracy_meters"),
             deviation_distance_m = d.get("deviation_distance_m"),
             stationary_minutes   = d.get("stationary_minutes"),
@@ -105,25 +111,34 @@ class TriggerSOSView(APIView):
             "member_username": request.user.username or "",
             "member_avatar":   request.user.avatar_url or "",
             "trigger_type":    alert.trigger_type,
-            "latitude":        d["latitude"],
-            "longitude":       d["longitude"],
+            "latitude":        lat,
+            "longitude":       lng,
+            "has_location":    has_fix,
             "created_at":      alert.created_at.isoformat(),
         })
 
-        # Post SOS location message directly into the group chat
+        # Post to the group chat whether or not there's a fix. The message is how
+        # the group finds out at all, so it must not depend on GPS working.
         conv = trip.group_chats.first()
-        if conv and d.get("latitude") and d.get("longitude"):
+        if conv:
             from apps.chat.models import Message
             name = request.user.first_name or request.user.username or "A member"
+            if has_fix:
+                body = (
+                    f"SOS ALERT: {name} needs help!\n"
+                    f"https://www.google.com/maps?q={lat},{lng}"
+                )
+            else:
+                body = (
+                    f"SOS ALERT: {name} needs help!\n"
+                    f"Their location could not be determined — contact them directly."
+                )
             sos_msg = Message.objects.create(
                 conversation = conv,
                 sender       = request.user,
                 message_type = Message.MessageType.SYSTEM,
-                text         = (
-                    f"SOS ALERT: {name} needs help!\n"
-                    f"https://www.google.com/maps?q={d['latitude']},{d['longitude']}"
-                ),
-                location     = Point(x=d["longitude"], y=d["latitude"], srid=4326),
+                text         = body,
+                location     = Point(x=lng, y=lat, srid=4326) if has_fix else None,
             )
             # Broadcast to anyone currently in the chat
             channel_layer = get_channel_layer()

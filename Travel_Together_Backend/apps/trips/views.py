@@ -1,4 +1,5 @@
 import uuid
+from django.conf import settings
 from django.db import transaction
 from utils.storage import save_image, delete_file as storage_delete
 from rest_framework import status
@@ -38,6 +39,17 @@ def _is_chief(trip, user):
     return trip.chief_id == user.pk
 
 
+def _haversine_meters(lat1, lng1, lat2, lng2):
+    """Great-circle distance in metres between two WGS-84 points."""
+    import math
+    r = 6371000.0  # mean earth radius, metres
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp     = math.radians(lat2 - lat1)
+    dl     = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
 def _ensure_meeting_point_stop(trip):
     """
     Create the locked meeting-point check-in (order 0) if it doesn't exist.
@@ -65,6 +77,37 @@ def _ensure_meeting_point_stop(trip):
 def _require_chief(trip, user):
     if not _is_chief(trip, user):
         return Response({"detail": "Only the trip chief can do this."}, status=403)
+    return None
+
+
+# Statuses that mean "you are part of this group" for read purposes. Mirrors the
+# tiering already enforced by TripDetailSerializer.get_members: only people who
+# are actually in the group see the group's internal data (full roster, stop
+# addresses, meeting-point coordinates).
+_IN_GROUP_STATUSES = [
+    TripMember.Status.APPROVED,
+    TripMember.Status.AWAITING_PAYMENT,
+]
+
+
+def _is_in_group(trip, user):
+    """True if the user is the chief or a member who is actually in the group."""
+    if _is_chief(trip, user):
+        return True
+    return trip.members.filter(user=user, status__in=_IN_GROUP_STATUSES).exists()
+
+
+def _require_group_access(trip, user):
+    """
+    Guard for trip-internal reads (roster, itinerary).
+
+    These expose meeting-point addresses, stop coordinates and the full member
+    list, so they must never be readable by someone outside the group even
+    though they're behind IsAuthenticated. Returns a Response to bail out with,
+    or None when access is allowed.
+    """
+    if not _is_in_group(trip, user):
+        return Response({"detail": "You are not a member of this trip."}, status=403)
     return None
 
 
@@ -117,11 +160,13 @@ class TripDetailView(APIView):
         trip = self._get_trip(trip_id)
         if not trip:
             return Response({"detail": "Not found."}, status=404)
-        # Must be a member or chief to see non-public trips
+        # Must be a member or chief to see non-public trips. AWAITING_PAYMENT
+        # counts: that member has been approved and is being asked to pay, so
+        # hiding the trip from them would hide the thing they're paying for.
         if trip.visibility == Trip.Visibility.PRIVATE:
             is_member = trip.members.filter(
                 user=request.user,
-                status__in=[TripMember.Status.APPROVED, TripMember.Status.PENDING],
+                status__in=_IN_GROUP_STATUSES + [TripMember.Status.PENDING],
             ).exists()
             if not is_member and not _is_chief(trip, request.user):
                 return Response({"detail": "Not found."}, status=404)
@@ -259,7 +304,7 @@ class TripDepartView(APIView):
         checked_in     = len(approved_ids & checked_in_ids)
         approved_count = len(approved_ids)
 
-        pct    = getattr(settings, "DEPARTURE_QUORUM_PERCENT", 50)
+        pct    = settings.DEPARTURE_QUORUM_PERCENT
         quorum = math.ceil(approved_count * pct / 100) if approved_count else 0
         if checked_in < quorum:
             return Response({
@@ -280,7 +325,7 @@ class TripDepartView(APIView):
             "departed":    True,
             "checked_in":  checked_in,
             "quorum":      quorum,
-            "partial_in":  f"~{getattr(settings, 'DEPARTURE_GRACE_HOURS', 6)}h (after the grace window)",
+            "partial_in":  f"~{settings.DEPARTURE_GRACE_HOURS}h (after the grace window)",
         })
 
 
@@ -541,19 +586,34 @@ class JoinRequestView(APIView):
         if _is_chief(trip, request.user):
             return Response({"detail": "You are already the chief of this trip."}, status=400)
 
+        # (trip, user) is unique, so every existing-membership case must be
+        # answered here. Falling through to the create() below on a status we
+        # forgot to name would hit the constraint and 500.
         existing = TripMember.objects.filter(trip=trip, user=request.user).first()
         if existing:
             if existing.status == TripMember.Status.APPROVED:
                 return Response({"detail": "You are already a member."}, status=400)
+            if existing.status == TripMember.Status.AWAITING_PAYMENT:
+                return Response(
+                    {"detail": "You're already approved for this trip pay to confirm your spot."},
+                    status=400,
+                )
             if existing.status == TripMember.Status.PENDING:
                 return Response({"detail": "Your request is already pending."}, status=400)
             if existing.status == TripMember.Status.REMOVED:
                 return Response({"detail": "You have been removed from this trip."}, status=403)
+            if existing.status != TripMember.Status.REJECTED:
+                # Unreachable today; a guard so a newly added status can never
+                # silently become an IntegrityError.
+                return Response(
+                    {"detail": "You already have a membership record for this trip."},
+                    status=400,
+                )
 
         if trip.spots_left() <= 0:
             return Response({"detail": "This trip is full."}, status=400)
 
-        if existing and existing.status == TripMember.Status.REJECTED:
+        if existing:   # only a REJECTED row reaches here re-open it
             existing.status = TripMember.Status.PENDING
             existing.rejected_reason = None
             existing.save(update_fields=["status", "rejected_reason"])
@@ -595,6 +655,13 @@ class JoinRequestView(APIView):
         if member.role == TripMember.Role.CHIEF:
             return Response({"detail": "The chief cannot leave the trip."}, status=400)
 
+        # A removed member has nothing to "leave" or "withdraw" the chief
+        # already ended their membership. Hard-deleting the row here would erase
+        # that decision and let them straight back in via POST /join/, which
+        # explicitly refuses REMOVED members. Keep the row so the ban holds.
+        if member.status == TripMember.Status.REMOVED:
+            return Response({"detail": "You have been removed from this trip."}, status=403)
+
         # Refund (minus fee) if still within the cutoff window, else forfeit.
         from apps.payments.services import handle_member_leaving
         handle_member_leaving(trip, request.user)
@@ -618,7 +685,17 @@ class TripMemberListView(APIView):
             trip = Trip.objects.prefetch_related("members__user").get(id=trip_id)
         except Trip.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
+
+        err = _require_group_access(trip, request.user)
+        if err:
+            return err
+
+        # Only the chief manages join requests, so only the chief sees people
+        # who aren't in the group yet (pending / rejected / removed). Members
+        # see the group itself.
         members = trip.members.all()
+        if not _is_chief(trip, request.user):
+            members = [m for m in members if m.status in _IN_GROUP_STATUSES]
         return Response(TripMemberSerializer(members, many=True).data)
 
 
@@ -649,6 +726,25 @@ class TripMemberDetailView(APIView):
         from django.utils import timezone
         from django.conf import settings
         if action == "approve":
+            # Approving is not idempotent it admits to the group chat and, on a
+            # paid trip, opens a fresh Payment row. Re-approving someone already
+            # in (or already billed) would bill them a second time and prompt a
+            # second charge, so refuse rather than repeat the side effects.
+            if member.status in TripMember.OCCUPYING_STATUSES:
+                return Response(
+                    {"detail": (
+                        "This member is already awaiting payment."
+                        if member.status == TripMember.Status.AWAITING_PAYMENT
+                        else "This member is already approved."
+                    )},
+                    status=400,
+                )
+            if member.status == TripMember.Status.REMOVED:
+                return Response(
+                    {"detail": "This member was removed from the trip. "
+                               "They need to request to join again."},
+                    status=400,
+                )
             if trip.spots_left() <= 0:
                 return Response({"detail": "Trip is full."}, status=400)
             member.approved_at = timezone.now()
@@ -714,6 +810,16 @@ class TripMemberDetailView(APIView):
             return Response({"detail": "Member not found."}, status=404)
         if member.role == TripMember.Role.CHIEF:
             return Response({"detail": "Cannot remove the chief."}, status=400)
+
+        # Settle their money BEFORE the removal is recorded. Being removed is not
+        # the member's choice, so the departure-cutoff forfeit that applies when
+        # someone leaves voluntarily must never apply here: without this, an
+        # organizer could approve a member, take their payment, remove them, and
+        # keep the money at payout. A removed member is always refunded (less the
+        # processing fee, as every refund is).
+        from apps.payments.services import refund_removed_member
+        refunded = refund_removed_member(trip, member.user)
+
         from django.utils import timezone
         member.status = TripMember.Status.REMOVED
         member.removed_at = timezone.now()
@@ -723,7 +829,12 @@ class TripMemberDetailView(APIView):
         conv = trip.group_chats.first()
         if conv:
             ConversationMember.objects.filter(conversation=conv, user=member.user).delete()
-        return Response(status=204)
+
+        # 200 rather than 204 so the organizer's UI can say what was refunded.
+        return Response({
+            "removed":  True,
+            "refunded": str(refunded) if refunded is not None else None,
+        }, status=200)
 
 
 # ─── Save / Unsave ────────────────────────────────────────────────────────────
@@ -778,6 +889,15 @@ class ItineraryListView(APIView):
             trip = Trip.objects.get(id=trip_id)
         except Trip.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
+
+        # Stops carry meeting-point addresses, coordinates and per-stop check-in
+        # identities group data, not public data. TripDetailSerializer applies
+        # the same rule via its own `_viewer_in_group` check, so the public trip
+        # page can't be used to route around this guard.
+        err = _require_group_access(trip, request.user)
+        if err:
+            return err
+
         stops = trip.itinerary.order_by("order")
         return Response(ItineraryStopSerializer(stops, many=True).data)
 
@@ -1268,14 +1388,61 @@ class TripCheckInView(APIView):
             return Response({"detail": "lat and lng are required."}, status=400)
 
         try:
-            point = Point(float(lng), float(lat), srid=4326)
+            lat, lng = float(lat), float(lng)
+            point = Point(lng, lat, srid=4326)
         except (TypeError, ValueError):
             return Response({"detail": "Invalid lat/lng values."}, status=400)
+
+        try:
+            accuracy = float(request.data.get("accuracy_meters"))
+        except (TypeError, ValueError):
+            accuracy = None
+
+        # ── Geofence ─────────────────────────────────────────────────────────
+        # A check-in is the trip's proof-of-presence: departure quorum and, in
+        # turn, the organizer's partial payout are counted from these rows. So
+        # the coordinates must actually be near the stop we can't take the
+        # client's word for it.
+        distance    = None
+        is_verified = False
+        if stop.location:
+            distance = _haversine_meters(lat, lng, stop.location.y, stop.location.x)
+
+            # Allow the stop's own radius plus the device's reported GPS accuracy,
+            # so a member with a weak fix isn't blocked. The accuracy allowance is
+            # capped a client can't claim a 50 km "accuracy" to walk through the
+            # fence.
+            tolerance_cap = settings.CHECKIN_ACCURACY_TOLERANCE_METERS
+            allowance     = min(accuracy, tolerance_cap) if accuracy and accuracy > 0 else 0
+            limit         = (stop.geofence_radius or 100) + allowance
+
+            if distance > limit:
+                return Response({
+                    "detail": (
+                        f"You're too far from \"{stop.name}\" to check in. "
+                        f"Get within {int(limit)} m and try again."
+                    ),
+                    "distance_meters": round(distance),
+                    "required_within_meters": int(limit),
+                }, status=400)
+            is_verified = True
+        # else: the organizer never set coordinates for this stop, so there is
+        # nothing to verify against. The check-in is accepted but recorded as
+        # unverified so a reviewer can tell the difference.
 
         CheckIn.objects.create(
             trip=trip,
             member=request.user,
             stop=stop,
             location_at_checkin=point,
+            accuracy_meters=accuracy,
+            distance_meters=distance,
+            is_verified=is_verified,
         )
-        return Response({"checked_in": True, "stop": stop.name, "already": False}, status=201)
+        return Response({
+            "checked_in":      True,
+            "stop":            stop.name,
+            "already":         False,
+            "verified":        is_verified,
+            "distance_meters": round(distance) if distance is not None else None,
+        }, status=201)

@@ -211,3 +211,260 @@ class DisputeFlowTests(TestCase):
         self.assertEqual(self.trip.status, Trip.Status.CANCELLED)
         self.assertEqual(p.status, Payment.Status.REFUNDED)
         self.assertEqual(IncidentReport.objects.get(id=report_id).status, "resolved")
+
+
+# ─── Public trip detail must not leak group data ─────────────────────────────
+
+class PublicTripLeakTests(TestCase):
+    """
+    /api/public/trips/<id>/ is AllowAny. It must never serve the itinerary
+    (coordinates, geofence radii, per-stop check-in identities) or the exact
+    meeting-point coordinates to anyone outside the group.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.chief  = make_user("chief@t.co")
+        self.trip   = make_trip(self.chief, days_out=5)
+        self.trip.meeting_point_coords = Point(-0.187, 5.603, srid=4326)
+        self.trip.meeting_point = "Accra Mall"
+        self.trip.save()
+        TripMember.objects.create(trip=self.trip, user=self.chief,
+                                  role=TripMember.Role.CHIEF,
+                                  status=TripMember.Status.APPROVED)
+        self.stop = ItineraryStop.objects.create(
+            trip=self.trip, order=1, name="Secret Rendezvous",
+            location=Point(-0.2, 5.6, srid=4326), geofence_radius=100,
+        )
+        self.member = make_user("member@t.co")
+        TripMember.objects.create(trip=self.trip, user=self.member,
+                                  status=TripMember.Status.APPROVED)
+        CheckIn.objects.create(trip=self.trip, member=self.member, stop=self.stop,
+                               location_at_checkin=Point(-0.2, 5.6, srid=4326))
+
+    def _public_body(self):
+        return self.client.get(f"/api/public/trips/{self.trip.id}/").json()
+
+    def test_anonymous_gets_no_itinerary_or_meeting_coords(self):
+        body = self._public_body()
+        self.assertEqual(body["itinerary"], [])
+        self.assertIsNone(body["meeting_lat"])
+        self.assertIsNone(body["meeting_lng"])
+        # The coarse free-text meeting point stays public it's listing copy.
+        self.assertEqual(body["meeting_point"], "Accra Mall")
+
+    def test_anonymous_never_sees_who_checked_in_where(self):
+        # The public roster deliberately lists members at "card" tier, so a
+        # username on its own is fine. What must never appear is the linkage of
+        # a person to a place and time: the stop, its coordinates, and the
+        # per-stop check-in list.
+        raw = self.client.get(f"/api/public/trips/{self.trip.id}/").content.decode()
+        self.assertNotIn("Secret Rendezvous", raw)
+        self.assertNotIn("checked_in_users", raw)
+        self.assertNotIn("checked_in_at", raw)
+        self.assertNotIn("geofence_radius", raw)
+
+    def test_non_member_authenticated_user_gets_no_itinerary(self):
+        outsider = make_user("outsider@t.co")
+        self.client.force_authenticate(outsider)
+        body = self._public_body()
+        self.assertEqual(body["itinerary"], [])
+        self.assertIsNone(body["meeting_lat"])
+
+    def test_pending_applicant_gets_no_itinerary(self):
+        applicant = make_user("applicant@t.co")
+        TripMember.objects.create(trip=self.trip, user=applicant,
+                                  status=TripMember.Status.PENDING)
+        self.client.force_authenticate(applicant)
+        self.assertEqual(self._public_body()["itinerary"], [])
+
+    def test_approved_member_sees_the_full_itinerary(self):
+        self.client.force_authenticate(self.member)
+        body = self._public_body()
+        self.assertEqual(len(body["itinerary"]), 1)
+        stop = body["itinerary"][0]
+        self.assertEqual(stop["name"], "Secret Rendezvous")
+        self.assertAlmostEqual(stop["latitude"], 5.6, places=3)
+        self.assertEqual(stop["checkin_count"], 1)
+        self.assertAlmostEqual(body["meeting_lat"], 5.603, places=3)
+
+    def test_awaiting_payment_member_sees_the_itinerary(self):
+        payer = make_user("payer@t.co")
+        TripMember.objects.create(trip=self.trip, user=payer,
+                                  status=TripMember.Status.AWAITING_PAYMENT)
+        self.client.force_authenticate(payer)
+        self.assertEqual(len(self._public_body()["itinerary"]), 1)
+
+    def test_chief_sees_the_itinerary(self):
+        self.client.force_authenticate(self.chief)
+        self.assertEqual(len(self._public_body()["itinerary"]), 1)
+
+
+# ─── Membership state machine ────────────────────────────────────────────────
+
+class RemovedMemberCannotRejoinTests(TestCase):
+    """
+    Being removed by the chief is a ban. POST /join/ refuses a REMOVED member,
+    so DELETE /join/ must not let them erase the row and walk back in.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.chief  = make_user("chief@t.co")
+        self.trip   = make_trip(self.chief, days_out=10)
+        TripMember.objects.create(trip=self.trip, user=self.chief,
+                                  role=TripMember.Role.CHIEF,
+                                  status=TripMember.Status.APPROVED)
+        self.outcast = make_user("outcast@t.co")
+        self.membership = TripMember.objects.create(
+            trip=self.trip, user=self.outcast, status=TripMember.Status.REMOVED,
+        )
+
+    def test_removed_member_cannot_delete_their_membership_row(self):
+        self.client.force_authenticate(self.outcast)
+        res = self.client.delete(f"/api/trips/{self.trip.id}/join/")
+        self.assertEqual(res.status_code, 403)
+        self.assertTrue(TripMember.objects.filter(id=self.membership.id).exists())
+
+    def test_delete_then_rejoin_does_not_bypass_the_ban(self):
+        self.client.force_authenticate(self.outcast)
+        self.client.delete(f"/api/trips/{self.trip.id}/join/")
+        res = self.client.post(f"/api/trips/{self.trip.id}/join/")
+        self.assertEqual(res.status_code, 403)
+        self.assertEqual(
+            TripMember.objects.get(id=self.membership.id).status,
+            TripMember.Status.REMOVED,
+        )
+
+    def test_ordinary_member_can_still_leave(self):
+        leaver = make_user("leaver@t.co")
+        TripMember.objects.create(trip=self.trip, user=leaver,
+                                  status=TripMember.Status.APPROVED)
+        self.client.force_authenticate(leaver)
+        res = self.client.delete(f"/api/trips/{self.trip.id}/join/")
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(TripMember.objects.filter(trip=self.trip, user=leaver).exists())
+
+
+class JoinRequestExistingMembershipTests(TestCase):
+    """
+    (trip, user) is unique, so every existing-membership status must be answered
+    with a response never fall through to create() and hit the constraint.
+    """
+
+    def setUp(self):
+        self.client    = APIClient()
+        self.chief     = make_user("chief@t.co")
+        self.trip      = make_trip(self.chief, days_out=10)
+        TripMember.objects.create(trip=self.trip, user=self.chief,
+                                  role=TripMember.Role.CHIEF,
+                                  status=TripMember.Status.APPROVED)
+        self.applicant = make_user("applicant@t.co")
+        self.client.force_authenticate(self.applicant)
+
+    def _join(self):
+        return self.client.post(f"/api/trips/{self.trip.id}/join/")
+
+    def test_awaiting_payment_returns_400_not_500(self):
+        TripMember.objects.create(trip=self.trip, user=self.applicant,
+                                  status=TripMember.Status.AWAITING_PAYMENT)
+        res = self._join()
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("pay", res.json()["detail"].lower())
+        self.assertEqual(
+            TripMember.objects.filter(trip=self.trip, user=self.applicant).count(), 1
+        )
+
+    def test_every_status_gets_a_clean_response(self):
+        for status_value in TripMember.Status.values:
+            TripMember.objects.filter(trip=self.trip, user=self.applicant).delete()
+            TripMember.objects.create(trip=self.trip, user=self.applicant,
+                                      status=status_value)
+            res = self._join()
+            self.assertIn(res.status_code, (400, 403, 201),
+                          f"{status_value} produced {res.status_code}")
+            self.assertLessEqual(
+                TripMember.objects.filter(trip=self.trip, user=self.applicant).count(), 1,
+                f"{status_value} created a duplicate membership",
+            )
+
+    def test_rejected_applicant_can_still_re_request(self):
+        TripMember.objects.create(trip=self.trip, user=self.applicant,
+                                  status=TripMember.Status.REJECTED,
+                                  rejected_reason="no")
+        res = self._join()
+        self.assertEqual(res.status_code, 201)
+        m = TripMember.objects.get(trip=self.trip, user=self.applicant)
+        self.assertEqual(m.status, TripMember.Status.PENDING)
+        self.assertIsNone(m.rejected_reason)
+
+
+class PrivateTripVisibilityTests(TestCase):
+    """A member being asked to pay must be able to see the trip they're paying for."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.chief  = make_user("chief@t.co")
+        self.trip   = make_trip(self.chief, days_out=10)
+        self.trip.visibility = Trip.Visibility.PRIVATE
+        self.trip.save()
+        TripMember.objects.create(trip=self.trip, user=self.chief,
+                                  role=TripMember.Role.CHIEF,
+                                  status=TripMember.Status.APPROVED)
+
+    def _get_as(self, user):
+        self.client.force_authenticate(user)
+        return self.client.get(f"/api/trips/{self.trip.id}/")
+
+    def test_awaiting_payment_member_can_see_the_trip(self):
+        payer = make_user("payer@t.co")
+        TripMember.objects.create(trip=self.trip, user=payer,
+                                  status=TripMember.Status.AWAITING_PAYMENT)
+        self.assertEqual(self._get_as(payer).status_code, 200)
+
+    def test_approved_and_pending_still_see_it(self):
+        for status_value in (TripMember.Status.APPROVED, TripMember.Status.PENDING):
+            user = make_user(f"{status_value}@t.co")
+            TripMember.objects.create(trip=self.trip, user=user, status=status_value)
+            self.assertEqual(self._get_as(user).status_code, 200, status_value)
+
+    def test_outsider_still_cannot(self):
+        self.assertEqual(self._get_as(make_user("nobody@t.co")).status_code, 404)
+
+
+class DepartureQuorumSettingTests(TestCase):
+    """The configured quorum percentage is the one enforced (no in-code default)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.chief  = make_user("chief@t.co")
+        self.trip   = make_trip(self.chief, days_out=0)
+        TripMember.objects.create(trip=self.trip, user=self.chief,
+                                  role=TripMember.Role.CHIEF,
+                                  status=TripMember.Status.APPROVED)
+        self.stop = ItineraryStop.objects.create(
+            trip=self.trip, order=0, name="Meet", is_system=True,
+        )
+        # Four approved members, one of whom checks in → 25% turnout.
+        self.members = [make_user(f"m{i}@t.co") for i in range(4)]
+        for m in self.members:
+            TripMember.objects.create(trip=self.trip, user=m,
+                                      status=TripMember.Status.APPROVED)
+        CheckIn.objects.create(trip=self.trip, member=self.members[0], stop=self.stop,
+                               location_at_checkin=Point(0, 0, srid=4326))
+        self.client.force_authenticate(self.chief)
+
+    def _depart(self):
+        return self.client.post(f"/api/trips/{self.trip.id}/depart/")
+
+    @override_settings(DEPARTURE_QUORUM_PERCENT=70)
+    def test_high_quorum_blocks_departure(self):
+        res = self._depart()
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["quorum"], 3)      # ceil(4 * 0.70)
+
+    @override_settings(DEPARTURE_QUORUM_PERCENT=25)
+    def test_low_quorum_allows_departure(self):
+        res = self._depart()
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["quorum"], 1)      # ceil(4 * 0.25)
