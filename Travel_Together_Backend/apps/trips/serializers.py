@@ -327,7 +327,10 @@ class TripDetailSerializer(serializers.ModelSerializer):
     images           = TripImageSerializer(many=True, read_only=True)
     tags             = serializers.SlugRelatedField(many=True, read_only=True, slug_field="tag")
     price_covers     = serializers.SlugRelatedField(many=True, read_only=True, slug_field="item")
-    itinerary        = ItineraryStopSerializer(many=True, read_only=True)
+    # itinerary, like members, is tiered: the full stop list (with coordinates,
+    # geofence radii and per-stop check-in identities) is group-only. Everyone
+    # else gets an empty list see get_itinerary.
+    itinerary        = serializers.SerializerMethodField()
     # members is a SerializerMethodField returns Tier 1 (card) or Tier 2 (full)
     # depending on whether the viewer is an approved trip member.
     members          = serializers.SerializerMethodField()
@@ -344,8 +347,12 @@ class TripDetailSerializer(serializers.ModelSerializer):
     is_saved         = serializers.SerializerMethodField()
     destination_lat  = serializers.FloatField(source="destination_point.y", read_only=True, allow_null=True)
     destination_lng  = serializers.FloatField(source="destination_point.x", read_only=True, allow_null=True)
-    meeting_lat      = serializers.FloatField(source="meeting_point_coords.y", read_only=True, allow_null=True)
-    meeting_lng      = serializers.FloatField(source="meeting_point_coords.x", read_only=True, allow_null=True)
+    # The meeting point's exact coordinates are what the departure geofence is
+    # measured against, so they are group-only. The free-text `meeting_point`
+    # stays public it's the coarse "where we set off from" line the organizer
+    # writes for the trip listing, and the public trip page displays it.
+    meeting_lat      = serializers.SerializerMethodField()
+    meeting_lng      = serializers.SerializerMethodField()
 
     class Meta:
         model  = Trip
@@ -386,6 +393,53 @@ class TripDetailSerializer(serializers.ModelSerializer):
             m.user_id == request.user.pk
             for m in self._approved_members(obj)
         )
+
+    def _viewer_in_group(self, obj):
+        """
+        True if the viewer is actually inside this trip's group: the chief, or a
+        member who is approved / approved-awaiting-payment.
+
+        Wider than `_viewer_is_approved` (which gates the member roster) because
+        a member who has been approved but hasn't paid yet still needs the
+        itinerary and meeting point to show up and pay. Mirrors
+        `_IN_GROUP_STATUSES` in apps.trips.views the two must stay in step.
+        """
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        if obj.chief_id and obj.chief_id == request.user.pk:
+            return True
+        return any(
+            m.user_id == request.user.pk
+            and m.status in (TripMember.Status.APPROVED, TripMember.Status.AWAITING_PAYMENT)
+            for m in obj.members.all()
+        )
+
+    def get_itinerary(self, obj):
+        """
+        Stops are group data, not listing data. Each one carries precise
+        coordinates, a geofence radius, and the name/avatar/timestamp of every
+        member who checked in there so serving them on the public trip page
+        would publish where each named traveller was and when.
+
+        Outsiders get an empty list. This endpoint is the only place the trip
+        detail is served anonymously (PublicTripDetailView); members fetch the
+        real thing from /api/trips/<id>/itinerary/, which enforces the same rule.
+        """
+        if not self._viewer_in_group(obj):
+            return []
+        stops = sorted(obj.itinerary.all(), key=lambda s: s.order)
+        return ItineraryStopSerializer(stops, many=True, context=self.context).data
+
+    def get_meeting_lat(self, obj):
+        if not self._viewer_in_group(obj) or not obj.meeting_point_coords:
+            return None
+        return obj.meeting_point_coords.y
+
+    def get_meeting_lng(self, obj):
+        if not self._viewer_in_group(obj) or not obj.meeting_point_coords:
+            return None
+        return obj.meeting_point_coords.x
 
     def get_members(self, obj):
         approved = self._approved_members(obj)

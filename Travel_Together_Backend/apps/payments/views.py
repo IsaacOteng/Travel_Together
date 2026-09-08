@@ -20,6 +20,22 @@ def _paystack_fee(data):
     return Decimal(str(data.get("fees", 0) or 0)) / 100
 
 
+def _paystack_amount(data):
+    """Extract the settled amount (GHS) from a charge/verify payload.
+
+    Paystack reports money in the minor unit (pesewas), so divide by 100.
+    Returns None when absent, which tells confirm_payment it has nothing to
+    check rather than making it assume a zero payment.
+    """
+    raw = data.get("amount")
+    if raw is None:
+        return None
+    try:
+        return Decimal(str(raw)) / 100
+    except (TypeError, ValueError, ArithmeticError):
+        return None
+
+
 class InitiatePaymentView(APIView):
     """
     POST /api/payments/trips/<trip_id>/initiate/
@@ -105,8 +121,22 @@ class VerifyPaymentView(APIView):
             return Response({"detail": str(exc)}, status=502)
 
         if data.get("status") == "success":
-            confirm_payment(payment, fee=_paystack_fee(data))
-            return Response({"status": "held", "paid": True})
+            confirm_payment(
+                payment,
+                fee=_paystack_fee(data),
+                paid_amount=_paystack_amount(data),
+                currency=data.get("currency"),
+            )
+            # confirm_payment refuses a short/wrong-currency charge, so report
+            # the payment's real state rather than assuming success.
+            payment.refresh_from_db()
+            if payment.status == Payment.Status.HELD:
+                return Response({"status": "held", "paid": True})
+            return Response({
+                "status": payment.status,
+                "paid":   False,
+                "detail": "The amount received didn't match this booking. Support has been notified.",
+            }, status=400)
 
         return Response({
             "status":          payment.status,
@@ -144,7 +174,12 @@ class PaystackWebhookView(APIView):
         if event_type == "charge.success" and reference:
             payment = Payment.objects.filter(paystack_ref=reference).first()
             if payment:
-                confirm_payment(payment, fee=_paystack_fee(data))   # idempotent
+                confirm_payment(                                    # idempotent
+                    payment,
+                    fee=_paystack_fee(data),
+                    paid_amount=_paystack_amount(data),
+                    currency=data.get("currency"),
+                )
 
         elif event_type == "refund.processed":
             # Refund payloads reference the original transaction.

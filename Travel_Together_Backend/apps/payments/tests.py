@@ -312,3 +312,85 @@ class ApproveFlowTests(TestCase):
         self.pending.refresh_from_db()
         self.assertEqual(self.pending.status, TripMember.Status.APPROVED)
         self.assertFalse(Payment.objects.filter(trip=self.trip, user=self.applicant).exists())
+
+
+# ─── Organizer removing a member must refund them ────────────────────────────
+
+@override_settings(PAYMENTS_ENABLED=True, PAYSTACK_SECRET_KEY="")
+class RemovedMemberRefundTests(TestCase):
+    """
+    An organizer must not be able to approve a member, take their money, remove
+    them, and keep the funds at payout. Removal is not the member's choice, so
+    the voluntary-departure forfeit cutoff must not apply.
+    """
+
+    def setUp(self):
+        self.client    = APIClient()
+        self.chief     = make_user("chief@t.co")
+        self.applicant = make_user("applicant@t.co")
+
+    def _remove(self, trip):
+        self.client.force_authenticate(self.chief)
+        return self.client.delete(f"/api/trips/{trip.id}/members/{self.applicant.id}/")
+
+    @patch("apps.payments.paystack.refund_transaction", return_value={})
+    def test_removal_refunds_held_payment_inside_cutoff(self, _mock):
+        trip = make_trip(self.chief, days_out=30)
+        member(trip, self.chief, role=TripMember.Role.CHIEF)
+        member(trip, self.applicant, TripMember.Status.APPROVED)
+        p = held_payment(trip, self.applicant)
+
+        res = self._remove(trip)
+        self.assertEqual(res.status_code, 200)
+        p.refresh_from_db()
+        self.assertEqual(p.status, Payment.Status.REFUNDED)
+
+    @patch("apps.payments.paystack.refund_transaction", return_value={})
+    def test_removal_refunds_even_past_the_forfeit_cutoff(self, _mock):
+        # 1 day out: a member who LEFT here would forfeit. A removed member
+        # must still be refunded this is the theft path being closed.
+        trip = make_trip(self.chief, days_out=1)
+        member(trip, self.chief, role=TripMember.Role.CHIEF)
+        member(trip, self.applicant, TripMember.Status.APPROVED)
+        p = held_payment(trip, self.applicant)
+
+        self.assertFalse(services.is_refund_eligible(trip))   # voluntary leave = forfeit
+        self._remove(trip)
+        p.refresh_from_db()
+        self.assertEqual(p.status, Payment.Status.REFUNDED)
+
+    @patch("apps.payments.paystack.refund_transaction", return_value={})
+    def test_removed_member_money_does_not_reach_the_organizer(self, _mock):
+        trip = make_trip(self.chief, days_out=1)
+        member(trip, self.chief, role=TripMember.Role.CHIEF)
+        member(trip, self.applicant, TripMember.Status.APPROVED)
+        held_payment(trip, self.applicant)
+
+        self._remove(trip)
+        # Nothing is left in escrow, so the organizer's share is zero.
+        _, _, organizer_total = services._organizer_share(trip)
+        self.assertEqual(organizer_total, Decimal("0"))
+
+    def test_removal_fails_out_an_unpaid_pending_payment(self):
+        trip = make_trip(self.chief, days_out=30)
+        member(trip, self.chief, role=TripMember.Role.CHIEF)
+        member(trip, self.applicant, TripMember.Status.AWAITING_PAYMENT)
+        p = Payment.objects.create(trip=trip, user=self.applicant,
+                                   amount=Decimal("100.00"),
+                                   status=Payment.Status.PENDING)
+
+        self._remove(trip)
+        p.refresh_from_db()
+        self.assertEqual(p.status, Payment.Status.FAILED)
+
+    @patch("apps.payments.paystack.refund_transaction", return_value={})
+    def test_member_is_still_marked_removed(self, _mock):
+        trip = make_trip(self.chief, days_out=30)
+        member(trip, self.chief, role=TripMember.Role.CHIEF)
+        m = member(trip, self.applicant, TripMember.Status.APPROVED)
+        held_payment(trip, self.applicant)
+
+        self._remove(trip)
+        m.refresh_from_db()
+        self.assertEqual(m.status, TripMember.Status.REMOVED)
+        self.assertIsNotNone(m.removed_at)
