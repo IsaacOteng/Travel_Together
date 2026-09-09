@@ -2,9 +2,29 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin, Calendar, Users, Star, Clock,
-  Heart, Edit3, X, Trash2, FlagOff, LayoutDashboard, LogOut,
+  Heart, Edit3, X, Trash2, FlagOff, XCircle, LayoutDashboard, LogOut,
 } from "lucide-react";
 import PayButton from "../Payments/PayButton.jsx";
+
+/** Inline "are you sure?" strip shared by the organizer's destructive actions. */
+function ConfirmRow({ prompt, confirmLabel, tone, busy, onConfirm, onDismiss }) {
+  const toneCls = tone === "amber"
+    ? "text-amber-400 bg-amber-400/10 border-amber-400/20"
+    : "text-red-400 bg-red-400/10 border-red-400/20";
+  return (
+    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      <span className={`text-[10px] leading-tight max-w-[230px] text-right ${tone === "amber" ? "text-amber-400/80" : "text-red-400/80"}`}>{prompt}</span>
+      <button onClick={onConfirm} disabled={busy}
+        className={`text-[10px] font-bold border px-2 py-0.5 rounded-lg cursor-pointer disabled:opacity-50 ${toneCls}`}>
+        {busy ? "…" : confirmLabel}
+      </button>
+      <button onClick={e => { e.stopPropagation(); onDismiss(); }}
+        className="text-[10px] text-white/40 bg-white/[0.05] border border-white/10 px-2 py-0.5 rounded-lg cursor-pointer">
+        No
+      </button>
+    </div>
+  );
+}
 
 export function JoinedRow({ trip, onNavigate, onViewGroup, onLeave }) {
   const navigate    = useNavigate();
@@ -152,29 +172,47 @@ export function SavedRow({ trip, onNavigate, onUnsave }) {
   );
 }
 
-export function CreatedRow({ trip, onViewTrip, onManage, onDelete, onEndTrip }) {
+export function CreatedRow({ trip, onViewTrip, onManage, onDelete, onCancel, onEndTrip }) {
   const navigate = useNavigate();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmEnd,    setConfirmEnd]    = useState(false);
-  const [ending,        setEnding]        = useState(false);
+  const [busy,          setBusy]          = useState(false);
 
-  const canEnd = trip.status === "active" || trip.status === "published";
+  // The server decides which exits a trip has — see apps/trips/lifecycle.py.
+  // Guessing from `status` here is what put a dead Delete button on active and
+  // completed trips. Older payloads without my_actions fall back to hiding the
+  // destructive actions rather than offering ones the API would refuse.
+  const actions   = trip.actions ?? {};
+  const canDelete = actions.delete === true;
+  const canCancel = actions.cancel === true;
+  const canEnd    = actions.end    === true;
+  const cancelIsLate = actions.cancel_late === true;
 
   const statusMap = {
     active:    { label: "Active",    cls: "bg-[#FF6B35]/15 text-[#FF6B35]" },
     published: { label: "Published", cls: "bg-green-400/15 text-green-400" },
     draft:     { label: "Draft",     cls: "bg-white/[0.07] text-white/40"  },
     completed: { label: "Completed", cls: "bg-blue-400/15 text-blue-400"   },
+    cancelled: { label: "Cancelled", cls: "bg-red-400/15 text-red-400"     },
   };
   const s = statusMap[trip.status] || statusMap.draft;
 
-  async function handleEnd(e) {
-    e.stopPropagation();
-    if (ending) return;
-    setEnding(true);
-    try { await onEndTrip?.(trip.id); }
-    finally { setEnding(false); setConfirmEnd(false); }
+  function run(fn, clear) {
+    return async (e) => {
+      e.stopPropagation();
+      if (busy) return;
+      setBusy(true);
+      try { await fn?.(trip.id); }
+      finally { setBusy(false); clear(false); }
+    };
   }
+
+  const handleEnd    = run(onEndTrip, setConfirmEnd);
+  const handleCancel = run(onCancel,  setConfirmCancel);
+  const handleDelete = run(onDelete,  setConfirmDelete);
+
+  const closeAll = () => { setConfirmEnd(false); setConfirmCancel(false); setConfirmDelete(false); };
 
   return (
     <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-150 overflow-hidden">
@@ -212,45 +250,50 @@ export function CreatedRow({ trip, onViewTrip, onManage, onDelete, onEndTrip }) 
         </button>
         {canEnd && (
           confirmEnd ? (
-            <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-              <span className="text-[10px] text-amber-400/80">End trip?</span>
-              <button onClick={handleEnd} disabled={ending}
-                className="text-[10px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-lg cursor-pointer">
-                {ending ? "…" : "Yes"}
-              </button>
-              <button onClick={e => { e.stopPropagation(); setConfirmEnd(false); }}
-                className="text-[10px] text-white/40 bg-white/[0.05] border border-white/10 px-2 py-0.5 rounded-lg cursor-pointer">
-                No
-              </button>
-            </div>
+            <ConfirmRow prompt="End trip?" tone="amber" busy={busy}
+              confirmLabel="Yes" onConfirm={handleEnd} onDismiss={() => setConfirmEnd(false)} />
           ) : (
             <button
-              onClick={e => { e.stopPropagation(); setConfirmEnd(true); setConfirmDelete(false); }}
+              onClick={e => { e.stopPropagation(); closeAll(); setConfirmEnd(true); }}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-amber-400 border border-amber-400/25 bg-amber-400/[0.07] hover:bg-amber-400/15 transition-colors cursor-pointer"
             >
               <FlagOff size={10}/> End Trip
             </button>
           )
         )}
-        {confirmDelete ? (
-          <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-            <span className="text-[10px] text-red-400/80">Delete?</span>
-            <button onClick={e => { e.stopPropagation(); onDelete?.(trip.id); }}
-              className="text-[10px] font-bold text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5 rounded-lg cursor-pointer">
-              Yes, delete
+
+        {/* Calling the trip off once people have joined: refunds everyone.
+            Also the way out of a trip that's under way but has to be abandoned. */}
+        {canCancel && !canDelete && (
+          confirmCancel ? (
+            <ConfirmRow tone="red" busy={busy} confirmLabel="Yes, cancel"
+              prompt={cancelIsLate
+                ? "Everyone is refunded and told now. This close to departure it costs extra karma and pauses your early payouts."
+                : "Cancel & refund everyone?"}
+              onConfirm={handleCancel} onDismiss={() => setConfirmCancel(false)} />
+          ) : (
+            <button
+              onClick={e => { e.stopPropagation(); closeAll(); setConfirmCancel(true); }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-red-400 border border-red-400/20 bg-red-400/[0.07] hover:bg-red-400/15 transition-colors cursor-pointer"
+            >
+              <XCircle size={10}/> Cancel Trip
             </button>
-            <button onClick={e => { e.stopPropagation(); setConfirmDelete(false); }}
-              className="text-[10px] text-white/40 bg-white/[0.05] border border-white/10 px-2 py-0.5 rounded-lg cursor-pointer">
-              Cancel
+          )
+        )}
+
+        {/* Only ever offered while the trip is nobody else's business. */}
+        {canDelete && (
+          confirmDelete ? (
+            <ConfirmRow prompt="Delete?" tone="red" busy={busy}
+              confirmLabel="Yes, delete" onConfirm={handleDelete} onDismiss={() => setConfirmDelete(false)} />
+          ) : (
+            <button
+              onClick={e => { e.stopPropagation(); closeAll(); setConfirmDelete(true); }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-red-400 border border-red-400/20 bg-red-400/[0.07] hover:bg-red-400/15 transition-colors cursor-pointer"
+            >
+              <Trash2 size={10}/> Delete
             </button>
-          </div>
-        ) : (
-          <button
-            onClick={e => { e.stopPropagation(); setConfirmDelete(true); setConfirmEnd(false); }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-red-400 border border-red-400/20 bg-red-400/[0.07] hover:bg-red-400/15 transition-colors cursor-pointer"
-          >
-            <Trash2 size={10}/> Delete
-          </button>
+          )
         )}
       </div>
     </div>

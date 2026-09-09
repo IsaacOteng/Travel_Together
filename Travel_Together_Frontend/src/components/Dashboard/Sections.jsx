@@ -90,7 +90,7 @@ export function SavedSection({ loading, trips, full, onExpand, onCollapse, onNav
   );
 }
 
-export function CreatedSection({ loading, trips, full, onExpand, onCollapse, onViewTrip, onManage, onDelete, onEndTrip }) {
+export function CreatedSection({ loading, trips, full, onExpand, onCollapse, onViewTrip, onManage, onDelete, onCancel, onEndTrip }) {
   const items = full ? trips : trips.slice(0, PREVIEW_COUNT);
   const rows = items.map(t => ({
     id:         t.id,
@@ -100,6 +100,7 @@ export function CreatedSection({ loading, trips, full, onExpand, onCollapse, onV
     members:    t.member_count     ?? 0,
     maxMembers: t.spots_total      ?? 0,
     requests:   t.pending_requests ?? 0,
+    actions:    t.my_actions ?? null,
   }));
   return (
     <div>
@@ -124,6 +125,7 @@ export function CreatedSection({ loading, trips, full, onExpand, onCollapse, onV
               onViewTrip={onViewTrip}
               onManage={onManage}
               onDelete={onDelete}
+              onCancel={onCancel}
               onEndTrip={onEndTrip}
             />
           ))}

@@ -57,9 +57,9 @@ def evidence_tier(percent):
     organizer's money moves, and the less exposure there is if it turns out the
     trip never happened.
 
-      "strong"   >= PARTIAL_FAST_RELEASE_CHECKIN_PERCENT  → normal short hold
-      "weak"     >= ANOMALY_MIN_CHECKIN_PERCENT           → long hold, more time to object
-      "insufficient"                                      → no partial at all
+        "strong"   >= PARTIAL_FAST_RELEASE_CHECKIN_PERCENT  → normal short hold
+        "weak"     >= ANOMALY_MIN_CHECKIN_PERCENT           → long hold, more time to object
+        "insufficient"                                      → no partial at all
 
     `percent` of None (nobody to count) is "insufficient": there is no evidence,
     so nothing is released early.
@@ -81,3 +81,32 @@ def partial_hold_hours(percent):
     if tier == "weak":
         return settings.PARTIAL_RELEASE_LOW_EVIDENCE_HOURS
     return None
+
+
+def flag_if_checkin_evidence_is_thin(trip):
+    """
+    Flag a finished trip whose members almost all stayed silent.
+
+    A trip that "happened" with barely any check-ins is the shape a fabricated
+    trip makes, so it is held for a human to look at rather than auto-paying on
+    silence. Flagging freezes the payout; it does not accuse anyone.
+
+    Used by both routes a trip can finish through — the nightly completion sweep
+    and the organizer's own End Trip button — so ending by hand is not a way
+    around the check.
+
+    Returns True if the trip was flagged.
+    """
+    if trip.flagged_for_review:
+        return False
+
+    _, expected, percent = meeting_point_stats(trip)
+    if not expected or percent is None:
+        return False
+    if percent >= settings.ANOMALY_MIN_CHECKIN_PERCENT:
+        return False
+
+    trip.flagged_for_review = True
+    trip.flag_reason = f"Low check-in rate ({percent}%) at completion"
+    trip.save(update_fields=["flagged_for_review", "flag_reason"])
+    return True

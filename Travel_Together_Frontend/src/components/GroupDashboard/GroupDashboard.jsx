@@ -6,7 +6,7 @@ import {
   Crown, Compass, Radio, ArrowLeft, UserCheck,
   RefreshCw, LogOut,
   Plus, X, Check, MessageCircle, Map,
-  BarChart2, Star, Lock, Trash2, Navigation,
+  BarChart2, Star, Lock, Trash2, Navigation, Flag,
 } from "lucide-react";
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -24,6 +24,7 @@ import Section from './GDSection.jsx';
 import QuickAction from './QuickAction.jsx';
 import MemberRow from './MemberRow.jsx';
 import TripCompletionPrompt from './TripCompletionPrompt.jsx';
+import ReportIssueModal from './ReportIssueModal.jsx';
 import OrganizerReportCard from './OrganizerReportCard.jsx';
 import JoinRequestCard from './JoinRequestCard.jsx';
 import { PollCard, CreatePollModal } from './PollComponents.jsx';
@@ -35,6 +36,7 @@ export default function GroupDashboard() {
 
   const [winW,          setWinW]          = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   const [showSOS,       setShowSOS]       = useState(false);
+  const [showReport,    setShowReport]    = useState(false);
   const [checkedIn,     setCheckedIn]     = useState(false);
   const [checkedInStops, setCheckedInStops] = useState([]);
   const [myLocation,    setMyLocation]    = useState(null);
@@ -112,25 +114,34 @@ export default function GroupDashboard() {
           return;
         }
         setChiefId(t.chief_id ?? null);
-        const now       = Date.now();
         // Combine date + time so the countdown reflects the real start moment,
         // not midnight of the start date.
         const startMs   = t.date_start ? new Date(`${t.date_start}T${t.start_time || "00:00"}`).getTime() : null;
         const endMs     = t.date_end   ? new Date(`${t.date_end}T${t.end_time   || "23:59"}`).getTime()   : null;
-        const targetMs  = (startMs && startMs > now) ? startMs : (endMs ?? startMs);
-        const diffMs    = targetMs ? Math.max(0, targetMs - now) : null;
-        const daysLeft  = diffMs != null ? Math.floor(diffMs / 86400000)   : "—";
-        const hoursLeft = diffMs != null ? Math.floor((diffMs % 86400000) / 3600000) : 0;
+
+        // Which moment the clock counts toward depends on where the trip is,
+        // not on what time it is: a trip whose start time has passed without
+        // departing is still counting down to leaving, and a finished trip
+        // isn't counting down to anything.
+        const isOver    = ["completed", "cancelled", "archived"].includes(t.status);
+        const phase     = isOver ? "ended"
+                        : t.departure_confirmed_at ? "ending"
+                        : "starting";
+        // The clock ticks inside <Countdown/>, so hand it the moment to count
+        // toward rather than a duration worked out once, here, on page load.
+        const countdownTo = phase === "ended" ? null : (phase === "ending" ? (endMs ?? startMs) : startMs);
         setTrip({
           title:       t.title,
           destination: t.destination || "",
-          daysLeft,
-          hoursLeft,
+          countdownTo,
+          phase,
           spotsTotal:  t.spots_total  ?? 0,
           spotsFilled: t.member_count ?? 0,
           groupKarma:  t.group_karma  ?? 0,
           status:      t.status       ?? "",
           departureConfirmedAt: t.departure_confirmed_at ?? null,
+          confirmedCompletion:  t.viewer_confirmed_completion ?? false,
+          hasReported:          t.viewer_has_reported ?? false,
           startMs,
           endMs,
         });
@@ -481,7 +492,7 @@ export default function GroupDashboard() {
       </div>
 
       <div className="flex items-center gap-3 mt-4">
-        <Countdown days={trip?.daysLeft ?? "—"} hours={trip?.hoursLeft ?? 0} />
+        <Countdown targetMs={trip?.countdownTo ?? null} phase={trip?.phase ?? "starting"} />
       </div>
     </div>
   );
@@ -500,7 +511,7 @@ export default function GroupDashboard() {
   const QuickActionsPanel = (
     <div className="bg-[#0d1b2a] rounded-2xl border border-white/[0.07] p-4">
       <p className="text-[9px] font-bold tracking-[.1em] uppercase text-white/25 mb-3">Quick Actions</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`grid gap-2 ${isChief ? "grid-cols-3" : "grid-cols-4"}`}>
         <div className="relative"
           title={!checkInOpen ? preTripTitle : itinerary.length === 0 ? "Add an itinerary stop first." : !canCheckIn ? "All stops checked in." : undefined}>
           <QuickAction
@@ -524,6 +535,20 @@ export default function GroupDashboard() {
             onClick={isTripLive ? () => setShowSOS(true) : undefined}
           />
         </div>
+        {/* Members only: the organizer answers reports, they don't file them
+            against their own trip. Available from approval onward — problems
+            at the meeting point need saying before the trip is over, not
+            after the payout has moved. */}
+        {!isChief && (
+          <div title="Raise a problem with this trip">
+            <QuickAction
+              icon={Flag}
+              label="Report"
+              color="#E0A458"
+              onClick={() => setShowReport(true)}
+            />
+          </div>
+        )}
       </div>
       {checkedIn && pendingStop === undefined && itinerary.length > 0 && (
         <div className="mt-3 px-3 py-2 bg-emerald-500/[0.07] border border-emerald-500/20 rounded-xl flex items-center gap-2 text-[12px] text-emerald-400/80 font-semibold">
@@ -611,10 +636,10 @@ export default function GroupDashboard() {
       const seen = data?.checked_in ?? 0, total = data?.expected ?? 0;
       setDepartMsg(
         data?.evidence === "strong"
-          ? `Departure confirmed — the trip is now live. ${seen}/${total} checked in; your payout releases ${data.partial_in}.`
+          ? `Departure confirmed, the trip is now live. ${seen}/${total} checked in; your payout releases ${data.partial_in}.`
           : data?.evidence === "weak"
-            ? `Departure confirmed — the trip is now live. Only ${seen}/${total} checked in, so your payout is held ${data.partial_in} to give members time to raise anything. Late check-ins shorten the wait.`
-            : `Departure confirmed — the trip is now live. Too few check-ins (${seen}/${total}) for an early payout, so your full amount settles after the trip ends.`
+            ? `Departure confirmed, the trip is now live. Only ${seen}/${total} checked in, so your payout is held ${data.partial_in} to give members time to raise anything. Late check-ins shorten the wait.`
+            : `Departure confirmed, the trip is now live. Too few check-ins (${seen}/${total}) for an early payout, so your full amount settles after the trip ends.`
       );
     } catch (err) {
       setDepartMsg(err?.response?.data?.detail || "Couldn't mark the trip as departed.");
@@ -961,12 +986,10 @@ export default function GroupDashboard() {
 
   const PreTripNotice = (!isTripLive && trip?.startMs != null && Date.now() < trip.startMs) && (
     <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-white/[0.025] border border-white/[0.06]">
-      <div className="w-5 h-5 rounded-full bg-white/[0.06] flex items-center justify-center flex-shrink-0 mt-px">
-        <Clock size={10} className="text-white/30" />
-      </div>
-      <p className="text-[11px] text-white/35 leading-relaxed">
+
+      <p className="text-[9px] text-white/35 leading-relaxed">
         Check-in opens an hour before departure. SOS and location sharing
-        unlock when the trip starts. Check-ins don't block departure — they
+        unlock when the trip starts. Check-ins don't block departure they
         just get your payout released sooner.
       </p>
     </div>
@@ -1096,12 +1119,21 @@ export default function GroupDashboard() {
       <div className="min-h-screen bg-[#071422] font-sans pb-[78px]">
         <style>{styles}</style>
         {SOSOverlay}
+      {showReport && (
+        <ReportIssueModal
+          tripId={tripId}
+          onClose={() => setShowReport(false)}
+          onFiled={() => setTrip(t => (t ? { ...t, hasReported: true } : t))}
+        />
+      )}
         {AddStopModal}
         {LocationAlertBanner}
         <div className="p-3.5 flex flex-col gap-3">
           {TripHeader}
           {isChief && <OrganizerReportCard tripId={tripId} />}
-          {trip?.status === "completed" && !isChief && <TripCompletionPrompt tripId={tripId} />}
+          {trip?.status === "completed" && !isChief
+            && !trip?.confirmedCompletion && !trip?.hasReported
+            && <TripCompletionPrompt tripId={tripId} />}
           {PreTripNotice}
           {QuickActionsPanel}
           {HealthPanel}
@@ -1121,6 +1153,13 @@ export default function GroupDashboard() {
     <div className="min-h-screen bg-[#071422] font-sans">
       <style>{styles}</style>
       {SOSOverlay}
+      {showReport && (
+        <ReportIssueModal
+          tripId={tripId}
+          onClose={() => setShowReport(false)}
+          onFiled={() => setTrip(t => (t ? { ...t, hasReported: true } : t))}
+        />
+      )}
       {AddStopModal}
       <AppNav rightExtra={
         <>
@@ -1151,7 +1190,9 @@ export default function GroupDashboard() {
 
         <div className="flex-1 min-w-0 flex flex-col gap-3.5">
           {isChief && <OrganizerReportCard tripId={tripId} />}
-          {trip?.status === "completed" && !isChief && <TripCompletionPrompt tripId={tripId} />}
+          {trip?.status === "completed" && !isChief
+            && !trip?.confirmedCompletion && !trip?.hasReported
+            && <TripCompletionPrompt tripId={tripId} />}
           {MapPanel}
           {ItineraryPanel}
           {PollsPanel}

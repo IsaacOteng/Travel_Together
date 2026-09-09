@@ -254,11 +254,6 @@ CELERY_BEAT_SCHEDULE = {
         "task":     "tasks.sos.check_route_deviation",
         "schedule": crontab(minute="*/5"),
     },
-    # SOS escalation every 15 minutes
-    "escalate-unresolved-alerts": {
-        "task":     "tasks.sos.escalate_unresolved_alerts",
-        "schedule": crontab(minute="*/15"),
-    },
     # Trip lifecycle daily at midnight UTC
     "mark-trips-active": {
         "task":     "tasks.cleanup.mark_trips_active",
@@ -327,6 +322,19 @@ DISPUTE_WINDOW_HOURS        = env.int("DISPUTE_WINDOW_HOURS",        default=72)
 DEPARTURE_GRACE_HOURS       = env.int("DEPARTURE_GRACE_HOURS",       default=6)    # hold after departure before the partial releases when check-in evidence is STRONG
 REFUND_CUTOFF_DAYS          = env.int("REFUND_CUTOFF_DAYS",          default=7)    # ≥ this many days out → refundable
 ORGANIZER_CANCEL_KARMA_PENALTY = env.int("ORGANIZER_CANCEL_KARMA_PENALTY", default=25)
+
+# Cancelling close to departure is a different thing from cancelling weeks out:
+# members have already paid, booked time off, and possibly travelled. It stays
+# ALLOWED (stranding people mid-plan is worse than letting the organizer bail),
+# but it costs more.
+#
+# Karma alone is not a deterrent here it is displayed, not enforced so a late
+# cancellation also puts the organizer on payout probation: for that window they
+# get no early (partial) payout on any trip, and their money stays fully escrowed
+# until each trip completes. That is a real cost and reuses the existing gate.
+LATE_CANCEL_WINDOW_HOURS             = env.int("LATE_CANCEL_WINDOW_HOURS",             default=48)
+ORGANIZER_LATE_CANCEL_KARMA_PENALTY  = env.int("ORGANIZER_LATE_CANCEL_KARMA_PENALTY",  default=60)
+LATE_CANCEL_PAYOUT_PROBATION_DAYS    = env.int("LATE_CANCEL_PAYOUT_PROBATION_DAYS",    default=30)
 NO_SHOW_KARMA_PENALTY          = env.int("NO_SHOW_KARMA_PENALTY",          default=10)   # karma docked for missing every check-in (reputational only, not a block)
 ANOMALY_MIN_CHECKIN_PERCENT    = env.int("ANOMALY_MIN_CHECKIN_PERCENT",    default=20)   # below this check-in rate: no partial at all, and a completed trip is auto-flagged for review
 # Check-in evidence sets how FAST the organizer's partial moves it never blocks

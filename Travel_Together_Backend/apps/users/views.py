@@ -49,6 +49,11 @@ from .utils import (
     generate_unique_username,
     clear_otp_rate,
 )
+from .account_lifecycle import (
+    carry_over_retired_debt,
+    fresh_account_if_retired,
+    retire_account,
+)
 from tasks.email import send_otp_email_now
 
 
@@ -133,38 +138,6 @@ def _replayed_pair(raw_token: str):
         return None
 
 
-# ─── Deleted-account reactivation ─────────────────────────────────────────────
-
-def _reactivate_if_deleted(user: User) -> bool:
-    """
-    Bring a soft-deleted account back as a blank slate. Returns True if it did.
-
-    AccountDeleteView only sets is_active=False (Celery purges later), so a
-    deleted user's row still matches on email. Every sign-in path has to run
-    this, not just the OTP one: JWTAuthentication rejects an inactive user, so
-    minting tokens for one hands the caller a session that 401s on its very next
-    request an invisible "logged in but nothing works" loop. Reactivating here
-    also means the account can't be resurrected with its old profile still
-    attached, which is the thing deletion was asked to remove.
-    """
-    if user.is_active:
-        return False
-
-    user.is_active           = True
-    user.deleted_at          = None
-    user.onboarding_complete = False
-    user.avatar_url          = None
-    user.cover_url           = None
-    if not user.username:                       # deletion frees the username
-        user.username = generate_unique_username(user.email)
-    user.save(update_fields=[
-        "is_active", "deleted_at", "onboarding_complete",
-        "avatar_url", "cover_url", "username",
-    ])
-    EmergencyContact.objects.filter(user=user).delete()
-    return True
-
-
 # ─── OTP: Send ────────────────────────────────────────────────────────────────
 
 class SendOTPView(APIView):
@@ -194,12 +167,20 @@ class SendOTPView(APIView):
                 email=email,
                 defaults={"is_active": True},
             )
-            if not created and _reactivate_if_deleted(user):
-                clear_otp_rate(email)   # reset rate limit so OTP can be sent immediately
-                created = True  # treat as new below
-            if created and not user.username:
-                user.username = generate_unique_username(email)
-                user.save(update_fields=["username"])
+            if not created:
+                # Signing in on a deleted address starts a brand-new account
+                # rather than waking the old row, so none of its notifications,
+                # chats or trips follow the address to its next owner.
+                replacement = fresh_account_if_retired(user)
+                if replacement is not user:
+                    user    = replacement
+                    created = True          # treat as new below
+                    clear_otp_rate(email)   # so the OTP can be sent immediately
+            if created:
+                carry_over_retired_debt(user)
+                if not user.username:
+                    user.username = generate_unique_username(email)
+                    user.save(update_fields=["username"])
 
             # Invalidate any previous unused OTPs for login purpose
             EmailVerification.objects.filter(
@@ -301,7 +282,7 @@ class VerifyOTPView(APIView):
         otp.save(update_fields=["is_used"])
 
         # A code issued before the account was deleted can still land here.
-        _reactivate_if_deleted(user)
+        user = fresh_account_if_retired(user)
 
         if not user.email_verified:
             user.email_verified = True
@@ -462,7 +443,9 @@ class GoogleAuthView(APIView):
             },
         )
 
-        _reactivate_if_deleted(user)
+        user = fresh_account_if_retired(user)
+        if created:
+            carry_over_retired_debt(user)
 
         # Sync google_uid if missing (user signed up via OTP first)
         if not user.google_uid:
@@ -586,8 +569,9 @@ class AppleAuthView(APIView):
                 is_active=True,
                 username=generate_unique_username(email),
             )
+            carry_over_retired_debt(user)
         else:
-            _reactivate_if_deleted(user)
+            user = fresh_account_if_retired(user)
 
             # Sync apple_uid if missing
             update_fields = []
@@ -684,8 +668,9 @@ class FirebaseAuthView(APIView):
                 user.apple_uid = uid
             user.username = generate_unique_username(email)
             user.save()
+            carry_over_retired_debt(user)
         else:
-            _reactivate_if_deleted(user)
+            user = fresh_account_if_retired(user)
 
             update_fields = []
             if "google" in provider and not user.google_uid:
@@ -738,17 +723,16 @@ class AccountDeleteView(APIView):
     """
     DELETE /api/auth/account/
     Authenticated user only no OTP required.
-    Frees the username immediately so others can claim it.
-    Soft-deletes the account; Celery handles permanent cleanup after grace period.
+    Retires the account: email, username and social ids are released
+    immediately and personal data is stripped, so signing up again on the same
+    address gets a genuinely new account rather than this one back. The
+    anonymous row lingers only so other people's trips, chats and payment
+    records still resolve; Celery hard-deletes it after the grace period.
     """
     permission_classes = [IsAuthenticated]
 
     def delete(self, request):
-        user = request.user
-        user.username   = None            # free username for others immediately
-        user.is_active  = False
-        user.deleted_at = timezone.now()
-        user.save(update_fields=["username", "is_active", "deleted_at"])
+        retire_account(request.user)
         return Response({"deleted": True}, status=status.HTTP_200_OK)
 
 

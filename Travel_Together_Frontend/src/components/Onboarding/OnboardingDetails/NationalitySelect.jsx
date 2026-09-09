@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { searchCountries } from "../../../data/countries.js";
 
 /* ─────────────────────────────────────────────
   NATIONALITY SELECT
@@ -12,14 +13,13 @@ export function NationalitySelect({ value, onChange, countries, loading, hasErro
   const wrapRef  = useRef(null);
   const inputRef = useRef(null);
 
-  // Use "nationality" options 250 countries, always populated
-  const filtered = (() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return countries.slice(0, 4);
-    const starts = countries.filter(c => c.demonym.toLowerCase().startsWith(q));
-    const contains = countries.filter(c => !c.demonym.toLowerCase().startsWith(q) && c.demonym.toLowerCase().includes(q));
-    return [...starts, ...contains].slice(0, 4);
-  })();
+  // Matches the country name as well as the demonym, because people type
+  // whichever comes to mind "ghana" and "ghanaian" both have to land on
+  // Ghanaian. Searching demonyms alone missed the far more common first case.
+  const filtered = (query.trim()
+    ? searchCountries(query, countries)
+    : countries
+  ).slice(0, 4);
 
   useEffect(() => { if (!value) setQuery(""); }, [value]);
 
@@ -49,7 +49,7 @@ export function NationalitySelect({ value, onChange, countries, loading, hasErro
         <input
           ref={inputRef}
           type="text"
-          placeholder={loading ? "Loading countries…" : "Type a country name…"}
+          placeholder={loading ? "Loading countries…" : "Type a country or nationality…"}
           value={query}
           autoComplete="off"
           disabled={loading}

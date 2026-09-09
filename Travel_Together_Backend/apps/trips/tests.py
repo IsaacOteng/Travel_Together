@@ -81,7 +81,10 @@ class DeleteGuardTests(TestCase):
         self.assertEqual(res.status_code, 204)
         self.assertFalse(Trip.objects.filter(id=trip.id).exists())
 
-    def test_joined_trip_is_cancelled_not_deleted(self):
+    def test_joined_trip_must_be_cancelled_rather_than_deleted(self):
+        # Deleting used to quietly cancel and refund. Calling the trip off is a
+        # much bigger decision than deleting an empty draft, so the organizer has
+        # to make it deliberately via /cancel/ — see apps.trips.test_lifecycle.
         trip = make_trip(self.chief, days_out=5)
         self._chief_member(trip)
         joiner = make_user("joiner@t.co")
@@ -90,9 +93,11 @@ class DeleteGuardTests(TestCase):
         self.client.force_authenticate(self.chief)
 
         res = self.client.delete(f"/api/trips/{trip.id}/")
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(res.json()["action"], "cancel")
+
         trip.refresh_from_db()
-        self.assertEqual(trip.status, Trip.Status.CANCELLED)          # preserved, not erased
+        self.assertEqual(trip.status, Trip.Status.PUBLISHED)          # untouched
         self.assertTrue(TripMember.objects.filter(trip=trip, user=joiner).exists())
 
     def test_completed_trip_cannot_be_deleted(self):

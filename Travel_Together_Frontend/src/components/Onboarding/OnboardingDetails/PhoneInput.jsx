@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { searchCountries } from "../../../data/countries.js";
 
 /* ─────────────────────────────────────────────
   PHONE INPUT
@@ -12,14 +13,13 @@ export function PhoneInput({ phoneNumber, dialCode, onNumberChange, onDialChange
     const seen = new Map();
     countries.forEach(c => {
       if (!c.dial) return;
-      if (!seen.has(c.dial)) seen.set(c.dial, { code:c.dial, flag:c.flagSvg, name:c.name, cca2:c.cca2 });
+      if (!seen.has(c.dial)) seen.set(c.dial, c);
     });
     return [...seen.values()].sort((a,b) => a.name.localeCompare(b.name));
   })();
 
-  const filtered = query
-    ? dialList.filter(d => d.name.toLowerCase().includes(query.toLowerCase()) || d.code.includes(query)).slice(0,50)
-    : dialList.slice(0,50);
+  // Shared matcher, so "ghana", "ghanaian" and "233" all find Ghana here too.
+  const filtered = searchCountries(query, dialList).slice(0, 50);
 
   useEffect(() => {
     const h = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
@@ -27,7 +27,7 @@ export function PhoneInput({ phoneNumber, dialCode, onNumberChange, onDialChange
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const sel = dialList.find(d => d.code === dialCode);
+  const sel = dialList.find(d => d.dial === dialCode);
   const numBorder = hasError
     ? { border:"1.5px solid #f87171", boxShadow:"0 0 0 3px rgba(248,113,113,.10)" }
     : {};
@@ -38,7 +38,7 @@ export function PhoneInput({ phoneNumber, dialCode, onNumberChange, onDialChange
       <div style={{ position:"relative", flexShrink:0 }}>
         <button type="button" className="tt-dial-btn" onClick={() => setOpen(o => !o)}>
           {sel?.flag
-            ? <img src={sel.flag} alt="" className="tt-flag"/>
+            ? <span className="tt-flag" style={{ fontSize:16, lineHeight:1 }}>{sel.flag}</span>
             : <div style={{ width:20, height:14, background:"#e5e7eb", borderRadius:2, flexShrink:0 }}/>
           }
           <span>{dialCode || "+?"}</span>
@@ -56,13 +56,16 @@ export function PhoneInput({ phoneNumber, dialCode, onNumberChange, onDialChange
                   value={query} onChange={e => setQuery(e.target.value)}/>
               </div>
               <div className="tt-dial-list tt-scroll">
+                {filtered.length === 0 && (
+                  <div className="tt-dropdown-empty">No country matching "{query}"</div>
+                )}
                 {filtered.map(d => (
                   <button key={d.cca2} type="button"
-                    className={`tt-dial-item ${d.code === dialCode ? "selected" : ""}`}
-                    onMouseDown={() => { onDialChange(d.code); setOpen(false); setQuery(""); }}>
-                    {d.flag && <img src={d.flag} alt="" className="tt-flag"/>}
+                    className={`tt-dial-item ${d.dial === dialCode ? "selected" : ""}`}
+                    onMouseDown={() => { onDialChange(d.dial); setOpen(false); setQuery(""); }}>
+                    <span className="tt-flag" style={{ fontSize:16, lineHeight:1 }}>{d.flag}</span>
                     <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.name}</span>
-                    <span className="tt-dial-code">{d.code}</span>
+                    <span className="tt-dial-code">{d.dial}</span>
                   </button>
                 ))}
               </div>

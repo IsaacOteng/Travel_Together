@@ -186,26 +186,29 @@ class ClientIPTests(TestCase):
         self.assertEqual(self._ip(), "198.51.100.7")
 
 
-# ─── Deleted accounts must not be resurrected with a broken session ──────────
+# ─── Signing up again after deleting must be a clean slate ──────────────
 
 class DeletedAccountSignInTests(TestCase):
     """
-    AccountDeleteView only sets is_active=False. Every sign-in path has to
-    reactivate, because JWTAuthentication rejects an inactive user: minting
-    tokens without reactivating hands back a session that 401s immediately.
+    Deletion retires the row and frees the address, so signing in again builds
+    a NEW account. Reusing the old row was the bug: everything keyed to the
+    user id notifications, chats, trips, karma came back with it, however
+    many profile columns were blanked on the way through.
     """
 
     def setUp(self):
         self.client = APIClient()
 
     def _deleted_user(self, email="gone@t.co"):
+        """An account that has been through AccountDeleteView."""
+        from apps.users.account_lifecycle import retire_account
+
         user = make_user(email)
         user.first_name          = "Old"
         user.avatar_url          = "https://cdn/old.jpg"
         user.onboarding_complete = True
-        user.is_active           = False
-        user.username            = None          # deletion frees the username
         user.save()
+        retire_account(user)
         return user
 
     def _assert_usable_session(self, res):
@@ -214,61 +217,124 @@ class DeletedAccountSignInTests(TestCase):
         token = res.json()["access"]
         me = self.client.get("/api/users/me/", HTTP_AUTHORIZATION=f"Bearer {token}")
         self.assertEqual(me.status_code, 200, "token was issued but is unusable")
+        return me.json()
 
-    def test_firebase_sign_in_reactivates(self):
-        user = self._deleted_user()
+    def _firebase_sign_in(self, email="gone@t.co"):
         with patch("firebase_admin.auth.verify_id_token",
-                   return_value=firebase_claims("gone@t.co", True, "google.com")), \
-             patch("apps.users.firebase_init.get_firebase_app", return_value=None):
-            res = self.client.post("/api/auth/firebase/", {"id_token": "s"}, format="json")
+                   return_value=firebase_claims(email, True, "google.com")),              patch("apps.users.firebase_init.get_firebase_app", return_value=None):
+            return self.client.post("/api/auth/firebase/", {"id_token": "s"}, format="json")
 
-        self._assert_usable_session(res)
-        user.refresh_from_db()
-        self.assertTrue(user.is_active)
-        self.assertIsNone(user.deleted_at)
-        self.assertIsNotNone(user.username)          # regenerated
+    # ── deletion itself ──────────────────────────────────────────────
 
-    def test_reactivation_does_not_restore_the_old_profile(self):
+    def test_deletion_releases_the_address_and_strips_the_profile(self):
         user = self._deleted_user()
-        with patch("firebase_admin.auth.verify_id_token",
-                   return_value=firebase_claims("gone@t.co", True, "google.com")), \
-             patch("apps.users.firebase_init.get_firebase_app", return_value=None):
-            self.client.post("/api/auth/firebase/", {"id_token": "s"}, format="json")
-
         user.refresh_from_db()
+
+        self.assertNotEqual(user.email, "gone@t.co")   # address freed for reuse
+        self.assertEqual(user.retired_email, "gone@t.co")
+        self.assertIsNone(user.username)
+        self.assertIsNone(user.first_name)
         self.assertIsNone(user.avatar_url)
-        self.assertFalse(user.onboarding_complete)   # sent back through onboarding
+        self.assertFalse(user.is_active)
+        self.assertIsNotNone(user.deleted_at)
 
-    def test_google_sign_in_reactivates(self):
-        user = self._deleted_user()
+    # ── signing in afterwards ────────────────────────────────────
+
+    def test_firebase_sign_in_builds_a_new_account(self):
+        old = self._deleted_user()
+        res = self._firebase_sign_in()
+        self._assert_usable_session(res)
+
+        self.assertTrue(res.json()["is_new_user"])   # sent through onboarding
+        new = User.objects.get(email="gone@t.co")
+        self.assertNotEqual(new.id, old.id)            # not the old row woken up
+        self.assertTrue(new.is_active)
+        self.assertIsNone(new.deleted_at)
+        self.assertIsNotNone(new.username)
+
+    def test_new_account_inherits_nothing_from_the_deleted_one(self):
+        from apps.notifications.models import Notification
+
+        old = self._deleted_user()
+        Notification.objects.create(
+            recipient=old, notification_type="sos_alert",
+            title="Unresolved SOS", body="stale alert from the old account",
+        )
+        self._firebase_sign_in()
+
+        new = User.objects.get(email="gone@t.co")
+        self.assertEqual(new.notifications.count(), 0)
+        self.assertEqual(new.conversations.count(), 0)
+        self.assertEqual(new.trip_memberships.count(), 0)
+        self.assertFalse(new.onboarding_complete)      # sent back through onboarding
+        # The name comes from the provider signing in now, never from the old row.
+        self.assertNotEqual(new.first_name, "Old")
+        self.assertFalse(new.avatar_url)             # not the old CDN picture
+
+    def test_google_sign_in_builds_a_new_account(self):
+        old     = self._deleted_user()
         payload = {"email": "gone@t.co", "sub": "g-1",
                    "email_verified": "true", "aud": "client-id"}
-        with override_settings(SOCIAL_AUTH_GOOGLE_OAUTH2_KEY="client-id"), \
-             patch("apps.users.views._verify_google_token", return_value=payload):
+        with override_settings(SOCIAL_AUTH_GOOGLE_OAUTH2_KEY="client-id"),              patch("apps.users.views._verify_google_token", return_value=payload):
             res = self.client.post("/api/auth/google/", {"id_token": "s"}, format="json")
 
         self._assert_usable_session(res)
-        user.refresh_from_db()
-        self.assertTrue(user.is_active)
+        new = User.objects.get(email="gone@t.co")
+        self.assertNotEqual(new.id, old.id)
+        self.assertTrue(new.is_active)
 
-    def test_otp_verify_reactivates(self):
+    def test_otp_sign_in_builds_a_new_account(self):
         from django.utils import timezone
         from datetime import timedelta
         from apps.users.models import EmailVerification
         from apps.users.utils import hash_otp
 
-        user = self._deleted_user()
-        EmailVerification.objects.create(
-            user=user, code=hash_otp("123456"),
-            purpose=EmailVerification.Purpose.LOGIN,
-            expires_at=timezone.now() + timedelta(minutes=15),
-        )
+        old = self._deleted_user()
+        # send-otp is what lands on the retired row; the code must be issued to
+        # the replacement, or verifying it would sign the tombstone back in.
+        self.client.post("/api/auth/send-otp/", {"email": "gone@t.co"}, format="json")
+
+        new = User.objects.get(email="gone@t.co")
+        self.assertNotEqual(new.id, old.id)
+
+        otp = EmailVerification.objects.filter(user=new).first()
+        self.assertIsNotNone(otp, "OTP was issued to the deleted account")
+        otp.code       = hash_otp("123456")
+        otp.expires_at = timezone.now() + timedelta(minutes=15)
+        otp.save()
 
         res = self.client.post("/api/auth/verify-otp/",
                                {"email": "gone@t.co", "code": "123456"}, format="json")
         self._assert_usable_session(res)
-        user.refresh_from_db()
-        self.assertTrue(user.is_active)
+        new.refresh_from_db()
+        self.assertTrue(new.is_active)
+
+    # ── what must NOT be wiped ──────────────────────────────────
+
+    def test_clawback_debt_survives_delete_and_resignup(self):
+        """Otherwise deleting the account is a way to walk away from money owed."""
+        from decimal import Decimal
+
+        user = make_user("debtor@t.co")
+        user.clawback_owed = Decimal("50.00")
+        user.save()
+        from apps.users.account_lifecycle import retire_account
+        retire_account(user)
+
+        self._firebase_sign_in("debtor@t.co")
+        new = User.objects.get(email="debtor@t.co")
+        self.assertEqual(new.clawback_owed, Decimal("50.00"))
+
+    def test_legacy_tombstones_are_retired_too(self):
+        """Rows deleted before this change only had is_active flipped off."""
+        user = make_user("legacy@t.co")
+        user.is_active = False
+        user.save()
+
+        self._firebase_sign_in("legacy@t.co")
+        new = User.objects.get(email="legacy@t.co")
+        self.assertNotEqual(new.id, user.id)
+        self.assertTrue(new.is_active)
 
 
 # ─── Staying logged in ───────────────────────────────────────────────────────

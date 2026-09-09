@@ -4,7 +4,12 @@ SOS tasks
 notify_emergency_contacts  — one-shot: SMS every emergency contact when SOS fires
 check_stationary_members   — periodic: detects members who haven't moved in X minutes
 check_route_deviation      — periodic: detects members far from their current stop
-escalate_unresolved_alerts — periodic: re-notifies if an SOS has been active too long
+
+An SOS is an alarm, not a ticket: it tells the group something is wrong and
+hands them the member's coordinates. Nobody "resolves" one from inside the app,
+so there is no escalation task re-notifying the chief that an alert is still
+open it only ever produced a stream of Unresolved SOS notices about an alert
+that was never going to change state here.
 """
 
 from celery import shared_task
@@ -203,43 +208,6 @@ def check_route_deviation():
             )
 
             _notify_sos(trip, member.user, "deviation", deviation_m=distance_m)
-
-
-@shared_task
-def escalate_unresolved_alerts():
-    """
-    Run every 15 minutes. Re-notify the trip chief about any SOS alert
-    that has been active for more than 30 minutes without resolution.
-    """
-    from django.utils import timezone
-    from datetime import timedelta
-    from apps.safety.models import SOSAlert
-    from apps.notifications.utils import push
-
-    cutoff = timezone.now() - timedelta(minutes=30)
-    stale_alerts = SOSAlert.objects.filter(
-        status=SOSAlert.AlertStatus.ACTIVE,
-        created_at__lte=cutoff,
-    ).select_related("trip__chief", "member")
-
-    for alert in stale_alerts:
-        chief = alert.trip.chief
-        if not chief:
-            continue
-
-        name = alert.member.first_name or alert.member.username or "A member"
-        push(
-            recipient  = chief,
-            notif_type = "sos_alert",
-            title      = "Unresolved SOS",
-            body       = (
-                f"{name}'s SOS alert on '{alert.trip.title}' has been active "
-                f"for over 30 minutes and is still unresolved."
-            ),
-            trip       = alert.trip,
-            action_url = f"/trips/{alert.trip_id}/safety/",
-            data       = {"alert_id": str(alert.id)},
-        )
 
 
 # ── internal helper ───────────────────────────────────────────────────────────

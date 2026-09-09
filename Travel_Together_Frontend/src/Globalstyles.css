@@ -163,6 +163,9 @@ html, body, #root { margin:0; padding:0; min-height:100vh; }
 
 /* country item with flag */
 .tt-flag { width:20px; height:14px; object-fit:cover; border-radius:2px; box-shadow:0 0 0 1px rgba(0,0,0,.08); flex-shrink:0; }
+/* Flags are emoji now, not fetched images the image sizing and border would
+   crop the glyph and draw a box around it. */
+span.tt-flag { width:auto; height:auto; box-shadow:none; border-radius:0; font-size:16px; line-height:1; display:inline-block; }
 .tt-country-row { display:flex; align-items:center; gap:8px; }
 .tt-country-name { flex:1; }
 

@@ -78,23 +78,28 @@ def _trip_start_datetime(trip):
     """
     When the trip is due to set off, as an aware datetime.
 
-    start_time is optional, so a trip that only has a date starts at 00:00 on
-    that date the organizer said "this day" and we shouldn't invent an hour
-    they'd then be blocked by. TIME_ZONE is UTC, matching how dates are stored.
+    Defined once in apps.trips.lifecycle, alongside the matching end time, so
+    the check-in window, the departure gate and the End Trip gate all agree on
+    when a trip runs.
     """
-    from datetime import datetime, time as dt_time
-    from django.utils import timezone as tz
-
-    start = datetime.combine(trip.date_start, trip.start_time or dt_time.min)
-    if tz.is_naive(start):
-        start = tz.make_aware(start, tz.get_default_timezone())
-    return start
+    from .lifecycle import trip_start_datetime
+    return trip_start_datetime(trip)
 
 
 def _require_chief(trip, user):
     if not _is_chief(trip, user):
         return Response({"detail": "Only the trip chief can do this."}, status=403)
     return None
+
+
+def _trip_has_stakeholders(trip):
+    """Someone other than the organizer holds a spot or has money in escrow.
+
+    The rule itself lives in apps.trips.lifecycle so the API and the serializers
+    that tell the UI which buttons to show cannot disagree about it.
+    """
+    from .lifecycle import has_stakeholders
+    return has_stakeholders(trip)
 
 
 # Statuses that mean "you are part of this group" for read purposes. Mirrors the
@@ -222,7 +227,12 @@ class TripDetailView(APIView):
         if err:
             return err
         if trip.status == Trip.Status.ACTIVE:
-            return Response({"detail": "Cannot delete an active trip."}, status=400)
+            return Response(
+                {"detail": "This trip is already running and can't be deleted. "
+                           "Cancel it instead — members are refunded.",
+                 "action": "cancel"},
+                status=400,
+            )
         if trip.status == Trip.Status.COMPLETED:
             # Completed trips are everyone's permanent travel history never erase.
             return Response(
@@ -231,22 +241,17 @@ class TripDetailView(APIView):
             )
 
         # A trip others have joined (or that holds money) carries history we must
-        # NOT erase via a cascading hard-delete. Cancel it instead: cancel_trip
-        # refunds every held payment, notifies members, marks it CANCELLED, and
-        # applies the organizer-cancellation karma penalty. Only a truly empty
-        # trip (a draft, or a published trip nobody joined) is hard-deleted.
-        from apps.payments.models import Payment
-        has_joiners = trip.members.exclude(role=TripMember.Role.CHIEF).filter(
-            status__in=[TripMember.Status.APPROVED, TripMember.Status.AWAITING_PAYMENT]
-        ).exists()
-        has_funds = Payment.objects.filter(trip=trip, status=Payment.Status.HELD).exists()
-
-        if has_joiners or has_funds:
-            from apps.payments.services import cancel_trip
-            cancel_trip(trip, by_organizer=True, reason="deleted by organizer")
+        # NOT erase via a cascading hard-delete, and the members are owed both a
+        # refund and an explanation. That is cancellation, not deletion — a
+        # different, heavier action that the organizer has to choose knowingly,
+        # so we refuse here and point at /cancel/ rather than quietly doing it
+        # behind a button labelled "Delete".
+        if _trip_has_stakeholders(trip):
             return Response(
-                {"detail": "Trip cancelled and members refunded.", "status": "cancelled"},
-                status=200,
+                {"detail": "People have already joined this trip, so it can't be deleted. "
+                           "Cancel it instead — everyone is refunded and told why.",
+                 "action": "cancel"},
+                status=409,
             )
 
         # Empty trip safe to remove entirely.
@@ -451,6 +456,54 @@ class TripConfirmView(APIView):
 
 # ─── Trip: end ───────────────────────────────────────────────────────────────
 
+class TripCancelView(APIView):
+    """
+    POST /api/trips/<id>/cancel/
+    Chief-only. Calls the whole trip off: every held payment is refunded, every
+    member is notified, the trip is marked CANCELLED, and the organizer takes a
+    karma penalty (the only deterrent available, since the money goes back).
+
+    This is the honest exit when an organizer changes their mind. It is
+    deliberately separate from delete — nothing is erased, because the members
+    need the record of what happened to their money.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, trip_id):
+        try:
+            trip = Trip.objects.get(id=trip_id)
+        except Trip.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+
+        err = _require_chief(trip, request.user)
+        if err:
+            return err
+
+        if trip.status == Trip.Status.CANCELLED:
+            return Response({"detail": "This trip is already cancelled."}, status=400)
+        if trip.status in (Trip.Status.COMPLETED, Trip.Status.ARCHIVED):
+            return Response(
+                {"detail": "This trip has already finished and can't be cancelled."},
+                status=400,
+            )
+
+        from apps.payments.models import Payment
+        refunded = Payment.objects.filter(trip=trip, status=Payment.Status.HELD).count()
+
+        from .lifecycle import is_late_cancellation
+        was_late = is_late_cancellation(trip)
+
+        from apps.payments.services import cancel_trip
+        cancel_trip(trip, by_organizer=True, reason="cancelled by organizer")
+
+        return Response({
+            "detail": "Trip cancelled. Everyone who paid is being refunded.",
+            "status": Trip.Status.CANCELLED,
+            "refunds_started": refunded,
+            "late": was_late,
+        }, status=200)
+
+
 class TripEndView(APIView):
     """
     POST /api/trips/<id>/end/
@@ -477,10 +530,46 @@ class TripEndView(APIView):
                 status=400,
             )
 
+        # "Ended" means the trip ran to its conclusion, which starts the clock on
+        # paying the organizer. Two ways that claim can be false, and both hand
+        # the organizer money for a trip that did not happen as described:
+        #
+        #   never departed        — the trip never happened at all
+        #   still under way       — it is happening, but it isn't over
+        #
+        # Either way the honest exit is cancellation, which refunds the members.
         from django.utils import timezone
+        from .lifecycle import trip_end_datetime
+        if _trip_has_stakeholders(trip):
+            if not trip.departure_confirmed_at:
+                return Response(
+                    {"detail": "This trip never departed, so it can't be ended. "
+                               "If it's going ahead, confirm departure first; if it's off, "
+                               "cancel it and everyone is refunded.",
+                     "action": "cancel"},
+                    status=400,
+                )
+            ends_at = trip_end_datetime(trip)
+            if timezone.now() < ends_at:
+                return Response(
+                    {"detail": "This trip isn't over yet. You can end it from "
+                               f"{ends_at.strftime('%d %b %Y, %H:%M')} UTC. "
+                               "If it's being cut short, cancel it instead — "
+                               "everyone gets refunded.",
+                     "ends_at": ends_at.isoformat(),
+                     "action": "cancel"},
+                    status=400,
+                )
+
         trip.status   = Trip.Status.COMPLETED
         trip.ended_at = timezone.now()
         trip.save(update_fields=["status", "ended_at", "updated_at"])
+
+        # The nightly completion sweep flags trips that "happened" with almost no
+        # check-ins, which freezes the payout for review. Ending by hand must run
+        # the same check, or the button becomes a way to walk around it.
+        from apps.trips.checkin_stats import flag_if_checkin_evidence_is_thin
+        flag_if_checkin_evidence_is_thin(trip)
 
         # Award karma + badges for every approved member (including chief via membership)
         from apps.karma.utils import award_karma, award_badges

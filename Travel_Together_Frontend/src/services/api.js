@@ -192,6 +192,7 @@ export const tripsApi = {
   publish:        (id)         => api.post(`/api/trips/${id}/publish/`),
   depart:         (id)         => api.post(`/api/trips/${id}/depart/`),
   endTrip:        (id)         => api.post(`/api/trips/${id}/end/`),
+  cancelTrip:     (id)         => api.post(`/api/trips/${id}/cancel/`),
   itinerary:      (id)         => api.get(`/api/trips/${id}/itinerary/`),
   addStop:        (id, data)   => api.post(`/api/trips/${id}/itinerary/`, data),
   deleteStop:     (id, stopId) => api.delete(`/api/trips/${id}/itinerary/${stopId}/`),

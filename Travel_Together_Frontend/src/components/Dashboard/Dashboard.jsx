@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { tripsApi, usersApi } from "../../services/api.js";
 import KarmaRing from "./KarmaRing.jsx";
 import { JoinedSection, SavedSection, CreatedSection } from "./Sections.jsx";
+import toast from "react-hot-toast";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -63,11 +64,37 @@ export default function Dashboard() {
     catch { tripsApi.saved().then(r => setSavedTrips(Array.isArray(r.data) ? r.data : (r.data.results ?? []))).catch(() => {}); }
   }, []);
 
+  const refreshMyTrips = useCallback(() => {
+    tripsApi.list()
+      .then(r => setMyTrips(Array.isArray(r.data) ? r.data : (r.data.results ?? [])))
+      .catch(() => {});
+  }, []);
+
   const handleDeleteTrip = useCallback(async (id) => {
     setMyTrips(prev => prev.filter(t => t.id !== id));
-    try { await tripsApi.delete(id); }
-    catch { tripsApi.list().then(r => setMyTrips(Array.isArray(r.data) ? r.data : (r.data.results ?? []))).catch(() => {}); }
-  }, []);
+    try {
+      await tripsApi.delete(id);
+      toast.success("Trip deleted.");
+    } catch (e) {
+      // The server refuses to erase a trip other people are part of. Say why
+      // rather than letting the row silently reappear.
+      toast.error(e?.response?.data?.detail || "Couldn't delete that trip.");
+      refreshMyTrips();
+    }
+  }, [refreshMyTrips]);
+
+  const handleCancelTrip = useCallback(async (id) => {
+    try {
+      const { data } = await tripsApi.cancelTrip(id);
+      setMyTrips(prev => prev.map(t => (
+        t.id === id ? { ...t, status: data.status ?? "cancelled", my_actions: null } : t
+      )));
+      toast.success(data?.detail || "Trip cancelled. Everyone is being refunded.");
+      refreshMyTrips();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Couldn't cancel that trip.");
+    }
+  }, [refreshMyTrips]);
 
   const handleLeaveTrip = useCallback(async (id) => {
     setMyTrips(prev => prev.filter(t => t.id !== id));
@@ -79,8 +106,11 @@ export default function Dashboard() {
     try {
       const { data } = await tripsApi.endTrip(id);
       setMyTrips(prev => prev.map(t => t.id === id ? { ...t, status: data.status ?? "completed" } : t));
-    } catch { /* button resets its own loading state */ }
-  }, []);
+      refreshMyTrips();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Couldn't end that trip.");
+    }
+  }, [refreshMyTrips]);
 
   const goToTrip  = useCallback(id => navigate(`/trip/${id}`),            [navigate]);
   const goToGroup = useCallback(id => navigate(`/group-dashboard/${id}`), [navigate]);
@@ -111,7 +141,7 @@ export default function Dashboard() {
 
   const joinedProps  = { loading, trips: joinedTrips,  onNavigate: goToTrip, onViewGroup: goToGroup, onLeave: handleLeaveTrip, onCollapse: closeSection };
   const savedProps   = { loading, trips: savedTrips,   onNavigate: goToTrip, onUnsave: handleUnsaveTrip, onCollapse: closeSection };
-  const createdProps = { loading, trips: createdTrips, onViewTrip: goToTrip, onManage: goToGroup, onDelete: handleDeleteTrip, onEndTrip: handleEndTrip, onCollapse: closeSection };
+  const createdProps = { loading, trips: createdTrips, onViewTrip: goToTrip, onManage: goToGroup, onDelete: handleDeleteTrip, onCancel: handleCancelTrip, onEndTrip: handleEndTrip, onCollapse: closeSection };
 
   let mainContent;
   if (expanded === "joined") {

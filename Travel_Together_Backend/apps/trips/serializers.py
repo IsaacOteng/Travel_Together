@@ -248,6 +248,7 @@ class TripListSerializer(serializers.ModelSerializer):
     destination_lng   = serializers.FloatField(source="destination_point.x", read_only=True, allow_null=True)
     meeting_point     = serializers.CharField(read_only=True, allow_null=True)
     members_preview   = serializers.SerializerMethodField()
+    my_actions        = serializers.SerializerMethodField()
 
     class Meta:
         model  = Trip
@@ -260,8 +261,35 @@ class TripListSerializer(serializers.ModelSerializer):
             "tags", "member_count", "is_saved", "pending_requests",
             "chief_id", "chief_username", "chief_first_name", "chief_last_name",
             "chief_avatar_url", "chief_trip_count", "chief_karma", "chief_rating", "my_status",
-            "members_preview",
+            "members_preview", "departure_confirmed_at", "my_actions",
         ]
+
+    def get_my_actions(self, obj):
+        """
+        Which lifecycle actions the requester may actually take on this trip.
+
+        The UI reads this instead of guessing from `status`, so a button is never
+        offered that the API would refuse — and the rule only has to be right in
+        one place. Only meaningful for the organizer; everyone else gets nothing.
+        """
+        request = self.context.get("request")
+        user    = getattr(request, "user", None)
+        if not (user and user.is_authenticated and obj.chief_id == user.id):
+            return None
+
+        from .lifecycle import (
+            can_cancel, can_delete, can_end, is_late_cancellation, trip_end_datetime,
+        )
+        cancel = can_cancel(obj)
+        return {
+            "delete":      can_delete(obj),
+            "cancel":      cancel,
+            "end":         can_end(obj),
+            # So the confirm dialog can warn before, not after: cancelling now
+            # carries the heavier penalty.
+            "cancel_late": bool(cancel and is_late_cancellation(obj)),
+            "ends_at":     trip_end_datetime(obj).isoformat(),
+        }
 
     def get_cover_image(self, obj):
         img = obj.images.filter(order=0).first()
@@ -335,6 +363,11 @@ class TripDetailSerializer(serializers.ModelSerializer):
     # depending on whether the viewer is an approved trip member.
     members          = serializers.SerializerMethodField()
     viewer_is_member = serializers.SerializerMethodField()
+    # Whether this viewer has already answered the post-trip prompt. Without
+    # these the prompt is driven by component state alone, so it reappears on
+    # every refresh and keeps asking a question already answered.
+    viewer_confirmed_completion = serializers.SerializerMethodField()
+    viewer_has_reported         = serializers.SerializerMethodField()
     chief_id         = serializers.UUIDField(source="chief.id", read_only=True)
     chief_username   = serializers.CharField(source="chief.username",   read_only=True)
     chief_first_name = serializers.CharField(source="chief.first_name", read_only=True, allow_null=True)
@@ -368,6 +401,7 @@ class TripDetailSerializer(serializers.ModelSerializer):
             "chief_id", "chief_username", "chief_first_name", "chief_last_name",
             "chief_avatar_url", "chief_trip_count",
             "tags", "itinerary", "members", "viewer_is_member",
+            "viewer_confirmed_completion", "viewer_has_reported",
             "my_status", "is_saved",
             "departure_confirmed_at", "departure_checkin_percent", "ended_at",
             "created_at", "updated_at",
@@ -414,6 +448,23 @@ class TripDetailSerializer(serializers.ModelSerializer):
             and m.status in (TripMember.Status.APPROVED, TripMember.Status.AWAITING_PAYMENT)
             for m in obj.members.all()
         )
+
+    def get_viewer_confirmed_completion(self, obj):
+        """True once this viewer has confirmed the trip took place."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return any(
+            m.user_id == request.user.pk and m.completion_confirmed_at is not None
+            for m in obj.members.all()
+        )
+
+    def get_viewer_has_reported(self, obj):
+        """True once this viewer has filed a report against this trip."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.incident_reports.filter(reporter=request.user).exists()
 
     def get_itinerary(self, obj):
         """

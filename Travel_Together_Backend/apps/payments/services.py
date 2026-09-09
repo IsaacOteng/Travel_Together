@@ -364,14 +364,66 @@ def cancel_trip(trip, by_organizer=False, reason=""):
         trip.chief.save(update_fields=["clawback_owed"])
 
     if by_organizer and trip.chief:
-        from apps.karma.utils import award_karma
-        award_karma(
-            user        = trip.chief,
-            delta       = -settings.ORGANIZER_CANCEL_KARMA_PENALTY,
-            reason      = "penalty",
-            description = f"Cancelled trip: {trip.title}",
-            trip        = trip,
-        )
+        _penalise_organizer_cancellation(trip)
+
+
+def _penalise_organizer_cancellation(trip):
+    """
+    Charge the organizer for calling their own trip off.
+
+    Two tiers. Cancelling weeks out is disappointing; cancelling once members
+    have paid, booked time off and started travelling is a different thing, so
+    inside LATE_CANCEL_WINDOW_HOURS of departure — or at any point after the
+    group has set off — it costs more.
+
+    Karma alone would not be a deterrent: it is shown on profiles and
+    leaderboards but gates nothing, so an organizer could do this repeatedly and
+    lose only a displayed number. A late cancellation therefore also puts them
+    on payout probation: for that window they get no early (partial) payout on
+    any trip, and their money stays fully escrowed until each trip completes.
+    That is a real, felt cost, and it reuses the eligibility gate that already
+    exists rather than inventing new machinery.
+    """
+    from datetime import timedelta
+    from apps.karma.utils import award_karma
+    from apps.trips.lifecycle import is_late_cancellation
+
+    late    = is_late_cancellation(trip)
+    penalty = (settings.ORGANIZER_LATE_CANCEL_KARMA_PENALTY if late
+               else settings.ORGANIZER_CANCEL_KARMA_PENALTY)
+
+    award_karma(
+        user        = trip.chief,
+        delta       = -penalty,
+        reason      = "penalty",
+        description = (f"Cancelled trip close to departure: {trip.title}" if late
+                       else f"Cancelled trip: {trip.title}"),
+        trip        = trip,
+    )
+
+    if not late:
+        return
+
+    chief = trip.chief
+    until = timezone.now() + timedelta(days=settings.LATE_CANCEL_PAYOUT_PROBATION_DAYS)
+    # Never shorten an existing probation — a second late cancellation extends it.
+    if not chief.payout_probation_until or chief.payout_probation_until < until:
+        chief.payout_probation_until = until
+        chief.save(update_fields=["payout_probation_until"])
+
+    from apps.notifications.utils import push
+    push(
+        recipient  = chief,
+        notif_type = "karma_level",
+        title      = "Late cancellation recorded",
+        body       = (
+            f"Cancelling \"{trip.title}\" so close to departure cost you {penalty} karma. "
+            f"Until {until.strftime('%d %b %Y')}, your trip payments stay held until each "
+            f"trip is completed — no early payouts."
+        ),
+        trip       = trip,
+        data       = {"probation_until": until.isoformat(), "karma_delta": -penalty},
+    )
 
 
 # ─── Payouts (release escrow to the organizer) ────────────────────────────────
@@ -470,6 +522,13 @@ def _organizer_is_established(user):
     """
     if not user:
         return False
+
+    # Payout probation from a late cancellation outranks any standing the
+    # organizer has otherwise earned — that is what makes it cost something.
+    probation = getattr(user, "payout_probation_until", None)
+    if probation and probation > timezone.now():
+        return False
+
     if getattr(user, "is_verified_traveller", False):
         return True
     from apps.trips.models import Trip

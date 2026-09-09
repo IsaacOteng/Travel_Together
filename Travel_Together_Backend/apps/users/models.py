@@ -56,6 +56,10 @@ class User(AbstractBaseUser):
 
     id                    = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email                 = models.EmailField(unique=True)
+    # Address this row was signed up with, kept only once the account is
+    # deleted: `email` is scrambled then to free the address, and without this
+    # a clawback debt could be shed by deleting and signing up again.
+    retired_email         = models.EmailField(null=True, blank=True, db_index=True)
     username              = models.CharField(max_length=30, unique=True, null=True, blank=True)
     first_name            = models.CharField(max_length=100, null=True, blank=True)
     last_name             = models.CharField(max_length=100, null=True, blank=True)
@@ -73,6 +77,7 @@ class User(AbstractBaseUser):
     travel_karma          = models.IntegerField(default=0)
     karma_level           = models.CharField(max_length=20, choices=KarmaLevel.choices, default=KarmaLevel.EXPLORER)
     clawback_owed         = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # debt from upheld-fraud payouts; deducted from future payouts
+    payout_probation_until = models.DateTimeField(null=True, blank=True)  # set by a late cancellation: no early (partial) payouts until this passes
     email_verified        = models.BooleanField(default=False)
     is_verified_traveller = models.BooleanField(default=False)
     google_uid            = models.CharField(max_length=255, unique=True, null=True, blank=True)

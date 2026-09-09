@@ -6,6 +6,7 @@ from apps.trips.views import (
     TripDepartView,
     TripConfirmView,
     TripEndView,
+    TripCancelView,
     TripImageListView,
     TripImageDetailView,
     JoinRequestView,
@@ -35,6 +36,7 @@ urlpatterns = [
     path("<uuid:trip_id>/depart/",              TripDepartView.as_view(),           name="trip-depart"),
     path("<uuid:trip_id>/confirm/",             TripConfirmView.as_view(),          name="trip-confirm"),
     path("<uuid:trip_id>/end/",                 TripEndView.as_view(),              name="trip-end"),
+    path("<uuid:trip_id>/cancel/",              TripCancelView.as_view(),           name="trip-cancel"),
 
     # Images
     path("<uuid:trip_id>/images/",              TripImageListView.as_view(),        name="trip-images"),
