@@ -119,7 +119,12 @@ export default function PublicProfilePage() {
     <div style={{ minHeight: "100vh", background: PANEL_BG, color: "#fff" }}>
       <AppNav />
 
-      <div style={{ maxWidth: 740, margin: "0 auto", padding: "28px 20px 60px" }}>
+      {/* The page sits on the app measure so its left edge lines up with the
+          nav; the cards inside keep a reading width rather than stretching to
+          1400px around an 80px avatar. Left-aligned, not centred — a centred
+          column under a full-width nav is the misalignment this is fixing. */}
+      <div className="tt-shell" style={{ paddingTop: 28, paddingBottom: 60 }}>
+       <div style={{ maxWidth: 860 }}>
         {/* back */}
         <button
           onClick={() => navigate(-1)}
@@ -229,6 +234,7 @@ export default function PublicProfilePage() {
 
           </>
         )}
+       </div>
       </div>
       <MobileBottomNav />
     </div>

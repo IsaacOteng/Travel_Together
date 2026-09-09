@@ -266,7 +266,15 @@ export default function TripPublicPage() {
       )}
 
       {/* Page content */}
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: mobile ? "16px 16px 90px" : "24px 24px 80px" }}>
+      {/* Desktop shares the app measure with AppNav above it — a 960px column
+          under a 1440px nav reads as a misalignment, not as a reading width.
+          Mobile keeps its own padding; the shell has nothing to centre there. */}
+      <div
+        className={mobile ? undefined : "tt-shell"}
+        style={mobile
+          ? { padding: "16px 16px 90px" }
+          : { paddingTop: 24, paddingBottom: 80 }}
+      >
 
         {/* Hero image carousel with overlay buttons */}
         <div
@@ -534,7 +542,7 @@ export default function TripPublicPage() {
                     <Map size={13} color="#FF6B35" />
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#FF6B35", textTransform: "uppercase", letterSpacing: "0.08em" }}>Map View</span>
                   </div>
-                  <MapEmbed trip={trip} height={200} />
+                  <MapEmbed trip={trip} height={240} />
                 </div>
               </div>
             );
@@ -568,7 +576,7 @@ export default function TripPublicPage() {
                   <Map size={13} color="#FF6B35" />
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#FF6B35", textTransform: "uppercase", letterSpacing: "0.08em" }}>Map View</span>
                 </div>
-                <MapEmbed trip={trip} height={220} />
+                <MapEmbed trip={trip} height={380} />
               </div>
 
               {/* Right */}
