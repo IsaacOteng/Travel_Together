@@ -151,8 +151,8 @@ export default function SettingsPage() {
       <style>{globalStyles}</style>
       {Modals}
       <AppNav />
-      <div className="max-w-[1100px] mx-auto px-6 py-6 flex gap-6">
-        <div className="w-[220px] flex-shrink-0 self-start sticky top-[76px]">
+      <div className="tt-shell flex gap-6 py-6">
+        <div className="w-[220px] flex-shrink-0 self-start sticky top-[84px]">
           <div className="bg-[#0d1b2a] border border-white/[0.07] rounded-2xl overflow-hidden">
             <div className="px-4 pt-4 pb-2">
               <p className="text-[10px] font-bold tracking-[.12em] uppercase text-white/30">Settings</p>
@@ -193,7 +193,10 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
-        <div className="flex-1 min-w-0">
+        {/* Capped, unlike the list pages: the page sits on the same measure as
+            the nav, but settings rows are read left-to-right and stretching a
+            toggle label 1100px away from its switch helps nobody. */}
+        <div className="flex-1 min-w-0 max-w-[880px]">
           <div className="mb-5">
             <h1 className="text-[24px] font-light text-white font-serif tracking-tight">Settings & Privacy</h1>
             <p className="text-[13px] text-white/35 mt-1">Manage your privacy, safety contacts, and account.</p>

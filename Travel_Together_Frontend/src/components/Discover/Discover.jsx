@@ -283,40 +283,44 @@ export default function Discover({ onJoinTrip }) {
       />
 
       <div
-        className="px-8 pt-12 pb-8 border-b border-white/[0.04]"
+        className="pt-14 pb-10 border-b border-white/[0.04]"
         style={{ background: "linear-gradient(180deg,rgba(255,107,53,0.05) 0%,transparent 100%)" }}
       >
-        <p className="m-0 mb-1.5 text-[12px] text-[rgba(255,107,53,0.8)] font-bold tracking-[0.1em] uppercase">✦ Discover</p>
-        <h1 className="m-0 mb-2 text-[22px] font-semibold text-white font-serif tracking-[-0.4px] leading-[1.25]">
-          Find your next <span className="text-[#FF6B35]">travel group</span>
-        </h1>
-        <p className="m-0 text-[13px] text-white/45 leading-[1.6]">Join real trips, meet verified travelers, travel safer together.</p>
-      </div>
-
-      <div className="px-8 py-4 border-b border-white/[0.05] flex items-center gap-2.5 overflow-x-auto scrollbar-none">
-        <Filter size={14} color="rgba(255,255,255,0.3)" className="flex-shrink-0" />
-        {FILTERS.map(f => (
-          <button
-            key={f}
-            className="ttf px-4 py-[7px] rounded-full flex-shrink-0 text-[12px] cursor-pointer transition-all duration-150"
-            onClick={() => setActiveFilter(f)}
-            style={{
-              background: activeFilter === f ? "#FF6B35" : "rgba(255,255,255,0.06)",
-              color: activeFilter === f ? "#fff" : "rgba(255,255,255,0.5)",
-              fontWeight: activeFilter === f ? 700 : 500,
-              border: `1.5px solid ${activeFilter === f ? "#FF6B35" : "rgba(255,255,255,0.08)"}`,
-              boxShadow: activeFilter === f ? "0 4px 12px rgba(255,107,53,.25)" : "none",
-            }}
-          >
-            {f}
-          </button>
-        ))}
-        <div className="ml-auto text-[12px] text-white/30 flex-shrink-0">
-          {filtered.length} trip{filtered.length !== 1 ? "s" : ""}
+        <div className="tt-shell block">
+          <p className="m-0 mb-2 text-[13px] text-[rgba(255,107,53,0.8)] font-bold tracking-[0.1em] uppercase">✦ Discover</p>
+          <h1 className="m-0 mb-2.5 text-[34px] font-semibold text-white font-serif tracking-[-0.6px] leading-[1.15]">
+            Find your next <span className="text-[#FF6B35]">travel group</span>
+          </h1>
+          <p className="m-0 text-[15px] text-white/45 leading-[1.6]">Join real trips, meet verified travelers, travel safer together.</p>
         </div>
       </div>
 
-      <div className="flex gap-7 max-w-[1280px] mx-auto px-8 py-7">
+      <div className="border-b border-white/[0.05]">
+        <div className="tt-shell py-4 flex items-center gap-2.5 overflow-x-auto scrollbar-none">
+          <Filter size={15} color="rgba(255,255,255,0.3)" className="flex-shrink-0" />
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              className="ttf px-[18px] py-2 rounded-full flex-shrink-0 text-[13.5px] cursor-pointer transition-all duration-150"
+              onClick={() => setActiveFilter(f)}
+              style={{
+                background: activeFilter === f ? "#FF6B35" : "rgba(255,255,255,0.06)",
+                color: activeFilter === f ? "#fff" : "rgba(255,255,255,0.5)",
+                fontWeight: activeFilter === f ? 700 : 500,
+                border: `1.5px solid ${activeFilter === f ? "#FF6B35" : "rgba(255,255,255,0.08)"}`,
+                boxShadow: activeFilter === f ? "0 4px 12px rgba(255,107,53,.25)" : "none",
+              }}
+            >
+              {f}
+            </button>
+          ))}
+          <div className="ml-auto pl-4 text-[13px] text-white/30 flex-shrink-0">
+            {filtered.length} trip{filtered.length !== 1 ? "s" : ""}
+          </div>
+        </div>
+      </div>
+
+      <div className="tt-shell flex gap-8 py-8">
         <div className="flex-1 min-w-0">
           {filtered.length === 0 ? (
             <div className="text-center py-20 px-5 text-white/30">
@@ -334,10 +338,10 @@ export default function Discover({ onJoinTrip }) {
           )}
         </div>
 
-        <aside className="w-[260px] flex-shrink-0 flex flex-col gap-4">
+        <aside className="w-[296px] flex-shrink-0 flex flex-col gap-4">
           {/* trending */}
           <div className="bg-white/[0.04] rounded-[18px] border border-white/[0.07] p-[18px]">
-            <div className="text-[10px] font-bold tracking-[0.08em] uppercase text-white/30 mb-3.5">Trending this week</div>
+            <div className="text-[11px] font-bold tracking-[0.08em] uppercase text-white/30 mb-3.5">Trending this week</div>
             {trips.slice().sort((a, b) => b.karma - a.karma).slice(0, 3).map((t, i) => (
               <div
                 key={t.id}
@@ -347,8 +351,8 @@ export default function Discover({ onJoinTrip }) {
               >
                 <span className="text-lg font-extrabold text-[rgba(255,107,53,0.4)] w-[22px] text-center">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-semibold text-white/80 overflow-hidden text-ellipsis whitespace-nowrap">{t.title}</div>
-                  <div className="text-[10px] text-white/35 mt-[1px]">{fmtDate(t.dateStart)}</div>
+                  <div className="text-[13px] font-semibold text-white/80 overflow-hidden text-ellipsis whitespace-nowrap">{t.title}</div>
+                  <div className="text-[11px] text-white/35 mt-[1px]">{fmtDate(t.dateStart)}</div>
                 </div>
                 <ChevronRight size={13} color="rgba(255,255,255,0.2)" />
               </div>
@@ -362,14 +366,14 @@ export default function Discover({ onJoinTrip }) {
           >
             <div className="flex items-center gap-2 mb-2.5">
               <Shield size={16} color="#60a5fa" />
-              <span className="text-[12px] font-bold text-[#60a5fa]">Travel safely</span>
+              <span className="text-[13px] font-bold text-[#60a5fa]">Travel safely</span>
             </div>
-            <p className="m-0 mb-3 text-[11px] text-white/45 leading-[1.6]">
+            <p className="m-0 mb-3 text-[12.5px] text-white/45 leading-[1.6]">
               All trip organizers are identity-verified. Check karma scores before joining.
             </p>
             <button
               onClick={() => setShowSafety(true)}
-              className="px-3.5 py-[7px] rounded-lg border border-[rgba(96,165,250,0.3)] bg-[rgba(96,165,250,0.1)] text-[#60a5fa] text-[11px] font-semibold cursor-pointer hover:bg-[rgba(96,165,250,0.18)] transition-colors"
+              className="px-4 py-2 rounded-lg border border-[rgba(96,165,250,0.3)] bg-[rgba(96,165,250,0.1)] text-[#60a5fa] text-[12.5px] font-semibold cursor-pointer hover:bg-[rgba(96,165,250,0.18)] transition-colors"
             >
               Learn more
             </button>
@@ -378,7 +382,7 @@ export default function Discover({ onJoinTrip }) {
           {/* saved trips */}
           {savedCount > 0 && (
             <div className="bg-white/[0.04] rounded-[18px] border border-white/[0.07] p-[18px]">
-              <div className="text-[10px] font-bold tracking-[0.08em] uppercase text-white/30 mb-3 flex items-center gap-1.5">
+              <div className="text-[11px] font-bold tracking-[0.08em] uppercase text-white/30 mb-3 flex items-center gap-1.5">
                 <Heart size={11} fill="rgba(255,107,53,0.6)" color="rgba(255,107,53,0.6)" /> Saved trips
               </div>
               {trips.filter(t => t.saved).map(t => (
@@ -392,8 +396,8 @@ export default function Discover({ onJoinTrip }) {
                     : <div className="w-10 h-8 rounded-[6px] bg-white/10 flex-shrink-0" />
                   }
                   <div className="min-w-0">
-                    <div className="text-[12px] font-semibold text-white/80 overflow-hidden text-ellipsis whitespace-nowrap">{t.title}</div>
-                    <div className="text-[10px] text-white/35">{fmtDate(t.dateStart)}</div>
+                    <div className="text-[13px] font-semibold text-white/80 overflow-hidden text-ellipsis whitespace-nowrap">{t.title}</div>
+                    <div className="text-[11px] text-white/35">{fmtDate(t.dateStart)}</div>
                   </div>
                 </div>
               ))}

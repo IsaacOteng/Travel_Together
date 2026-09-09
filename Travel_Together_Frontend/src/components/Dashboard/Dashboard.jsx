@@ -249,8 +249,8 @@ export default function Dashboard() {
         @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
       <AppNav/>
-      <div className="max-w-[1100px] mx-auto px-8 py-8 flex gap-7">
-        <aside className="w-[280px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-[76px]">
+      <div className="tt-shell flex gap-7 py-8">
+        <aside className="w-[280px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-[84px]">
           {UserCard}
           {CreateBtn}
         </aside>

@@ -477,7 +477,7 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
       <div className="relative">
         <Cover height={340} />
 
-        <div className="relative max-w-[1080px] mx-auto px-8 pt-[196px] pb-20">
+        <div className="tt-shell relative pt-[196px] pb-20">
           <div className="flex items-end gap-6">
             <Avatar size={128} />
             <div className="flex-1 min-w-0 pb-1">

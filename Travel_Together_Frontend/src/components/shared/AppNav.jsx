@@ -45,8 +45,10 @@ export default function AppNav({
     (path === "/discover" && ["/discover", "/group-dashboard"].includes(pathname));
 
   return (
-    <header className="sticky top-0 z-[100] bg-[rgba(7,20,34,0.95)] backdrop-blur-2xl border-b border-white/[0.06] px-8 h-16 flex items-center gap-5">
-      <div className="justify-between items-center flex w-full max-w-[1200px] mx-auto">
+    <header className="sticky top-0 z-[100] bg-[rgba(7,20,34,0.95)] backdrop-blur-2xl border-b border-white/[0.06] h-[72px] flex items-center">
+      {/* tt-shell, not a width of its own: the nav has to line up with the page
+          bands under it, and it used to cap 80px narrower than the content. */}
+      <div className="tt-shell justify-between items-center flex gap-5">
 
         <div className="flex items-center gap-5">
           {/* Logo */}
@@ -60,7 +62,7 @@ export default function AppNav({
               className="w-12 h-12"
               onError={e => { e.target.style.display = "none"; }}
             />
-            <span className="text-[15px] font-bold text-white tracking-[-0.3px]">Travel Together</span>
+            <span className="text-[16.5px] font-bold text-white tracking-[-0.3px]">Travel Together</span>
           </div>
 
           {/* Nav tabs */}
@@ -77,7 +79,7 @@ export default function AppNav({
                       ? requireAuth(tab.reason, () => navigate(tab.path))
                       : navigate(tab.path)
                   }
-                  className="relative px-4 py-[7px] rounded-lg border-none cursor-pointer text-[13px] transition-colors duration-150"
+                  className="relative px-4 py-2 rounded-lg border-none cursor-pointer text-[14px] transition-colors duration-150"
                   style={{
                     background: active ? "rgba(255,107,53,0.15)" : "transparent",
                     color:      active ? "#FF6B35"               : "rgba(255,255,255,0.5)",
@@ -126,13 +128,13 @@ export default function AppNav({
         <div className="flex items-center gap-5">
           {/* Search bar */}
           {showSearch && (
-            <div className="flex-1 max-w-[340px] relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <div className="flex-1 max-w-[380px] relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
               <input
                 value={searchQuery}
                 onChange={e => onSearch?.(e.target.value)}
                 placeholder="Search trips, places…"
-                className="w-full bg-white/[0.07] border border-white/10 rounded-3xl py-[9px] pr-3.5 pl-9 text-[13px] text-white outline-none transition-all duration-150 box-border focus:border-[#FF6B35] focus:shadow-[0_0_0_3px_rgba(255,107,53,.1)]"
+                className="w-full bg-white/[0.07] border border-white/10 rounded-3xl py-[10px] pr-3.5 pl-10 text-[14px] text-white outline-none transition-all duration-150 box-border focus:border-[#FF6B35] focus:shadow-[0_0_0_3px_rgba(255,107,53,.1)]"
               />
             </div>
           )}
@@ -145,7 +147,7 @@ export default function AppNav({
                 className="flex items-center gap-1.5 bg-[rgba(255,107,53,0.15)] border border-[rgba(255,107,53,0.25)] rounded-full px-2.5 py-1 cursor-pointer hover:bg-[rgba(255,107,53,0.25)] transition-colors"
               >
                 <Heart size={13} color="#FF6B35" fill="#FF6B35" />
-                <span className="text-[11px] font-bold text-[#FF6B35]">{savedCount} saved</span>
+                <span className="text-[12px] font-bold text-[#FF6B35]">{savedCount} saved</span>
               </button>
             )}
 
@@ -160,7 +162,7 @@ export default function AppNav({
             {user ? (
               <button
                 onClick={() => navigate('/profile')}
-                className="w-[34px] h-[34px] rounded-full flex-shrink-0 border-none cursor-pointer hover:ring-2 hover:ring-[#4ade80]/50 transition-all overflow-hidden p-0"
+                className="w-[38px] h-[38px] rounded-full flex-shrink-0 border-none cursor-pointer hover:ring-2 hover:ring-[#4ade80]/50 transition-all overflow-hidden p-0"
               >
                 {avatarUrl
                   ? <img src={avatarUrl} alt={initials} className="w-full h-full object-cover rounded-full"
@@ -176,7 +178,7 @@ export default function AppNav({
             ) : (
               <button
                 onClick={() => setGuestDialog({ open: true, reason: "Access your profile and travel history" })}
-                className="w-[34px] h-[34px] rounded-full flex-shrink-0 border border-white/20 bg-white/[0.07] cursor-pointer hover:bg-white/15 transition-all flex items-center justify-center text-white/50 text-[11px] font-bold"
+                className="w-[38px] h-[38px] rounded-full flex-shrink-0 border border-white/20 bg-white/[0.07] cursor-pointer hover:bg-white/15 transition-all flex items-center justify-center text-white/50 text-[11px] font-bold"
               >
                 ?
               </button>

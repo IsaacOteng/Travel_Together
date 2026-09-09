@@ -311,3 +311,34 @@ span.tt-flag { width:auto; height:auto; box-shadow:none; border-radius:0; font-s
 .tt-signin-hint { text-align:center; font-size:12px; color:#9ca3af; margin-top:16px; }
 .tt-signin-hint a { color:#FF6B35; font-weight:600; text-decoration:none; }
 .tt-signin-hint a:hover { text-decoration:underline; }
+/* ── Desktop page measure ─────────────────────────────────────────────────────
+   Every full-width band on a desktop page — the nav, a hero, a filter bar, the
+   content row — puts its contents in one of these. They used to each pick their
+   own: the nav capped at 1200px, the content row at 1280px, and the hero and
+   filter bar not capped at all. On a wide screen that left the heading hard
+   against the window edge while the cards it introduced started 300px further
+   in, and the gap grew or shrank with the zoom level instead of holding still.
+
+   The band itself stays full-width so backgrounds and bottom borders still run
+   edge to edge; only what's inside it is measured.
+
+   Padding is a fixed px value on purpose. A vw-based one changes the gutter at
+   every zoom step, which is what makes a layout feel like it was drawn for one
+   particular zoom level and falls apart either side of it. In px the whole page
+   scales by exactly the zoom factor and nothing shifts relative to anything
+   else. */
+.tt-shell {
+    width: 100%;
+    /* Wide enough to carry a 1920px screen at 100% zoom without the content
+       stranded in the middle, and still a sane line length at 80% (where the
+       viewport is ~2400 CSS px and an uncapped page would sprawl). The old
+       1200-1280 caps only filled the window once the browser was at 125%,
+       which is what made the page feel drawn for that one zoom level. */
+    max-width: 1440px;
+    margin-inline: auto;
+    padding-inline: 32px;
+}
+
+@media (max-width: 640px) {
+    .tt-shell { padding-inline: 16px; }
+}

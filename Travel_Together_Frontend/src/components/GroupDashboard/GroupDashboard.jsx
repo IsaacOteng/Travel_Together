@@ -884,11 +884,11 @@ export default function GroupDashboard() {
     <div className="bg-[#0d1b2a] border border-white/[0.07] rounded-2xl p-4">
       <p className="text-[9px] font-bold tracking-[.1em] uppercase text-white/25 mb-3">Safety Status</p>
       <div className="flex items-center gap-3 mb-4">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${sosAlerts.length ? "bg-red-400/10 border border-red-400/30" : "bg-green-400/10 border border-green-400/30"}`}>
-          <Shield size={18} className={sosAlerts.length ? "text-red-400" : "text-green-400"} />
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${sosAlerts.length ? "bg-red-400/10 border border-red-400/30" : "bg-orange-400/10 border border-orange-400/30"}`}>
+          <Shield size={18} className={sosAlerts.length ? "text-red-400" : "text-orange-500"} />
         </div>
         <div>
-          <div className={`text-[13px] font-bold ${sosAlerts.length ? "text-red-400" : "text-green-400"}`}>
+          <div className={`text-[13px] font-bold ${sosAlerts.length ? "text-red-400" : "text-orange-500"}`}>
             {sosAlerts.length ? `${sosAlerts.length} Active Alert${sosAlerts.length > 1 ? "s" : ""}` : "All Clear"}
           </div>
           <div className="text-[10px] text-white/30">
@@ -900,7 +900,7 @@ export default function GroupDashboard() {
         {["GPS tracking", "Emergency contact", "Location sharing", "Notifications"].map(s => (
           <div key={s} className="flex items-center justify-between text-[11px] text-white/45">
             <span>{s}</span>
-            <Check size={13} className="text-green-400" />
+            <Check size={13} className="text-orange-400" />
           </div>
         ))}
       </div>
@@ -1179,7 +1179,7 @@ export default function GroupDashboard() {
 
       {LocationAlertBanner}
 
-      <div className="flex gap-5 max-w-[1320px] mx-auto px-5 py-5">
+      <div className="tt-shell flex gap-5 py-5">
 
         <div className="w-[280px] flex-shrink-0 flex flex-col gap-3.5">
           {TripHeader}
