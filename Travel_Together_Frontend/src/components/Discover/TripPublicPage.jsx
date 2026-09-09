@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   MapPin, Navigation, Calendar, Car, Globe, Users,
-  Star, Ticket, Info, Map, ArrowLeft, Send, Heart, Share2, Check,
+  Star, Ticket, Info, Map, ArrowLeft, Heart, Share2, Check,
 } from "lucide-react";
 import MapEmbed from "./MapEmbed.jsx";
 import { Avatar, WhoIsGoing } from "./helpers.jsx";
@@ -19,6 +19,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useOnboardingGate } from "../shared/OnboardingGate.jsx";
 import { tripsApi, usersApi } from "../../services/api.js";
 import api from "../../services/api.js";
+import { officialLogo } from "../../assets/logos";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -251,7 +252,7 @@ export default function TripPublicPage() {
         <>
           <header className="sticky top-0 z-[100] bg-[rgba(7,20,34,0.96)] backdrop-blur-xl border-b border-white/[0.06] px-3.5 py-3 flex items-center justify-between">
             <img
-              src="/src/assets/official_logo_nobg.png"
+              src={officialLogo}
               alt="Travel Together"
               style={{ width: 36, height: 36, flexShrink: 0 }}
               onError={e => { e.target.style.display = "none"; }}
@@ -396,20 +397,17 @@ export default function TripPublicPage() {
                   </div>
                 </div>
               </div>
+              {/* No "Ask organiser" button by design. Direct messages are
+                  limited to people who have both joined and confirmed their
+                  spots on the same trip, so an organizer and a prospective
+                  joiner cannot DM each other keeping the sales conversation,
+                  and any pressure or off-platform side-deal that comes with it,
+                  out of private channels. Trip questions belong in the public
+                  trip details; the group chat opens once you've paid. */}
               {user && String(user.id) !== String(trip.chief?.id) && (
-                <button
-                  onClick={() => requireOnboarding(async () => {
-                    if (!trip.chief?.id) return;
-                    try {
-                      const { chatApi } = await import("../../services/api.js");
-                      const { data } = await chatApi.startDM(trip.chief.id);
-                      navigate("/chat", { state: { conversationId: data.id } });
-                    } catch { navigate("/chat"); }
-                  })}
-                  style={{ width: "100%", padding: "8px 0", borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                >
-                  <Send size={12} /> Ask organiser
-                </button>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "center", lineHeight: 1.5 }}>
+                  Group chat opens once you've joined and confirmed your spot.
+                </div>
               )}
             </div>
           );

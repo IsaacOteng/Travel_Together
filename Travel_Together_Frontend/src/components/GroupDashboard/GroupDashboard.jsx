@@ -309,13 +309,18 @@ export default function GroupDashboard() {
 
   const handleCheckIn = async () => {
     if (!canCheckIn) return;
-    const doCheckin = async (lat, lng) => {
+    const doCheckin = async (lat, lng, accuracy) => {
       if (lat == null || lng == null) {
         toast.error("Location required to check in.");
         return;
       }
       try {
-        await tripsApi.checkin(tripId, { lat, lng, stop_id: pendingStop.id });
+        await tripsApi.checkin(tripId, {
+          lat, lng, stop_id: pendingStop.id,
+          // Sent so the server can widen the geofence by the device's own GPS
+          // error margin instead of rejecting a member with a weak fix.
+          accuracy_meters: accuracy ?? null,
+        });
         const newStopId = String(pendingStop.id);
         setCheckedInStops(prev => [...prev, newStopId]);
         if (user) {
@@ -327,15 +332,17 @@ export default function GroupDashboard() {
           .then(({ data }) => setItinerary(data.results ?? data))
           .catch(() => {});
         toast.success(`Checked in at ${pendingStop.name}!`);
-      } catch {
-        toast.error("Check-in failed. Try again.");
+      } catch (err) {
+        // The server rejects check-ins outside the stop's geofence. Show its
+        // message it tells the member how close they need to be.
+        toast.error(err?.response?.data?.detail || "Check-in failed. Try again.");
       }
     };
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        pos => doCheckin(pos.coords.latitude, pos.coords.longitude),
+        pos => doCheckin(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
         ()  => toast.error("Enable location to check in."),
-        { timeout: 8000 }
+        { timeout: 8000, enableHighAccuracy: true }
       );
     } else {
       toast.error("Geolocation not supported on this device.");
@@ -369,8 +376,11 @@ export default function GroupDashboard() {
     try {
       const { data } = await chatApi.startDM(userId);
       navigate('/chat', { state: { conversationId: data.id } });
-    } catch {
-      navigate('/chat');
+    } catch (e) {
+      // DMs are limited to people you're actually travelling with, so this can
+      // legitimately refuse. Say why rather than dropping the user on an empty
+      // chat screen with no explanation.
+      toast.error(e?.response?.data?.detail || "Couldn't open that chat.");
     }
   };
 
@@ -413,6 +423,16 @@ export default function GroupDashboard() {
   const isTripLive = !!(
     trip?.startMs != null &&
     Date.now() >= trip.startMs &&
+    (trip?.endMs == null || Date.now() <= trip.endMs)
+  );
+
+  // Check-in opens an hour before departure so early arrivals aren't stuck —
+  // mirrors CHECKIN_WINDOW_HOURS_BEFORE_START on the server, which is what
+  // actually enforces it. Location sharing and SOS still follow isTripLive.
+  const CHECKIN_OPENS_MS_BEFORE = 60 * 60 * 1000;
+  const checkInOpen = !!(
+    trip?.startMs != null &&
+    Date.now() >= trip.startMs - CHECKIN_OPENS_MS_BEFORE &&
     (trip?.endMs == null || Date.now() <= trip.endMs)
   );
 
@@ -476,20 +496,20 @@ export default function GroupDashboard() {
     }
   };
 
-  const preTripTitle = "Available once the trip begins";
+  const preTripTitle = "Check-in opens an hour before the trip starts";
   const QuickActionsPanel = (
     <div className="bg-[#0d1b2a] rounded-2xl border border-white/[0.07] p-4">
       <p className="text-[9px] font-bold tracking-[.1em] uppercase text-white/25 mb-3">Quick Actions</p>
       <div className="grid grid-cols-3 gap-2">
         <div className="relative"
-          title={!isTripLive ? preTripTitle : itinerary.length === 0 ? "Add an itinerary stop first." : !canCheckIn ? "All stops checked in." : undefined}>
+          title={!checkInOpen ? preTripTitle : itinerary.length === 0 ? "Add an itinerary stop first." : !canCheckIn ? "All stops checked in." : undefined}>
           <QuickAction
             icon={CheckCircle}
             label="Check In"
-            color={isTripLive && canCheckIn ? "#52A882" : "#4b5563"}
-            onClick={isTripLive && canCheckIn ? handleCheckIn : undefined}
+            color={checkInOpen && canCheckIn ? "#52A882" : "#4b5563"}
+            onClick={checkInOpen && canCheckIn ? handleCheckIn : undefined}
           />
-          {isTripLive && !canCheckIn && itinerary.length > 0 && (
+          {checkInOpen && !canCheckIn && itinerary.length > 0 && (
             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-400/80 flex items-center justify-center border-2 border-[#0d1b2a] pointer-events-none">
               <Check size={7} className="text-white" />
             </span>
@@ -584,9 +604,18 @@ export default function GroupDashboard() {
     setDeparting(true);
     setDepartMsg("");
     try {
-      await tripsApi.depart(tripId);
+      const { data } = await tripsApi.depart(tripId);
       setTrip(prev => prev ? { ...prev, status: "active", departureConfirmedAt: new Date().toISOString() } : prev);
-      setDepartMsg("Departure confirmed the trip is now live.");
+      // Say what the check-in evidence means for the payout, so a thinly
+      // attested departure doesn't look identical to a fully attested one.
+      const seen = data?.checked_in ?? 0, total = data?.expected ?? 0;
+      setDepartMsg(
+        data?.evidence === "strong"
+          ? `Departure confirmed — the trip is now live. ${seen}/${total} checked in; your payout releases ${data.partial_in}.`
+          : data?.evidence === "weak"
+            ? `Departure confirmed — the trip is now live. Only ${seen}/${total} checked in, so your payout is held ${data.partial_in} to give members time to raise anything. Late check-ins shorten the wait.`
+            : `Departure confirmed — the trip is now live. Too few check-ins (${seen}/${total}) for an early payout, so your full amount settles after the trip ends.`
+      );
     } catch (err) {
       setDepartMsg(err?.response?.data?.detail || "Couldn't mark the trip as departed.");
     } finally {
@@ -594,8 +623,28 @@ export default function GroupDashboard() {
     }
   };
 
+  // Mirrors the server's departure rules (see TripDepartView) so the organizer
+  // isn't offered a button that can only fail. The server is still the
+  // enforcement — this just explains the wait instead of erroring after a click.
+  const travellers   = members.filter(m => m.role !== "chief");
+  const hasTravellers = travellers.length > 0;
+  const hasStarted   = trip?.startMs == null || Date.now() >= trip.startMs;
+
   const canDepart = isChief && trip && !trip.departureConfirmedAt
     && ["published", "active"].includes(trip.status);
+
+  // Only the two conditions the client can judge without ambiguity. The
+  // check-in quorum is deliberately left to the server: checkedInCount here
+  // tracks the LATEST stop, not the meeting point, so using it would sometimes
+  // block a departure that is actually allowed. The server's reply names the
+  // exact numbers ("Need 2 member(s) checked in… (1 so far)").
+  const departBlockedReason =
+    !hasTravellers ? "Nobody has joined this trip yet"
+    : !hasStarted  ? "You can confirm departure once the trip's start time arrives"
+    : null;
+  // Note: the check-in rate is deliberately NOT a condition here. It no longer
+  // blocks departure — it only affects how quickly the payout follows, which
+  // the server explains in its response.
 
   const ItineraryPanel = (
     <Section
@@ -607,7 +656,8 @@ export default function GroupDashboard() {
           {canDepart && (
             <button
               onClick={handleDepart}
-              disabled={departing}
+              disabled={departing || !!departBlockedReason}
+              title={departBlockedReason || "Confirm the group has set off"}
               className="flex items-center gap-1 text-[10px] font-bold text-[#FF6B35] bg-[#FF6B35]/10 border border-[#FF6B35]/25 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-[#FF6B35]/20 transition-colors disabled:opacity-60"
             >
               <Navigation size={10} /> {departing ? "Departing…" : "Depart"}
@@ -915,7 +965,9 @@ export default function GroupDashboard() {
         <Clock size={10} className="text-white/30" />
       </div>
       <p className="text-[11px] text-white/35 leading-relaxed">
-        Check-in, SOS and location features unlock when the trip starts.
+        Check-in opens an hour before departure. SOS and location sharing
+        unlock when the trip starts. Check-ins don't block departure — they
+        just get your payout released sooner.
       </p>
     </div>
   );
@@ -923,23 +975,37 @@ export default function GroupDashboard() {
   const LocationBanner = LocationAlertBanner;
 
   const handleSOSFire = () => new Promise((resolve, reject) => {
-    const doPost = (latitude, longitude) => {
-      tripsApi.triggerSOS(tripId, { trigger_type: "manual", latitude, longitude })
+    // The alert must go out even when we can't locate the device. What must
+    // NOT happen is inventing a position: this previously fell back to (0, 0),
+    // which is a real point in the Atlantic, so a failed GPS read produced an
+    // SOS that looked precisely located and sent responders nowhere. Send no
+    // coordinates instead — the backend records "location unknown" and tells
+    // the group to make contact directly.
+    const doPost = (coords) => {
+      tripsApi.triggerSOS(tripId, { trigger_type: "manual", ...coords })
         .then(() => {
+          if (!coords.latitude) {
+            toast("SOS sent, but your location couldn't be found — tell the group where you are.", {
+              icon: "⚠️", duration: 6000,
+            });
+          }
           setTimeout(() => setShowSOS(false), 1800);
           resolve();
         })
         .catch(reject);
     };
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => doPost(pos.coords.latitude, pos.coords.longitude),
-        ()  => doPost(0, 0),
-        { timeout: 5000 }
-      );
-    } else {
-      doPost(0, 0);
-    }
+
+    if (!navigator.geolocation) { doPost({}); return; }
+
+    navigator.geolocation.getCurrentPosition(
+      pos => doPost({
+        latitude:        pos.coords.latitude,
+        longitude:       pos.coords.longitude,
+        accuracy_meters: pos.coords.accuracy ?? null,
+      }),
+      ()  => doPost({}),                       // denied / unavailable / timed out
+      { timeout: 5000, enableHighAccuracy: true }
+    );
   });
 
   const SOSOverlay = showSOS && (

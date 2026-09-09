@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { officialLogo } from "../../assets/logos";
 
 const CHIPS = [
   { icon: "📸", label: "Profile photo"     },
@@ -23,7 +24,7 @@ export default function OnboardingBridge({ firstName = "traveler", onContinue })
       {/* topbar identical to OnboardingDetails */}
       <header className="tt-topbar">
         <div className="tt-logo">
-          <img src="/src/assets/official_logo_nobg.png" alt="Logo"
+          <img src={officialLogo} alt="Logo"
             style={{ width: 40, height: 40 }} onError={e => e.target.style.display = "none"} />
           <span className="tt-logo-name">Travel Together</span>
         </div>

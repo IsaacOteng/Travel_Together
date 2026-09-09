@@ -1,4 +1,5 @@
 import { Globe } from "lucide-react";
+import { officialLogo } from "../../assets/logos";
 
 export default function Footer() {
   return (
@@ -7,7 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <img src="/src/assets/official_logo_nobg.png" alt="logo" className="w-8 h-8"
+              <img src={officialLogo} alt="logo" className="w-8 h-8"
                 onError={e => { e.target.style.display = "none"; }} />
               <span className="text-[15px] font-bold text-white tracking-tight">Travel Together</span>
             </div>

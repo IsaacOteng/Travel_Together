@@ -71,6 +71,7 @@ import MobileBottomNav from '../shared/MobileBottomNav.jsx';
 import TripFeedCard from './TripFeedCard.jsx';
 import MobileTripCard from './MobileTripCard.jsx';
 import SafetyGuideModal from './SafetyGuideModal.jsx';
+import { officialLogo } from "../../assets/logos";
 
 export default function Discover({ onJoinTrip }) {
   const navigate = useNavigate();
@@ -183,7 +184,7 @@ export default function Discover({ onJoinTrip }) {
         <header className="sticky top-0 z-[100] bg-[rgba(7,20,34,0.96)] backdrop-blur-xl border-b border-white/[0.06] px-3.5 py-3">
           <div className="flex items-center gap-2.5">
             <img
-              src="/src/assets/official_logo_nobg.png"
+              src={officialLogo}
               alt="Travel Together"
               className="w-9 h-9 flex-shrink-0"
               onError={e => { e.target.style.display = "none"; }}

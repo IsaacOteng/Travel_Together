@@ -5,6 +5,7 @@ import { Step2 } from "./Step2";
 import { Step3 } from "./Step3";
 import { Success } from "./Success";
 import { usersApi } from "../../../services/api";
+import { officialLogo } from "../../../assets/logos";
 
 /* ─── payload builders per step ──────────────────── */
 const buildPayload = (step, form) => {
@@ -57,7 +58,7 @@ export default function OnboardingDetails({ onComplete }) {
         {/* topbar */}
         <header className="tt-topbar">
           <div className="tt-logo">
-            <img src="/src/assets/official_logo_nobg.png" alt="Logo" style={{ width:40, height:40 }}/>
+            <img src={officialLogo} alt="Logo" style={{ width:40, height:40 }}/>
             <span className="tt-logo-name">Travel Together</span>
           </div>
           {step <= 3 && (

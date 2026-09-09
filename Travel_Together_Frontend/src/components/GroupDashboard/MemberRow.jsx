@@ -8,8 +8,12 @@ import Avatar from "./GDAvatar.jsx";
 import RoleBadge from "./RoleBadge.jsx";
 
 function NavigateSheet({ open, onClose, lat, lng, name }) {
-  if (!open || lat == null || lng == null) return null;
+  // Hooks must run on every render. Returning early above a useState changes
+  // the hook count between renders and crashes React ("rendered fewer hooks
+  // than expected") the moment this sheet opens, so the guard goes below it.
   const [copied, setCopied] = useState(false);
+
+  if (!open || lat == null || lng == null) return null;
 
   const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
   const apps = [

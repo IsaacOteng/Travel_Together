@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, Menu, X } from "lucide-react";
+import { officialLogo } from "../../assets/logos";
 
 export default function Navbar({ scrolled, onGetStarted, onSignIn, onBrowse }) {
   const [open, setOpen] = useState(false);
@@ -8,7 +9,7 @@ export default function Navbar({ scrolled, onGetStarted, onSignIn, onBrowse }) {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "bg-[#071422]/96 backdrop-blur-xl border-b border-white/[0.07] shadow-2xl" : "bg-transparent"}`}>
         <div className="max-w-[1200px] mx-auto px-6 h-[68px] flex items-center justify-between">
           <div className="flex items-center gap-2 flex-shrink-0">
-            <img src="/src/assets/official_logo_nobg.png" alt="logo" className="w-9 h-9"
+            <img src={officialLogo} alt="logo" className="w-9 h-9"
               onError={e => { e.target.style.display = "none"; }} />
             <span className="text-[16px] font-bold text-white tracking-tight">Travel Together</span>
           </div>
