@@ -1,9 +1,11 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
+from .base import AuthDeadlineMixin
 from channels.db import database_sync_to_async
 from django.utils import timezone
 
 
-class LocationConsumer(AsyncJsonWebsocketConsumer):
+class LocationConsumer(AuthDeadlineMixin, AsyncJsonWebsocketConsumer):
     """
     WebSocket: ws/trips/<trip_id>/locations/
 
@@ -54,11 +56,17 @@ class LocationConsumer(AsyncJsonWebsocketConsumer):
         self.trip_id    = str(self.scope["url_route"]["kwargs"]["trip_id"])
         self.group_name = f"trips.{self.trip_id}.locations"
         self.user       = None
+        self.joined     = False   # group is joined only after auth (see _handle_auth)
 
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        # NOTE: we accept the socket but deliberately do NOT join the broadcast
+        # group yet. Joining before authentication would stream every member's
+        # live position to anyone who knows the trip id.
         await self.accept()
+        # Unauthenticated sockets must not linger see AuthDeadlineMixin.
+        self.start_auth_deadline()
 
     async def disconnect(self, code):
+        self.cancel_auth_deadline()
         if self.user:
             await self._delete_location()
             await self.channel_layer.group_send(
@@ -77,7 +85,8 @@ class LocationConsumer(AsyncJsonWebsocketConsumer):
                     "username": self.user.username or "",
                 },
             )
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if self.joined:
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     # ── receive (dispatch) ────────────────────────────────────────────────────
 
@@ -115,6 +124,12 @@ class LocationConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4003)
             return
 
+        # Authenticated AND a member of this trip only now may this socket
+        # receive the group's location broadcasts.
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        self.joined = True
+
+        self.cancel_auth_deadline()
         self.user = user
         await self.send_json({"type": "auth.ok", "user_id": str(user.id)})
 

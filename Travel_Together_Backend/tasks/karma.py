@@ -30,7 +30,7 @@ def award_trip_completion_karma(self, trip_id: str):
             trip=trip, status=TripMember.Status.APPROVED
         ).select_related("user")
 
-        no_show_penalty = getattr(settings, "NO_SHOW_KARMA_PENALTY", 10)
+        no_show_penalty = settings.NO_SHOW_KARMA_PENALTY
 
         for member in members:
             is_chief = member.role == TripMember.Role.CHIEF

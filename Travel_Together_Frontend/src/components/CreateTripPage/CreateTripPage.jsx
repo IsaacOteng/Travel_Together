@@ -6,6 +6,7 @@ import Step2 from './Step2.jsx';
 import Step3 from './Step3.jsx';
 import Step4 from './Step4.jsx';
 import SuccessScreen from './SuccessScreen.jsx';
+import { officialLogo } from "../../assets/logos";
 
 /* ══════════════════════════════════════════
    ROOT MODAL
@@ -49,7 +50,7 @@ export default function CreateTripPage({ onClose, onGoToDashboard }) {
           <div className="sticky top-0 z-10 bg-[rgba(7,20,34,0.97)] backdrop-blur-[12px] border-b border-white/[0.06] flex items-center justify-between px-5 py-3.5">
             <div className="flex items-center gap-2.5">
               <img
-                src="/src/assets/official_logo_nobg.png" alt="logo"
+                src={officialLogo} alt="logo"
                 className="w-[30px] h-[30px]"
                 onError={e => { e.target.style.display = "none"; }}
               />

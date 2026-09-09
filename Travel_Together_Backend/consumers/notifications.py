@@ -1,4 +1,6 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
+from .base import AuthDeadlineMixin
 from channels.db import database_sync_to_async
 
 
@@ -7,7 +9,7 @@ def user_group(user_id: str) -> str:
     return f"notifs.{user_id}"
 
 
-class NotificationsConsumer(AsyncJsonWebsocketConsumer):
+class NotificationsConsumer(AuthDeadlineMixin, AsyncJsonWebsocketConsumer):
     """
     WebSocket: ws/notifications/
 
@@ -44,8 +46,11 @@ class NotificationsConsumer(AsyncJsonWebsocketConsumer):
         self.user       = None
         self.group_name = None
         await self.accept()
+        # Unauthenticated sockets must not linger see AuthDeadlineMixin.
+        self.start_auth_deadline()
 
     async def disconnect(self, code):
+        self.cancel_auth_deadline()
         if self.group_name:
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
@@ -73,6 +78,7 @@ class NotificationsConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4001)
             return
 
+        self.cancel_auth_deadline()
         self.user       = user
         self.group_name = user_group(str(user.id))
         await self.channel_layer.group_add(self.group_name, self.channel_name)

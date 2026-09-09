@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import signuppic from "../../assets/signup_pic.png";
 import { ChevronLeft } from "lucide-react";
 import { authApi } from "../../services/api";
+import { officialLogo, ttLogo } from "../../assets/logos";
 
 const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
     const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -115,8 +116,8 @@ const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
                 {/* Logo */}
                 <div>
                     <div className="text-black text-2xl font-normal tracking-tight leading-none">
-                        <img src="/src/assets/official_logo_nobg.png" alt="logo" className="absolute lg:top-5 lg:left-2 top-10 left-46 w-15 inline-block" />
-                        <img src="/src/assets/ttlogo.png" alt="logo" className="absolute lg:hidden lg:top-5 lg:left-2 top-10 left-33 w-40 inline-block" />
+                        <img src={officialLogo} alt="logo" className="absolute lg:top-5 lg:left-2 top-10 left-46 w-15 inline-block" />
+                        <img src={ttLogo} alt="logo" className="absolute lg:hidden lg:top-5 lg:left-2 top-10 left-33 w-40 inline-block" />
                     </div>
                 </div>
 

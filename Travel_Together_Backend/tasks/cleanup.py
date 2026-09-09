@@ -94,7 +94,8 @@ def mark_trips_completed():
     """
     from django.conf import settings
     from django.utils import timezone
-    from apps.trips.models import Trip, TripMember, CheckIn
+    from apps.trips.models import Trip
+    from apps.trips.checkin_stats import meeting_point_stats
     from tasks.karma import award_trip_completion_karma
     from tasks.recap import generate_trip_recap
 
@@ -110,25 +111,21 @@ def mark_trips_completed():
         # Stamp ended_at (starts the payout dispute window) only where not already set.
         Trip.objects.filter(id__in=trip_ids, ended_at__isnull=True).update(ended_at=timezone.now())
 
-        threshold = getattr(settings, "ANOMALY_MIN_CHECKIN_PERCENT", 20)
+        threshold = settings.ANOMALY_MIN_CHECKIN_PERCENT
         for trip in finished:
             # Anomaly: a trip that "happened" but almost nobody checked in is
             # suspicious (possible fake / collusion). Flag it → freezes the payout
             # for admin review instead of auto-releasing on silence.
-            meeting = trip.itinerary.filter(is_system=True).first()
-            approved_ids = set(
-                trip.members.filter(status=TripMember.Status.APPROVED)
-                .exclude(role=TripMember.Role.CHIEF)
-                .values_list("user_id", flat=True)
-            )
-            if meeting and approved_ids:
-                checked = set(CheckIn.objects.filter(trip=trip, stop=meeting).values_list("member_id", flat=True))
-                rate = 100 * len(approved_ids & checked) / len(approved_ids)
-                if rate < threshold:
-                    trip.flagged_for_review = True
-                    trip.flag_reason = f"Low check-in rate ({rate:.0f}%) at completion"
-                    trip.save(update_fields=["flagged_for_review", "flag_reason"])
-                    flagged += 1
+            #
+            # Uses the same shared calculation as departure and the partial-payout
+            # tier, so a trip cannot be judged "thin evidence" by one and fine by
+            # another.
+            _, expected, percent = meeting_point_stats(trip)
+            if expected and percent is not None and percent < threshold:
+                trip.flagged_for_review = True
+                trip.flag_reason = f"Low check-in rate ({percent}%) at completion"
+                trip.save(update_fields=["flagged_for_review", "flag_reason"])
+                flagged += 1
 
         for trip_id in trip_ids:
             award_trip_completion_karma.delay(trip_id)

@@ -4,6 +4,7 @@ import signuppic from "../../assets/signup_pic.png";
 import { authApi } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { auth, googleProvider } from "../../services/firebase";
+import { officialLogo, ttLogo } from "../../assets/logos";
 
 export default function SignUp({ onVerify }) {
     const { login } = useAuth();
@@ -64,9 +65,9 @@ export default function SignUp({ onVerify }) {
 
                 {/* Logo */}
                 <div>
-                    <img src="/src/assets/official_logo_nobg.png" alt="logo"
+                    <img src={officialLogo} alt="logo"
                         className="absolute lg:top-5 lg:left-2 top-10 left-46 w-15 inline-block" />
-                    <img src="/src/assets/ttlogo.png" alt="logo"
+                    <img src={ttLogo} alt="logo"
                         className="absolute lg:hidden top-10 left-33 w-40 inline-block" />
                 </div>
 

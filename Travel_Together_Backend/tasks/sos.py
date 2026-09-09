@@ -28,17 +28,21 @@ def notify_emergency_contacts(self, alert_id):
         if not contacts.exists():
             return {"status": "no_contacts"}
 
-        # Build location string
-        lat = alert.location.y
-        lng = alert.location.x
-        maps_url  = f"https://www.google.com/maps?q={lat},{lng}"
+        # An alert can legitimately have no location (the device had no fix).
+        # Still send the SMS the contact needs to know regardless and a
+        # missing position must never become a link to 0,0.
         name      = member.first_name or member.username or "A traveler"
         trip_name = alert.trip.title
+
+        if alert.location:
+            where = f"Last known location: https://www.google.com/maps?q={alert.location.y},{alert.location.x}"
+        else:
+            where = "Their location could not be determined."
 
         message = (
             f"EMERGENCY ALERT\n"
             f"{name} has triggered an SOS on their trip '{trip_name}'.\n"
-            f"Last known location: {maps_url}\n"
+            f"{where}\n"
             f"Please try to reach them immediately."
         )
 
@@ -46,7 +50,7 @@ def notify_emergency_contacts(self, alert_id):
 
         at_username = settings.AT_USERNAME
         at_api_key  = settings.AT_API_KEY
-        at_sender   = getattr(settings, "AT_SENDER_ID", None)
+        at_sender   = settings.AT_SENDER_ID
 
         # Use sandbox or live endpoint depending on username
         if at_username == "sandbox":

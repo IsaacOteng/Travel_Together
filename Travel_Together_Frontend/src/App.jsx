@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 
 import { useAuth }       from './context/AuthContext';
 import ProtectedRoute    from './components/shared/ProtectedRoute';
+import AdminRoute        from './components/shared/AdminRoute';
 
 import LandingPage       from './components/LandingPage/LandingPage';
 import SignUp            from './components/Authentication/SignUp';
@@ -13,7 +14,6 @@ import ChatPage          from './components/Chat/ChatPage';
 import ProfilePage       from './components/Profile/ProfilePage';
 import Dashboard         from './components/Dashboard/Dashboard';
 import GroupDashboard    from './components/GroupDashboard';
-import TripWelcome       from './components/Dashboard/TripWelcome';
 import CreateTripPage    from './components/CreateTripPage';
 import SettingsPage      from './components/Settings/SettingsPage';
 import TripPublicPage   from './components/Discover/TripPublicPage';
@@ -81,13 +81,7 @@ function OnboardingRoute() {
 /* ── App route wrappers (protected) ──────────────────────────── */
 
 function DiscoverRoute() {
-  const nav = useNavigate();
-  return <Discover onJoinTrip={() => nav('/trip-welcome')} />;
-}
-
-function TripWelcomeRoute() {
-  const nav = useNavigate();
-  return <TripWelcome onEnterDashboard={() => nav('/group-dashboard')} />;
+  return <Discover />;
 }
 
 function CreateTripRoute() {
@@ -117,11 +111,10 @@ export default function App() {
         <Route path="/profile/:userId" element={<ProtectedRoute><PublicProfileRoute /></ProtectedRoute>} />
         <Route path="/dashboard"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/group-dashboard/:tripId" element={<ProtectedRoute><GroupDashboard /></ProtectedRoute>} />
-        <Route path="/trip-welcome"    element={<ProtectedRoute><TripWelcomeRoute /></ProtectedRoute>} />
         <Route path="/create-trip"     element={<ProtectedRoute><CreateTripRoute /></ProtectedRoute>} />
         <Route path="/settings"        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/trips/:tripId/rate" element={<ProtectedRoute><RatingPage /></ProtectedRoute>} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
