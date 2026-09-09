@@ -1,8 +1,10 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
+from .base import AuthDeadlineMixin
 from channels.db import database_sync_to_async
 
 
-class AlertsConsumer(AsyncJsonWebsocketConsumer):
+class AlertsConsumer(AuthDeadlineMixin, AsyncJsonWebsocketConsumer):
     """
     WebSocket: ws/trips/<trip_id>/alerts/
 
@@ -51,12 +53,19 @@ class AlertsConsumer(AsyncJsonWebsocketConsumer):
         self.trip_id    = str(self.scope["url_route"]["kwargs"]["trip_id"])
         self.group_name = f"trips.{self.trip_id}.alerts"
         self.user       = None
+        self.joined     = False   # group is joined only after auth (see _handle_auth)
 
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        # NOTE: accept the socket but do NOT join the broadcast group yet.
+        # Joining before authentication would leak every SOS alert (including
+        # the distressed member's coordinates) to anyone who knows the trip id.
         await self.accept()
+        # Unauthenticated sockets must not linger see AuthDeadlineMixin.
+        self.start_auth_deadline()
 
     async def disconnect(self, code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        self.cancel_auth_deadline()
+        if self.joined:
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     # ── receive (dispatch) ────────────────────────────────────────────────────
 
@@ -94,6 +103,12 @@ class AlertsConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4003)
             return
 
+        # Authenticated AND a member of this trip only now may this socket
+        # receive the group's SOS broadcasts.
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        self.joined = True
+
+        self.cancel_auth_deadline()
         self.user = user
         await self.send_json({"type": "auth.ok", "user_id": str(user.id)})
 
@@ -133,8 +148,9 @@ class AlertsConsumer(AsyncJsonWebsocketConsumer):
                 "member_id":       str(a.member_id),
                 "member_username": a.member.username or "",
                 "trigger_type":    a.trigger_type,
-                "latitude":        a.location.y,
-                "longitude":       a.location.x,
+                "latitude":        a.location.y if a.location else None,
+                "longitude":       a.location.x if a.location else None,
+                "has_location":    a.location is not None,
                 "created_at":      a.created_at.isoformat(),
             })
         return alerts

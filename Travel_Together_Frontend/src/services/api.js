@@ -12,11 +12,34 @@ const api = axios.create({
 const TOKEN_KEY   = "tt_access";
 const REFRESH_KEY = "tt_refresh";
 
+// localStorage stringifies whatever it is given, so a missing token would be
+// stored as the literal "undefined" — a truthy value that then looks like a
+// valid session forever while failing every request. Read and write through
+// these guards so that can't happen.
+const _read = (key) => {
+  try {
+    const v = localStorage.getItem(key);
+    return v && v !== "undefined" && v !== "null" ? v : null;
+  } catch { return null; }        // private mode / storage disabled
+};
+
 export const tokenStore = {
-  getAccess:      ()      => localStorage.getItem(TOKEN_KEY),
-  getRefresh:     ()      => localStorage.getItem(REFRESH_KEY),
-  set:            (a, r)  => { localStorage.setItem(TOKEN_KEY, a); localStorage.setItem(REFRESH_KEY, r); },
-  clear:          ()      => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(REFRESH_KEY); },
+  getAccess:  () => _read(TOKEN_KEY),
+  getRefresh: () => _read(REFRESH_KEY),
+  set: (a, r) => {
+    try {
+      if (a) localStorage.setItem(TOKEN_KEY, a);
+      // Never overwrite a good refresh token with nothing: a response that
+      // omits it would otherwise end the session on the next page load.
+      if (r) localStorage.setItem(REFRESH_KEY, r);
+    } catch { /* storage unavailable — session lasts this tab only */ }
+  },
+  clear: () => {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_KEY);
+    } catch { /* nothing to clear */ }
+  },
 };
 
 // ─── Request interceptor attach Bearer token ────────────────────────────────
@@ -54,6 +77,11 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Mark it retried BEFORE either path below. A queued request is replayed
+    // through api(original) too, so without this its own 401 would come back
+    // through this interceptor unmarked and start a second refresh.
+    original._retry = true;
+
     if (_refreshing) {
       // Queue the request until the ongoing refresh resolves
       return new Promise((resolve, reject) => {
@@ -64,7 +92,6 @@ api.interceptors.response.use(
       });
     }
 
-    original._retry = true;
     _refreshing = true;
 
     try {
@@ -80,10 +107,27 @@ api.interceptors.response.use(
       original.headers.Authorization = `Bearer ${data.access}`;
       return api(original);
     } catch (refreshError) {
+      // Another tab may have rotated the token while this request was in
+      // flight, in which case localStorage already holds a working one and
+      // this failure is not the user's session ending. Retry once with it.
+      const current = tokenStore.getRefresh();
+      if (current && current !== refresh) {
+        _refreshing = false;
+        original._retry = false;
+        return api(original);
+      }
+
+      // A network failure is not an expired session. Rejecting is right, but
+      // wiping the tokens over a dropped connection would sign the user out
+      // for being briefly offline, and they'd have to log in again for no
+      // reason. Only an actual rejection from the server ends the session.
+      const rejectedByServer = refreshError.response?.status === 401;
       _processQueue(refreshError, null);
-      tokenStore.clear();
-      // Authenticated user's session genuinely expired let the app know
-      window.dispatchEvent(new Event("tt:session-expired"));
+
+      if (rejectedByServer) {
+        tokenStore.clear();
+        window.dispatchEvent(new Event("tt:session-expired"));
+      }
       return Promise.reject(refreshError);
     } finally {
       _refreshing = false;
@@ -97,7 +141,9 @@ export const authApi = {
   sendOtp:      (email)              => api.post("/api/auth/send-otp/",        { email }),
   verifyOtp:    (email, code)        => api.post("/api/auth/verify-otp/",      { email, code }),
   refreshToken: (refresh)            => api.post("/api/auth/token/refresh/",   { refresh }),
-  logout:       ()                   => api.post("/api/auth/logout/"),
+  // The refresh token must be sent so the server can blacklist it. Without a
+  // body, logout clears the browser but leaves the session alive server-side.
+  logout:       (refresh)            => api.post("/api/auth/logout/", { refresh }),
   firebaseAuth: (id_token)            => api.post("/api/auth/firebase/",        { id_token }),
   googleAuth:   (id_token)           => api.post("/api/auth/google/",          { id_token }),
   appleAuth:    (id_token, first_name, last_name) =>

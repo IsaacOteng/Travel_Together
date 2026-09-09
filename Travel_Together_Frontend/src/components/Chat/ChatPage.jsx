@@ -9,6 +9,7 @@ import { normaliseConv } from "./utils.js";
 import ChatList from "./ChatList.jsx";
 import ConversationView from "./ConversationView.jsx";
 import EmptyState from "./EmptyState.jsx";
+import { officialLogo } from "../../assets/logos";
 
 const globalStyles = `
   @keyframes bounce {
@@ -204,7 +205,7 @@ export default function ChatPage() {
         {!inChat && (
           <header className="h-14 bg-[#0d1b2a] border-b border-white/[0.06] flex items-center px-4 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <img src="/src/assets/official_logo_nobg.png" alt="logo" className="w-7 h-7"
+              <img src={officialLogo} alt="logo" className="w-7 h-7"
                 onError={e => { e.target.style.display = "none"; }} />
               <span className="text-[14px] font-bold text-white tracking-tight">Travel Together</span>
             </div>

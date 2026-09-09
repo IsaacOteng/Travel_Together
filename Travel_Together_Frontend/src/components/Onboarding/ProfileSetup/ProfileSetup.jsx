@@ -5,6 +5,7 @@ import { BtnPrimary, BtnGhost } from "./buttons";
 import { STEPS } from "./steps";
 import { usersApi } from "../../../services/api";
 import api from "../../../services/api";
+import { officialLogo } from "../../../assets/logos";
 
 /* ── per-step API call ────────────────────────────────────────── */
 async function saveStep(stepId, form) {
@@ -131,7 +132,7 @@ export default function ProfileSetup({ onComplete }) {
         <header className="flex items-center justify-between px-6 py-2.5">
           <div className="flex items-center gap-px">
             <img
-              src="/src/assets/official_logo_nobg.png"
+              src={officialLogo}
               alt="Travel Together logo"
               className="w-10 h-10"
               onError={(e) => { e.target.style.display = "none"; }}

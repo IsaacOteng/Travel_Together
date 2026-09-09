@@ -37,7 +37,11 @@ export default function StopCard({ stop, index, onChange, onRemove, isOnly }) {
         <div className="px-3.5 pb-3.5 pt-3 border-t border-white/[0.05]">
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             <div>
-              <Label required>Stop name</Label>
+              {/* Only required once this row has been started — an untouched
+                  stop is skipped entirely (the itinerary step is optional). */}
+              <Label required={!!(stop.name?.trim() || stop.arrival_time || stop.note?.trim())}>
+                Stop name
+              </Label>
               <TTInput value={stop.name} onChange={e => onChange({ ...stop, name: e.target.value })} placeholder="e.g. Liati Wote Village" />
             </div>
             <div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from 'react-hot-toast';
 import { useParams, useNavigate } from "react-router-dom";
 import {
   MapPin, Star, CheckCircle, Award, Users,
@@ -98,8 +99,8 @@ export default function PublicProfilePage() {
     try {
       const { data } = await chatApi.startDM(profile.id);
       navigate("/chat", { state: { conversationId: data.id } });
-    } catch {
-      navigate("/chat");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Couldn't open that chat.");
     } finally {
       setDmLoading(false);
     }

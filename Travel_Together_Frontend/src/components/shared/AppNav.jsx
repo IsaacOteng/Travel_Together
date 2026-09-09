@@ -7,6 +7,7 @@ import GuestDialog from './GuestDialog.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useNotifications } from '../../context/NotificationsContext.jsx';
 import { useChatUnread } from '../../context/ChatUnreadContext.jsx';
+import { officialLogo } from "../../assets/logos";
 
 const TABS = [
   { label: "Discover", path: "/discover",  protected: false },
@@ -41,7 +42,7 @@ export default function AppNav({
 
   const isActive = (path) =>
     pathname === path ||
-    (path === "/discover" && ["/discover", "/group-dashboard", "/trip-welcome"].includes(pathname));
+    (path === "/discover" && ["/discover", "/group-dashboard"].includes(pathname));
 
   return (
     <header className="sticky top-0 z-[100] bg-[rgba(7,20,34,0.95)] backdrop-blur-2xl border-b border-white/[0.06] px-8 h-16 flex items-center gap-5">
@@ -54,7 +55,7 @@ export default function AppNav({
             onClick={() => navigate('/discover')}
           >
             <img
-              src="/src/assets/official_logo_nobg.png"
+              src={officialLogo}
               alt="Travel Together"
               className="w-12 h-12"
               onError={e => { e.target.style.display = "none"; }}
