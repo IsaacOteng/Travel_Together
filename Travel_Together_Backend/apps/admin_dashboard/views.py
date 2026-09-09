@@ -6,6 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 
+from apps.trips.checkin_stats import meeting_point_stats
+
 from apps.users.models import User
 from apps.trips.models import Trip, IncidentReport, TripMember
 from apps.safety.models import SOSAlert
@@ -224,6 +226,13 @@ class AdminTripsView(APIView):
                 "entry_price": str(t.entry_price),
                 "group_karma": t.group_karma,
                 "created_at":  t.created_at,
+                # Departure evidence: what the organizer was allowed to leave on,
+                # and the live rate now. A dispute over "did this trip happen?"
+                # is settled with these, so an admin shouldn't have to go digging
+                # through check-in rows to see them.
+                "departure_confirmed_at":    t.departure_confirmed_at,
+                "departure_checkin_percent": t.departure_checkin_percent,
+                "checkin_percent_now":       meeting_point_stats(t)[2],
                 "chief": {
                     "id":       str(t.chief.id) if t.chief else None,
                     "email":    t.chief.email   if t.chief else None,

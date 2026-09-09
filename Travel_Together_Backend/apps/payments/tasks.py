@@ -43,28 +43,30 @@ def expire_unpaid_approvals():
 @shared_task
 def release_due_partials():
     """
-    Hourly sweep: release the PARTIAL payout for trips that departed more than
-    DEPARTURE_GRACE_HOURS ago and haven't had a partial yet. The grace window lets
-    stragglers check in / report first; release_partial_payout still enforces the
-    report-freeze, organizer eligibility, and one-per-trip guards.
+    Hourly sweep: release the PARTIAL payout for departed trips whose hold has
+    elapsed and that haven't had a partial yet.
+
+    The hold is per-trip, not a single global window: it depends on how many
+    members checked in at the meeting point (see partial_release_due_at). A
+    well-attested trip clears in DEPARTURE_GRACE_HOURS; a thin one waits
+    PARTIAL_RELEASE_LOW_EVIDENCE_HOURS so members have longer to object; one
+    below the anomaly floor never clears here and waits for completion.
+
+    Because the rate is recomputed each run, a trip that looked thin at
+    departure moves to the shorter hold as stragglers check in. release_partial_
+    payout re-checks all of this, plus the report-freeze, organizer eligibility
+    and one-per-trip guards.
     """
-    from datetime import timedelta
-    from django.conf import settings
-    from django.utils import timezone
     from apps.trips.models import Trip
     from .models import Payout
     from .services import release_partial_payout
 
-    cutoff = timezone.now() - timedelta(hours=settings.DEPARTURE_GRACE_HOURS)
-    trips = Trip.objects.filter(
-        departure_confirmed_at__isnull=False,
-        departure_confirmed_at__lt=cutoff,
-    )
+    trips = Trip.objects.filter(departure_confirmed_at__isnull=False).exclude(
+        payouts__kind=Payout.Kind.PARTIAL
+    ).distinct()
 
     released = 0
     for trip in trips:
-        if Payout.objects.filter(trip=trip, kind=Payout.Kind.PARTIAL).exists():
-            continue
         if release_partial_payout(trip):
             released += 1
     return {"partial_payouts": released}

@@ -251,9 +251,9 @@ def refund_payment(payment, reason="", notify=True, force=False):
 def handle_member_leaving(trip, user):
     """
     Called when a member leaves / withdraws. Applies the refund cutoff:
-      • still pending (never paid) → mark FAILED, nothing to refund
-      • held + eligible (≥ cutoff)  → refund (minus fee)
-      • held + too late / no-show   → forfeit; money stays in escrow for the organizer
+        • still pending (never paid) → mark FAILED, nothing to refund
+        • held + eligible (≥ cutoff)  → refund (minus fee)
+        • held + too late / no-show   → forfeit; money stays in escrow for the organizer
     """
     if not settings.PAYMENTS_ENABLED:
         return None
@@ -477,9 +477,31 @@ def _organizer_is_established(user):
     return completed >= settings.PARTIAL_RELEASE_MIN_COMPLETED_TRIPS
 
 
+def partial_release_due_at(trip):
+    """
+    When this trip's partial payout becomes eligible, or None if it never does.
+
+    The hold length is set by how many members proved they were at the meeting
+    point — see apps.trips.checkin_stats. The rate is recomputed here rather
+    than read from the snapshot taken at departure, so a member who checks in
+    late still counts in the organizer's favour and can shorten the wait.
+    """
+    from datetime import timedelta
+    from apps.trips.checkin_stats import meeting_point_stats, partial_hold_hours
+
+    if not trip.departure_confirmed_at:
+        return None
+    _, _, percent = meeting_point_stats(trip)
+    hours = partial_hold_hours(percent)
+    if hours is None:
+        return None      # evidence below the anomaly floor: nothing moves early
+    return trip.departure_confirmed_at + timedelta(hours=hours)
+
+
 def release_partial_payout(trip):
     """Release the partial (departure) portion of the organizer's share. One per trip."""
     from decimal import Decimal
+    from django.utils import timezone as tz
     from .models import Payout
 
     if Payout.objects.filter(trip=trip, kind=Payout.Kind.PARTIAL).exists():
@@ -488,6 +510,15 @@ def release_partial_payout(trip):
         return None   # frozen trip is under investigation
     if not _organizer_is_established(trip.chief):
         return None   # new/unverified organizer no partial, full hold until completion
+
+    # Evidence gate. Checked here as well as in the sweep so that any other
+    # caller (an admin action, a retry, a future code path) gets the same
+    # answer: a thinly-attested trip cannot be paid early by going around the
+    # scheduler.
+    due_at = partial_release_due_at(trip)
+    if due_at is None or tz.now() < due_at:
+        return None
+
     _, _, organizer_total = _organizer_share(trip)
     if organizer_total <= 0:
         return None

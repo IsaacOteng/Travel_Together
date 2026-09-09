@@ -54,6 +54,11 @@ class Trip(models.Model):
                                 related_name="led_trips",
                             )
     departure_confirmed_at  = models.DateTimeField(null=True, blank=True)
+    # Meeting-point check-in rate at the moment departure was confirmed, kept as
+    # the audit record of what the organizer was allowed to leave on. The live
+    # rate is recomputed when the partial is released (late check-ins should
+    # count in the member's favour), so this is evidence, not the decision.
+    departure_checkin_percent = models.PositiveSmallIntegerField(null=True, blank=True)
     ended_at                = models.DateTimeField(null=True, blank=True)
     flagged_for_review      = models.BooleanField(default=False)            # anomaly hold freezes payouts pending admin
     flag_reason             = models.CharField(max_length=200, null=True, blank=True)

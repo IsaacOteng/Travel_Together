@@ -39,7 +39,8 @@ class TripAdmin(ModelAdmin):
     list_filter     = ("status", "visibility", "drive_time")
     search_fields   = ("title", "destination", "chief__email", "chief__username")
     ordering        = ("-created_at",)
-    readonly_fields = ("id", "created_at", "updated_at", "departure_confirmed_at", "ended_at")
+    readonly_fields = ("id", "created_at", "updated_at", "departure_confirmed_at",
+                       "departure_checkin_percent", "ended_at")
     raw_id_fields   = ("chief",)
     inlines         = [TripMemberInline, TripImageInline, TripTagInline]
 
@@ -49,7 +50,8 @@ class TripAdmin(ModelAdmin):
         ("Settings",   {"fields": ("status", "visibility", "spots_total", "entry_price", "price_note")}),
         ("Leadership", {"fields": ("chief", "group_karma")}),
         ("Location",   {"fields": ("meeting_point", "meeting_point_coords", "destination_point")}),
-        ("Timestamps", {"fields": ("created_at", "updated_at", "departure_confirmed_at", "ended_at")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at", "departure_confirmed_at",
+                                   "departure_checkin_percent", "ended_at")}),
     )
 
     @display(description="Members")

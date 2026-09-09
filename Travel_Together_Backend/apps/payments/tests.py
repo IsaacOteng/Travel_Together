@@ -34,6 +34,46 @@ def member(trip, user, status=TripMember.Status.APPROVED, role=TripMember.Role.M
     return TripMember.objects.create(trip=trip, user=user, status=status, role=role)
 
 
+def depart_with_evidence(trip, payers, hours_ago=7, checked_in=None):
+    """
+    Make `trip` look like a real departure so payout logic can be tested on it.
+
+    A partial payout now depends on the trip having actually departed with
+    meeting-point check-ins behind it (see apps.trips.checkin_stats), so a
+    fixture that only creates held Payments no longer reaches the payout code
+    at all. This supplies the missing half: approved memberships, a meeting
+    stop, check-ins, and a departure timestamp.
+
+    `checked_in` defaults to everyone, giving "strong" evidence and the short
+    hold — pass a smaller number to exercise the thinner tiers.
+    """
+    from datetime import timedelta
+    from django.contrib.gis.geos import Point
+    from django.utils import timezone
+    from apps.trips.models import CheckIn, ItineraryStop
+
+    stop = (trip.itinerary.filter(is_system=True).first()
+            or ItineraryStop.objects.create(trip=trip, order=0, name="Meet", is_system=True))
+
+    if checked_in is None:
+        checked_in = len(payers)
+
+    for i, user in enumerate(payers):
+        TripMember.objects.get_or_create(
+            trip=trip, user=user,
+            defaults={"status": TripMember.Status.APPROVED, "role": TripMember.Role.MEMBER},
+        )
+        if i < checked_in:
+            CheckIn.objects.get_or_create(
+                trip=trip, member=user, stop=stop,
+                defaults={"location_at_checkin": Point(0, 0, srid=4326)},
+            )
+
+    trip.departure_confirmed_at = timezone.now() - timedelta(hours=hours_ago)
+    trip.save(update_fields=["departure_confirmed_at"])
+    return trip
+
+
 def held_payment(trip, user, amount="100.00", fee="0.00"):
     return Payment.objects.create(
         trip=trip, user=user, amount=Decimal(amount), fee=Decimal(fee),
@@ -146,8 +186,10 @@ class PayoutTests(TestCase):
         self.chief.is_verified_traveller = True   # established → eligible for partial release
         self.chief.save()
         self.trip  = make_trip(self.chief)
-        held_payment(self.trip, make_user("a@t.co"), amount="100.00")
-        held_payment(self.trip, make_user("b@t.co"), amount="100.00")
+        a, b = make_user("a@t.co"), make_user("b@t.co")
+        held_payment(self.trip, a, amount="100.00")
+        held_payment(self.trip, b, amount="100.00")
+        depart_with_evidence(self.trip, [a, b])
 
     def test_partial_then_final(self):
         # held 200, commission 10% = 20, organizer share = 180
@@ -174,7 +216,11 @@ class PayoutGuardTests(TestCase):
     def setUp(self):
         self.chief = make_user("chief@t.co")
         self.trip  = make_trip(self.chief)
-        held_payment(self.trip, make_user("a@t.co"), amount="100.00")
+        a = make_user("a@t.co")
+        held_payment(self.trip, a, amount="100.00")
+        # Full check-in evidence, so each test below fails for the reason it
+        # names rather than for want of a departure.
+        depart_with_evidence(self.trip, [a])
 
     def test_new_organizer_gets_no_partial(self):
         # 0 completed trips, unverified → no partial release
@@ -226,7 +272,9 @@ class ClawbackTests(TestCase):
         chief.clawback_owed = Decimal("50.00")
         chief.save()
         trip = make_trip(chief)
-        held_payment(trip, make_user("a@t.co"), amount="200.00")   # share 180, partial 90
+        a = make_user("a@t.co")
+        held_payment(trip, a, amount="200.00")                     # share 180, partial 90
+        depart_with_evidence(trip, [a])
         payout = services.release_partial_payout(trip)
         self.assertEqual(payout.amount, Decimal("40.00"))          # 90 − 50 clawback
         chief.refresh_from_db()
@@ -246,11 +294,13 @@ class PartialSweepTests(TestCase):
         self.trip = make_trip(self.chief)
         self.now = timezone.now
         self.timedelta = timedelta
-        held_payment(self.trip, make_user("a@t.co"), amount="100.00")
+        self.rider = make_user("a@t.co")
+        held_payment(self.trip, self.rider, amount="100.00")
 
     def _depart(self, hours_ago):
-        self.trip.departure_confirmed_at = self.now() - self.timedelta(hours=hours_ago)
-        self.trip.save(update_fields=["departure_confirmed_at"])
+        # Full check-in evidence → the short DEPARTURE_GRACE_HOURS hold, which
+        # is what this class is about.
+        depart_with_evidence(self.trip, [self.rider], hours_ago=hours_ago)
 
     def test_partial_held_within_grace(self):
         from apps.payments.tasks import release_due_partials

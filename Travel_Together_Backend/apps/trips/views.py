@@ -74,6 +74,23 @@ def _ensure_meeting_point_stop(trip):
     )
 
 
+def _trip_start_datetime(trip):
+    """
+    When the trip is due to set off, as an aware datetime.
+
+    start_time is optional, so a trip that only has a date starts at 00:00 on
+    that date the organizer said "this day" and we shouldn't invent an hour
+    they'd then be blocked by. TIME_ZONE is UTC, matching how dates are stored.
+    """
+    from datetime import datetime, time as dt_time
+    from django.utils import timezone as tz
+
+    start = datetime.combine(trip.date_start, trip.start_time or dt_time.min)
+    if tz.is_naive(start):
+        start = tz.make_aware(start, tz.get_default_timezone())
+    return start
+
+
 def _require_chief(trip, user):
     if not _is_chief(trip, user):
         return Response({"detail": "Only the trip chief can do this."}, status=403)
@@ -266,10 +283,27 @@ class TripDepartView(APIView):
     """
     POST /api/trips/<id>/depart/
 
-    Chief confirms the group has departed. Requires a quorum of approved members
-    to have checked in at the locked meeting-point stop (tamper-proof proof the
-    trip really set off). On success: stamps departure_confirmed_at, flips the
-    trip ACTIVE, and releases the partial payout to the organizer.
+    Chief confirms the group has set off. Every condition below must hold:
+
+      1. Caller is the trip's chief.
+      2. Trip is PUBLISHED or ACTIVE (not draft/cancelled/completed).
+      3. It hasn't already departed.
+      4. The trip's start date/time has arrived.
+      5. At least one approved member other than the chief has joined.
+      6. At least ONE of those members has checked in at the meeting point.
+
+    Rule 6 used to be a percentage quorum, and it was the wrong instrument. It
+    made the organizer's trip depend on other people remembering to tap a
+    button, so a flat battery or poor signal at the meeting point blocked a
+    real departure. Most missing check-ins are that, not fraud.
+
+    So the evidence no longer decides WHETHER you can leave only how fast the
+    money follows. The check-in rate is recorded here and graded when the
+    partial payout is considered (see apps.trips.checkin_stats.evidence_tier):
+    a well-attested trip pays out on the short hold, a thinly-attested one waits
+    much longer so members have time to object, and one below the anomaly floor
+    gets no partial at all. What rule 6 still guarantees is that a trip nobody
+    turned up to can never depart, and so can never reach an early payout.
     """
     permission_classes = [IsAuthenticated]
 
@@ -288,6 +322,24 @@ class TripDepartView(APIView):
         if trip.status not in (Trip.Status.PUBLISHED, Trip.Status.ACTIVE):
             return Response({"detail": "This trip can't be marked as departed."}, status=400)
 
+        if trip.departure_confirmed_at:
+            return Response({"detail": "This trip has already departed."}, status=400)
+
+        # ── Not before the trip is due to start ──────────────────────────────
+        # Departure is what starts the payout clock (the partial releases
+        # DEPARTURE_GRACE_HOURS later), so an organizer must not be able to
+        # "depart" a trip that is still days away and begin drawing down escrow
+        # before anyone has travelled.
+        starts_at = _trip_start_datetime(trip)
+        if timezone.now() < starts_at:
+            return Response({
+                "detail": (
+                    "This trip hasn't started yet. You can confirm departure from "
+                    f"{starts_at.strftime('%d %b %Y, %H:%M')} UTC."
+                ),
+                "starts_at": starts_at.isoformat(),
+            }, status=400)
+
         meeting_stop = trip.itinerary.filter(is_system=True).first()
         if not meeting_stop:
             return Response({"detail": "No meeting-point check-in configured for this trip."}, status=400)
@@ -304,28 +356,55 @@ class TripDepartView(APIView):
         checked_in     = len(approved_ids & checked_in_ids)
         approved_count = len(approved_ids)
 
-        pct    = settings.DEPARTURE_QUORUM_PERCENT
-        quorum = math.ceil(approved_count * pct / 100) if approved_count else 0
-        if checked_in < quorum:
+        # ── Somebody other than the organizer must actually be travelling ────
+        # A solo trip has nothing to depart, and letting one through would start
+        # the payout clock on a trip with no travellers at all.
+        if approved_count == 0:
             return Response({
-                "detail": f"Need {quorum} member(s) checked in at the meeting point to depart ({checked_in} so far).",
-                "checked_in": checked_in,
-                "quorum":     quorum,
+                "detail": "Nobody has joined this trip yet, so there's no departure to confirm.",
+                "checked_in": 0,
+                "expected":   0,
             }, status=400)
 
-        trip.departure_confirmed_at = timezone.now()
+        # The evidence floor: somebody other than the organizer must have proved
+        # they were there. Below this there is no evidence of a trip at all,
+        # which is the case a departure gate is genuinely for.
+        if checked_in < 1:
+            return Response({
+                "detail": (
+                    "At least one member needs to check in at the meeting point "
+                    "before you can confirm departure."
+                ),
+                "checked_in": checked_in,
+                "expected":   approved_count,
+            }, status=400)
+
+        from apps.trips.checkin_stats import meeting_point_stats, evidence_tier, partial_hold_hours
+        _, _, percent = meeting_point_stats(trip)
+
+        trip.departure_confirmed_at   = timezone.now()
+        trip.departure_checkin_percent = percent
         if trip.status == Trip.Status.PUBLISHED:
             trip.status = Trip.Status.ACTIVE
-        trip.save(update_fields=["departure_confirmed_at", "status", "updated_at"])
+        trip.save(update_fields=[
+            "departure_confirmed_at", "departure_checkin_percent", "status", "updated_at",
+        ])
 
-        # The partial is NOT released inline a grace window opens so stragglers
-        # can check in or report. It releases via the hourly sweep after
-        # DEPARTURE_GRACE_HOURS, provided no dispute was raised.
+        # The partial is never released inline. The hourly sweep releases it once
+        # the hold for this trip's evidence level has passed and no dispute has
+        # been raised; thin evidence simply waits longer.
+        tier  = evidence_tier(percent)
+        hours = partial_hold_hours(percent)
         return Response({
-            "departed":    True,
-            "checked_in":  checked_in,
-            "quorum":      quorum,
-            "partial_in":  f"~{settings.DEPARTURE_GRACE_HOURS}h (after the grace window)",
+            "departed":        True,
+            "checked_in":      checked_in,
+            "expected":        approved_count,
+            "checkin_percent": percent,
+            "evidence":        tier,
+            "partial_in": (
+                f"~{hours}h (after the review window)" if hours
+                else "held until the trip is completed (too few check-ins for an early release)"
+            ),
         })
 
 
@@ -1367,6 +1446,28 @@ class TripCheckInView(APIView):
         ).exists():
             return Response({"detail": "You are not an approved member of this trip."}, status=403)
 
+        # ── Check-in window ──────────────────────────────────────────────────
+        # Nothing counts until shortly before the trip is due to leave.
+        #
+        # Check-ins are the evidence departure runs on: the organizer's partial
+        # payout is timed from them. Without a window
+        # they could be collected days in advance someone stands at the meeting
+        # point once, in geofence, and is banked as "present" for a trip they
+        # never turn up to. The hour of slack is for people who arrive early.
+        from django.utils import timezone as _tz
+        from datetime import timedelta as _td
+
+        hours    = settings.CHECKIN_WINDOW_HOURS_BEFORE_START
+        opens_at = _trip_start_datetime(trip) - _td(hours=hours)
+        if _tz.now() < opens_at:
+            return Response({
+                "detail": (
+                    f"Check-in opens {hours} hour{'s' if hours != 1 else ''} before the trip "
+                    f"starts ({opens_at.strftime('%d %b %Y, %H:%M')} UTC)."
+                ),
+                "opens_at": opens_at.isoformat(),
+            }, status=400)
+
         stop_id = request.data.get("stop_id")
         if stop_id:
             try:
@@ -1399,8 +1500,8 @@ class TripCheckInView(APIView):
             accuracy = None
 
         # ── Geofence ─────────────────────────────────────────────────────────
-        # A check-in is the trip's proof-of-presence: departure quorum and, in
-        # turn, the organizer's partial payout are counted from these rows. So
+        # A check-in is the trip's proof-of-presence: departure and, in turn, the
+        # timing of the organizer's partial payout rest on these rows. So
         # the coordinates must actually be near the stop we can't take the
         # client's word for it.
         distance    = None
