@@ -269,3 +269,92 @@ class DeletedAccountSignInTests(TestCase):
         self._assert_usable_session(res)
         user.refresh_from_db()
         self.assertTrue(user.is_active)
+
+
+# ─── Staying logged in ───────────────────────────────────────────────────────
+
+class SessionPersistenceTests(TestCase):
+    """
+    A returning user must not be asked to log in again. Rotation makes a refresh
+    token single-use, and the browser sends several requests at once on load, so
+    a replay of a just-rotated token has to be tolerated rather than treated as
+    a dead session.
+    """
+
+    URL = "/api/auth/token/refresh/"
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user   = make_user("returning@t.co")
+
+    def _fresh_refresh(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        return str(RefreshToken.for_user(self.user))
+
+    def _refresh(self, token):
+        return self.client.post(self.URL, {"refresh": token}, format="json")
+
+    def test_refresh_window_is_sixty_days(self):
+        from datetime import timedelta
+        from django.conf import settings
+        self.assertEqual(
+            settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"], timedelta(days=60),
+        )
+
+    def test_session_rolls_forward_on_every_use(self):
+        # Each refresh must mint a NEW token, so the 60 days is measured from
+        # last use rather than from first login.
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        original = self._fresh_refresh()
+        rotated  = self._refresh(original).json()["refresh"]
+        self.assertNotEqual(original, rotated)
+
+        old_exp = RefreshToken(original, verify=False).payload["exp"]
+        new_exp = RefreshToken(rotated,  verify=False).payload["exp"]
+        self.assertGreaterEqual(new_exp, old_exp)
+
+    def test_replayed_token_returns_the_same_pair_instead_of_401(self):
+        token = self._fresh_refresh()
+        first  = self._refresh(token)
+        second = self._refresh(token)
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.json(), second.json())
+
+    def test_a_replayed_pair_actually_works(self):
+        token = self._fresh_refresh()
+        self._refresh(token)
+        replay = self._refresh(token).json()
+
+        me = self.client.get("/api/users/me/",
+                             HTTP_AUTHORIZATION=f"Bearer {replay['access']}")
+        self.assertEqual(me.status_code, 200)
+
+    def test_concurrent_refreshes_all_succeed(self):
+        # Three providers mount at once (profile, notifications, unread) and
+        # StrictMode doubles each. None of them may end the session.
+        token = self._fresh_refresh()
+        results = [self._refresh(token) for _ in range(6)]
+        self.assertTrue(all(r.status_code == 200 for r in results),
+                        [r.status_code for r in results])
+
+    @override_settings(JWT_REFRESH_REPLAY_GRACE_SECONDS=0)
+    def test_grace_can_be_disabled_restoring_strict_single_use(self):
+        from django.core.cache import cache
+        cache.clear()
+        token = self._fresh_refresh()
+        self.assertEqual(self._refresh(token).status_code, 200)
+        self.assertEqual(self._refresh(token).status_code, 401)
+
+    def test_expired_and_forged_tokens_are_still_refused(self):
+        for bad in ("garbage.token.here", "", "a.b.c"):
+            self.assertEqual(self._refresh(bad).status_code, 401, bad)
+
+    def test_logout_still_ends_the_session(self):
+        from django.core.cache import cache
+        token = self._fresh_refresh()
+        self.client.post("/api/auth/logout/", {"refresh": token}, format="json")
+        cache.clear()          # past the replay window
+        self.assertEqual(self._refresh(token).status_code, 401)

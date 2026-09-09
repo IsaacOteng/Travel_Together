@@ -457,14 +457,212 @@ class DepartureQuorumSettingTests(TestCase):
     def _depart(self):
         return self.client.post(f"/api/trips/{self.trip.id}/depart/")
 
-    @override_settings(DEPARTURE_QUORUM_PERCENT=70)
-    def test_high_quorum_blocks_departure(self):
-        res = self._depart()
-        self.assertEqual(res.status_code, 400)
-        self.assertEqual(res.json()["quorum"], 3)      # ceil(4 * 0.70)
-
-    @override_settings(DEPARTURE_QUORUM_PERCENT=25)
-    def test_low_quorum_allows_departure(self):
+    def test_one_checkin_is_enough_to_depart_however_thin(self):
+        # 1 of 4 = 25%: far below the old 70% quorum, which would have blocked
+        # this. Departure is no longer gated on the rate, only on there being
+        # some evidence at all.
         res = self._depart()
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()["quorum"], 1)      # ceil(4 * 0.25)
+        self.assertEqual(res.json()["checked_in"], 1)
+        self.assertEqual(res.json()["expected"], 4)
+        self.assertEqual(res.json()["evidence"], "weak")
+
+
+class DepartureRulesTests(TestCase):
+    """
+    Departure starts the payout clock, so every precondition matters. See
+    TripDepartView's docstring for the full list.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.chief  = make_user("chief@t.co")
+        # Starts today at 00:00, so "now" is already past the start.
+        self.trip   = make_trip(self.chief, days_out=0)
+        TripMember.objects.create(trip=self.trip, user=self.chief,
+                                  role=TripMember.Role.CHIEF,
+                                  status=TripMember.Status.APPROVED)
+        self.stop = ItineraryStop.objects.create(
+            trip=self.trip, order=0, name="Meet", is_system=True,
+        )
+        self.client.force_authenticate(self.chief)
+
+    def _depart(self):
+        return self.client.post(f"/api/trips/{self.trip.id}/depart/")
+
+    def _add_member(self, email, checked_in=False):
+        u = make_user(email)
+        TripMember.objects.create(trip=self.trip, user=u,
+                                  status=TripMember.Status.APPROVED)
+        if checked_in:
+            CheckIn.objects.create(trip=self.trip, member=u, stop=self.stop,
+                                   location_at_checkin=Point(0, 0, srid=4326))
+        return u
+
+    # ── rule 5: somebody has to be travelling ────────────────────────────────
+
+    def test_cannot_depart_an_empty_trip(self):
+        res = self._depart()
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Nobody has joined", res.json()["detail"])
+        self.trip.refresh_from_db()
+        self.assertIsNone(self.trip.departure_confirmed_at)
+
+    def test_chief_alone_does_not_count_as_the_group(self):
+        # The chief has an approved membership of their own; it must not satisfy
+        # "someone has joined".
+        self.assertEqual(self._depart().status_code, 400)
+
+    def test_a_pending_applicant_does_not_count(self):
+        u = make_user("pending@t.co")
+        TripMember.objects.create(trip=self.trip, user=u,
+                                  status=TripMember.Status.PENDING)
+        self.assertEqual(self._depart().status_code, 400)
+
+    def test_an_unpaid_member_does_not_count(self):
+        u = make_user("unpaid@t.co")
+        TripMember.objects.create(trip=self.trip, user=u,
+                                  status=TripMember.Status.AWAITING_PAYMENT)
+        self.assertEqual(self._depart().status_code, 400)
+
+    # ── rule 4: not before the start ─────────────────────────────────────────
+
+    def test_cannot_depart_before_the_start_date(self):
+        future = make_trip(self.chief, days_out=5)
+        TripMember.objects.create(trip=future, user=self.chief,
+                                  role=TripMember.Role.CHIEF,
+                                  status=TripMember.Status.APPROVED)
+        stop = ItineraryStop.objects.create(trip=future, order=0, name="Meet", is_system=True)
+        rider = make_user("rider@t.co")
+        TripMember.objects.create(trip=future, user=rider, status=TripMember.Status.APPROVED)
+        CheckIn.objects.create(trip=future, member=rider, stop=stop,
+                               location_at_checkin=Point(0, 0, srid=4326))
+
+        res = self.client.post(f"/api/trips/{future.id}/depart/")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("hasn't started yet", res.json()["detail"])
+        future.refresh_from_db()
+        self.assertIsNone(future.departure_confirmed_at)
+
+    def test_start_time_is_respected_not_just_the_date(self):
+        from datetime import time
+        self.trip.start_time = time(23, 59)
+        self.trip.save()
+        self._add_member("rider@t.co", checked_in=True)
+
+        res = self._depart()
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("hasn't started yet", res.json()["detail"])
+
+    # ── rule 6: quorum ───────────────────────────────────────────────────────
+
+    def test_nobody_checked_in_blocks_departure(self):
+        self._add_member("rider@t.co", checked_in=False)
+        res = self._depart()
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["checked_in"], 0)
+
+    def test_at_least_one_checkin_is_always_required(self):
+        # The evidence floor: a trip nobody turned up to can never depart, and so
+        # can never reach an early payout.
+        self._add_member("rider@t.co", checked_in=False)
+        res = self._depart()
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("at least one member", res.json()["detail"].lower())
+
+    # ── the happy path, and rule 3 ───────────────────────────────────────────
+
+    def test_departs_once_a_member_has_joined_and_checked_in(self):
+        self._add_member("rider@t.co", checked_in=True)
+        res = self._depart()
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.json()["departed"])
+
+        self.trip.refresh_from_db()
+        self.assertIsNotNone(self.trip.departure_confirmed_at)
+        self.assertEqual(self.trip.status, Trip.Status.ACTIVE)
+
+    def test_cannot_depart_twice(self):
+        self._add_member("rider@t.co", checked_in=True)
+        self.assertEqual(self._depart().status_code, 200)
+
+        res = self._depart()
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("already departed", res.json()["detail"])
+
+    def test_non_chief_cannot_depart(self):
+        rider = self._add_member("rider@t.co", checked_in=True)
+        self.client.force_authenticate(rider)
+        self.assertEqual(self._depart().status_code, 403)
+
+
+class CheckInWindowTests(TestCase):
+    """
+    Check-ins are the evidence departure and the organizer's payout rest on, so
+    they can't be banked days early. They open an hour before the start.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.chief  = make_user("chief@t.co")
+        self.member = make_user("m@t.co")
+
+    def _trip(self, days_out, start_time=None):
+        trip = make_trip(self.chief, days_out=days_out)
+        if start_time:
+            trip.start_time = start_time
+            trip.save()
+        TripMember.objects.create(trip=trip, user=self.chief, role=TripMember.Role.CHIEF,
+                                  status=TripMember.Status.APPROVED)
+        TripMember.objects.create(trip=trip, user=self.member,
+                                  status=TripMember.Status.APPROVED)
+        stop = ItineraryStop.objects.create(trip=trip, order=0, name="Meet", is_system=True)
+        return trip, stop
+
+    def _check_in(self, trip, stop):
+        self.client.force_authenticate(self.member)
+        return self.client.post(f"/api/trips/{trip.id}/checkin/",
+                                {"stop_id": str(stop.id), "lat": 0, "lng": 0}, format="json")
+
+    def test_cannot_check_in_days_early(self):
+        trip, stop = self._trip(days_out=5)
+        res = self._check_in(trip, stop)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Check-in opens", res.json()["detail"])
+        self.assertFalse(CheckIn.objects.exists())
+
+    def test_cannot_check_in_two_hours_early(self):
+        from datetime import datetime, timedelta as td
+        soon = timezone.now() + td(hours=2)
+        trip, stop = self._trip(days_out=0, start_time=soon.time())
+        trip.date_start = soon.date()
+        trip.save()
+
+        res = self._check_in(trip, stop)
+        self.assertEqual(res.status_code, 400)
+
+    def test_can_check_in_inside_the_hour_before_start(self):
+        from datetime import timedelta as td
+        soon = timezone.now() + td(minutes=30)
+        trip, stop = self._trip(days_out=0, start_time=soon.time())
+        trip.date_start = soon.date()
+        trip.save()
+
+        self.assertEqual(self._check_in(trip, stop).status_code, 201)
+
+    def test_can_check_in_once_the_trip_has_started(self):
+        trip, stop = self._trip(days_out=0)          # started at 00:00 today
+        self.assertEqual(self._check_in(trip, stop).status_code, 201)
+
+    @override_settings(CHECKIN_WINDOW_HOURS_BEFORE_START=48)
+    def test_window_is_configurable(self):
+        trip, stop = self._trip(days_out=1)
+        self.assertEqual(self._check_in(trip, stop).status_code, 201)
+
+    def test_early_checkins_cannot_prop_up_a_quorum(self):
+        # The whole point: no banking presence in advance.
+        trip, stop = self._trip(days_out=3)
+        self._check_in(trip, stop)
+        self.client.force_authenticate(self.chief)
+        res = self.client.post(f"/api/trips/{trip.id}/depart/")
+        self.assertEqual(res.status_code, 400)

@@ -324,12 +324,25 @@ PAYSTACK_CALLBACK_URL = env("PAYSTACK_CALLBACK_URL", default="")  # where Paysta
 PLATFORM_COMMISSION_PERCENT = env.int("PLATFORM_COMMISSION_PERCENT", default=5)    # the app's cut (profit; never used to cover refunds)
 PARTIAL_RELEASE_PERCENT     = env.int("PARTIAL_RELEASE_PERCENT",     default=50)   # released to organizer at departure
 DISPUTE_WINDOW_HOURS        = env.int("DISPUTE_WINDOW_HOURS",        default=72)   # completion grace: hold after trip end; silence = approval, any dispute freezes
-DEPARTURE_GRACE_HOURS       = env.int("DEPARTURE_GRACE_HOURS",       default=6)    # hold after departure before the partial releases (lets stragglers check in / report)
+DEPARTURE_GRACE_HOURS       = env.int("DEPARTURE_GRACE_HOURS",       default=6)    # hold after departure before the partial releases when check-in evidence is STRONG
 REFUND_CUTOFF_DAYS          = env.int("REFUND_CUTOFF_DAYS",          default=7)    # ≥ this many days out → refundable
 ORGANIZER_CANCEL_KARMA_PENALTY = env.int("ORGANIZER_CANCEL_KARMA_PENALTY", default=25)
 NO_SHOW_KARMA_PENALTY          = env.int("NO_SHOW_KARMA_PENALTY",          default=10)   # karma docked for missing every check-in (reputational only, not a block)
-ANOMALY_MIN_CHECKIN_PERCENT    = env.int("ANOMALY_MIN_CHECKIN_PERCENT",    default=20)   # a completed trip below this check-in rate is auto-flagged for review
-DEPARTURE_QUORUM_PERCENT    = env.int("DEPARTURE_QUORUM_PERCENT",    default=70)   # % of approved members who must check in before the organizer can depart / get the partial
+ANOMALY_MIN_CHECKIN_PERCENT    = env.int("ANOMALY_MIN_CHECKIN_PERCENT",    default=20)   # below this check-in rate: no partial at all, and a completed trip is auto-flagged for review
+# Check-in evidence sets how FAST the organizer's partial moves it never blocks
+# departure itself. A hard quorum did block it, which punished an organizer for
+# members who simply went quiet (flat battery, no signal, or just didn't know to
+# tap the button) the common case, not the fraud case. Tiers instead:
+#
+#   >= PARTIAL_FAST_RELEASE_CHECKIN_PERCENT  strong  → DEPARTURE_GRACE_HOURS hold
+#   >= ANOMALY_MIN_CHECKIN_PERCENT           weak    → PARTIAL_RELEASE_LOW_EVIDENCE_HOURS hold
+#   below that                               none    → no partial; everything waits for completion
+#
+# Departure still requires at least one member (not the organizer) to have
+# checked in, so a trip nobody attended can never depart or pay out early.
+PARTIAL_FAST_RELEASE_CHECKIN_PERCENT = env.int("PARTIAL_FAST_RELEASE_CHECKIN_PERCENT", default=70)
+PARTIAL_RELEASE_LOW_EVIDENCE_HOURS   = env.int("PARTIAL_RELEASE_LOW_EVIDENCE_HOURS",   default=48)
+CHECKIN_WINDOW_HOURS_BEFORE_START = env.int("CHECKIN_WINDOW_HOURS_BEFORE_START", default=1)  # earliest a member may check in, relative to the trip's start time
 CHECKIN_ACCURACY_TOLERANCE_METERS = env.int("CHECKIN_ACCURACY_TOLERANCE_METERS", default=100)  # max GPS-accuracy slack added to a stop's geofence radius (stops a client claiming huge "accuracy" to bypass the fence)
 PARTIAL_RELEASE_MIN_COMPLETED_TRIPS = env.int("PARTIAL_RELEASE_MIN_COMPLETED_TRIPS", default=2)  # completed trips before an unverified organizer earns a partial release
 

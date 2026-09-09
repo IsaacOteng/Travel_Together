@@ -369,7 +369,7 @@ class TripDetailSerializer(serializers.ModelSerializer):
             "chief_avatar_url", "chief_trip_count",
             "tags", "itinerary", "members", "viewer_is_member",
             "my_status", "is_saved",
-            "departure_confirmed_at", "ended_at",
+            "departure_confirmed_at", "departure_checkin_percent", "ended_at",
             "created_at", "updated_at",
         ]
 

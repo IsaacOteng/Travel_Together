@@ -1,10 +1,12 @@
 import uuid as _uuid
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
+from .base import AuthDeadlineMixin
 from channels.db import database_sync_to_async
 from django.utils import timezone
 
 
-class ChatConsumer(AsyncJsonWebsocketConsumer):
+class ChatConsumer(AuthDeadlineMixin, AsyncJsonWebsocketConsumer):
     """
     WebSocket: ws/chat/<conversation_id>/
 
@@ -35,11 +37,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.conversation_id = str(self.scope["url_route"]["kwargs"]["conversation_id"])
         self.group_name      = f"chat.{self.conversation_id}"
         self.user            = None   # set after auth message
+        self.joined          = False  # group is joined only after auth (see _handle_auth)
 
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        # NOTE: accept the socket but do NOT join the broadcast group yet.
+        # Joining before authentication would stream every message in this
+        # conversation to anyone who knows the conversation id.
         await self.accept()
+        # Unauthenticated sockets must not linger see AuthDeadlineMixin.
+        self.start_auth_deadline()
 
     async def disconnect(self, code):
+        self.cancel_auth_deadline()
         if self.user:
             await self.channel_layer.group_send(
                 self.group_name,
@@ -50,7 +58,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     "is_typing": False,
                 },
             )
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if self.joined:
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     # ── receive (dispatch) ────────────────────────────────────────────────────
 
@@ -95,6 +104,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4003)
             return
 
+        if not await self._dm_allowed(user):
+            from apps.chat.utils import DM_NOT_ALLOWED_DETAIL
+            await self.send_json({"type": "error", "detail": DM_NOT_ALLOWED_DETAIL})
+            await self.close(code=4003)
+            return
+
+        # Authenticated AND a member of this conversation only now may this
+        # socket receive the conversation's message broadcasts.
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        self.joined = True
+
+        self.cancel_auth_deadline()
         self.user = user
         await self.send_json({"type": "auth.ok", "user_id": str(user.id)})
 
@@ -114,6 +135,32 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         return ConversationMember.objects.filter(
             conversation_id=self.conversation_id, user=user
         ).exists()
+
+    @database_sync_to_async
+    def _dm_allowed(self, user):
+        """
+        Apply the direct-message rule to this socket.
+
+        The REST send path checks this too, but a guard only on REST would be no
+        guard at all this socket can both read history and post messages. It is
+        enforced at auth rather than per-send so a thread that no longer
+        qualifies stops being readable, not just writable.
+        """
+        from apps.chat.models import Conversation, ConversationMember
+        from apps.chat.utils import users_share_a_trip
+
+        conv = Conversation.objects.filter(id=self.conversation_id).first()
+        if not conv or conv.type != Conversation.Type.DM:
+            return True     # group chats are governed by trip membership
+
+        partner = (
+            ConversationMember.objects
+            .filter(conversation=conv)
+            .exclude(user=user)
+            .select_related("user")
+            .first()
+        )
+        return bool(partner and users_share_a_trip(user, partner.user))
 
     # ── send message ──────────────────────────────────────────────────────────
 
