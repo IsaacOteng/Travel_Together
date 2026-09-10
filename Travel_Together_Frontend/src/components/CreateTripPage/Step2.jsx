@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Calendar, Clock, Users, Check, AlertCircle } from "lucide-react";
 import { TAGS, COVERS_OPTIONS } from './constants.js';
 import { ProgressBar, SectionHead, Label, TTInput, TTSelect, PrimaryBtn, GhostBtn, Err } from './uiComponents.jsx';
+import { DRIVE_TIME_OPTIONS } from "../../utils/driveTime.js";
 
 /* ══════════════════════════════════════════
    STEP 2 LOGISTICS + PRICING
@@ -87,11 +88,9 @@ export default function Step2({ form, patch, onNext, onBack }) {
           <Label>Drive time</Label>
           <TTSelect value={form.driveTime || ""} onChange={e => patch({ driveTime: e.target.value })}>
             <option value="">Select…</option>
-            <option value="under_1h">Under 1hr</option>
-            <option value="1_2h">1–2hrs</option>
-            <option value="2_4h">2–4hrs</option>
-            <option value="4_6h">4–6hrs</option>
-            <option value="6h_plus">6hrs+</option>
+            {DRIVE_TIME_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
           </TTSelect>
         </div>
       </div>

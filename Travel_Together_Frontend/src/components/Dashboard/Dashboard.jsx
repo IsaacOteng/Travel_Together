@@ -8,6 +8,7 @@ import { tripsApi, usersApi } from "../../services/api.js";
 import KarmaRing from "./KarmaRing.jsx";
 import { JoinedSection, SavedSection, CreatedSection } from "./Sections.jsx";
 import toast from "react-hot-toast";
+import { displayName } from "../../utils/name.js";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -118,8 +119,8 @@ export default function Dashboard() {
   const openSection  = useCallback((key) => { setExpanded(key); setSearchParams({ s: key }); }, [setSearchParams]);
   const closeSection = useCallback(()    => { setExpanded(null); setSearchParams({}); },        [setSearchParams]);
 
-  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.username || "Traveller";
-  const initials    = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const name = displayName(user);
+  const initials    = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const karmaScore  = user?.travel_karma ?? 0;
   const karmaLevel  = user?.karma_level  ?? "Explorer";
 
@@ -166,7 +167,7 @@ export default function Dashboard() {
     <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
       <div className="flex items-center gap-3.5 mb-5">
         {user?.avatar_url ? (
-          <img src={user.avatar_url} alt={displayName}
+          <img src={user.avatar_url} alt={name}
             className="w-12 h-12 rounded-full object-cover flex-shrink-0"
             style={{ boxShadow: "0 4px 14px rgba(255,107,53,.35)" }} />
         ) : (
@@ -176,7 +177,7 @@ export default function Dashboard() {
           </div>
         )}
         <div>
-          <div className="text-[15px] font-bold text-white font-serif leading-tight">{displayName}</div>
+          <div className="text-[15px] font-bold text-white font-serif leading-tight">{name}</div>
           <div className="text-[11px] text-white/35 mt-0.5">@{user?.username || "—"}</div>
         </div>
       </div>

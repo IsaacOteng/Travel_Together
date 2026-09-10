@@ -4,6 +4,7 @@ import { ProgressBar, SectionHead, PrimaryBtn } from './uiComponents.jsx';
 import PricePill from './PricePill.jsx';
 import PayoutSetup from './PayoutSetup.jsx';
 import { tripsApi } from '../../services/api.js';
+import { formatDriveTime } from "../../utils/driveTime.js";
 
 /* ══════════════════════════════════════════
    STEP 4 PREVIEW & PUBLISH
@@ -116,7 +117,7 @@ export default function Step4({ form, onBack, onPublish }) {
             {[
               { Icon: Calendar,   text: form.dateStart ? `${form.dateStart}${form.startTime ? ` · ${form.startTime}` : ""}` : "Start date" },
               { Icon: Users,      text: `0 / ${form.spots_total || "?"}` },
-              form.driveTime && { Icon: Navigation, text: form.driveTime },
+              form.driveTime && { Icon: Navigation, text: formatDriveTime(form.driveTime) },
             ].filter(Boolean).map((m, i) => (
               <div key={i} className="flex items-center gap-1.5 bg-white/[0.06] border border-white/[0.07] rounded-lg px-[9px] py-[5px]">
                 <m.Icon size={11} className="text-white/40" />

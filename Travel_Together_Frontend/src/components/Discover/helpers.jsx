@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Award, MapPin, X, Users, Lock } from 'lucide-react';
 import { AV_COLORS } from './constants.js';
+import { displayName } from "../../utils/name.js";
 
 export function Avatar({ name, src, size = 36, className = "" }) {
   const color = AV_COLORS[(name?.charCodeAt(0) || 0) % AV_COLORS.length];
@@ -39,9 +40,9 @@ export function MemberStack({ members = [], max = 4, total }) {
   return (
     <div className="flex items-center">
       {shown.map((m, i) => {
-        // Support: {name} (normalised), {first_name,last_name} (detail serializer), {username}, or plain number (mock)
+        // Support: {name} (normalised), {first_name,last_name} (detail serializer), or plain number (mock)
         const name     = typeof m === "object"
-          ? (m.name || [m.first_name, m.last_name].filter(Boolean).join(" ") || m.username || "?")
+          ? (m.name || displayName(m, "?"))
           : String(i);
         const color    = AV_COLORS[(name.charCodeAt(0) || i) % AV_COLORS.length];
         const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
@@ -116,9 +117,10 @@ export function MemberProfileSheet({ member, onClose }) {
   if (!member) return null;
 
   const isFull   = member.profile_tier === "full";
-  const name     = isFull && member.last_name
-    ? `${member.first_name} ${member.last_name}`.trim()
-    : member.first_name || member.username || "Member";
+  // Non-"full" tiers deliberately see the forename only.
+  const name     = isFull
+    ? displayName(member, "Member")
+    : member.first_name || "Member";
   const color    = AV_COLORS[(name.charCodeAt(0) || 0) % AV_COLORS.length];
   const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
@@ -333,11 +335,11 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}
              className="scrollbar-none">
           {members.map((m, i) => {
-            const displayName = viewerIsMember && m.last_name
-              ? `${m.first_name} ${m.last_name}`.trim()
-              : m.first_name || m.username || "?";
-            const color    = AV_COLORS[(displayName.charCodeAt(0) || i) % AV_COLORS.length];
-            const initials = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+            const memberName = viewerIsMember
+              ? displayName(m, "?")
+              : m.first_name || "?";
+            const color    = AV_COLORS[(memberName.charCodeAt(0) || i) % AV_COLORS.length];
+            const initials = memberName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
             const isChief  = m.role === "chief";
 
             return (
@@ -365,7 +367,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
                 {/* Avatar wrapper crown sits on top-right as a hat */}
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   {m.avatar_url
-                    ? <img src={m.avatar_url} alt={displayName}
+                    ? <img src={m.avatar_url} alt={memberName}
                         style={{
                           width: 42, height: 42, borderRadius: "50%", objectFit: "cover",
                           display: "block",
@@ -407,7 +409,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   width: "100%", textAlign: "center",
                 }}>
-                  {displayName.split(" ")[0]}
+                  {memberName.split(" ")[0]}
                 </div>
               </button>
             );
