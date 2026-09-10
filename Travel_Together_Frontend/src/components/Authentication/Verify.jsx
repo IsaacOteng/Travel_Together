@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import signuppic from "../../assets/signup_pic.png";
 import { ChevronLeft } from "lucide-react";
 import { authApi } from "../../services/api";
-import { officialLogo, ttLogo } from "../../assets/logos";
+import { officialLogo } from "../../assets/logos";
 
 const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
     const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -113,23 +113,12 @@ const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
             {/* LEFT SIDE */}
             <div className="w-full lg:w-[50%] flex flex-col justify-between px-8 py-8">
 
-                {/* Logo */}
-                <div>
-                    <div className="text-black text-2xl font-normal tracking-tight leading-none">
-                        <img src={officialLogo} alt="logo" className="absolute lg:top-5 lg:left-2 top-10 left-46 w-15 inline-block" />
-                        <img src={ttLogo} alt="logo" className="absolute lg:hidden lg:top-5 lg:left-2 top-10 left-33 w-40 inline-block" />
-                    </div>
-                </div>
+                <div aria-hidden="true" />
 
                 {/* Form Area */}
-                <div className="w-full max-w-sm items-center justify-center mx-auto -mt-15">
-
-                    {/* Icon */}
-                    <div className="w-12 h-12 rounded-full bg-[#fff4f0] flex items-center justify-center mb-6">
-                        <svg className="w-6 h-6 text-[#FF6B35]" fill="none" viewBox="0 0 24 24" stroke="#FF6B35" strokeWidth={1.8}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                    </div>
+                <div className="w-full max-w-sm mx-auto">
+                    <img src={officialLogo} alt="Travel Together"
+                        className="w-12 h-auto mb-6" />
 
                     <h1 className="text-3xl font-light font-serif text-[#1E3A5F] tracking-tight mb-2">
                         Check your email

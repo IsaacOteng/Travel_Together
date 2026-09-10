@@ -1,0 +1,297 @@
+{% extends "unfold/layouts/skeleton.html" %}
+
+{% load i18n static %}
+
+{# Branded admin login. Styles live here rather than in Tailwind classes because #}
+{# Unfold ships a precompiled stylesheet, so utilities it doesn't use aren't in it. #}
+{# Palette mirrors Unfold's dark theme + UNFOLD["COLORS"]["primary"] in settings.  #}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {{ form.media }}
+    <style>
+        .tt-page {
+            --primary-400: #f97316; --primary-500: #ea580c; --primary-600: #c2410c; --primary-700: #9a3412;
+            --gray-950: #030712; --gray-900: #111827; --gray-800: #1f2937; --gray-700: #374151;
+            --gray-500: #6b7280; --gray-400: #9ca3af; --gray-300: #d1d5db; --gray-100: #f3f4f6;
+
+            position: relative; overflow: hidden; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center; padding: 40px 20px;
+            background:
+                radial-gradient(900px 500px at 50% 50%, rgba(234, 88, 12, .07), transparent 70%),
+                radial-gradient(rgba(148, 163, 184, .10) 1px, transparent 1.2px) 0 0 / 22px 22px,
+                #071422;
+        }
+        .tt-page *, .tt-page *::before, .tt-page *::after { box-sizing: border-box; }
+
+        /* ── Side doodles ───────────────────────────────────────────── */
+        .tt-doodle {
+            position: absolute; top: 50%; width: 260px; height: 760px; transform: translateY(-50%);
+            color: rgba(249, 115, 22, .55); pointer-events: none; display: none;
+        }
+        .tt-doodle.left  { left: max(8px, calc(50% - 640px - 280px)); }
+        .tt-doodle.right { right: max(8px, calc(50% - 640px - 280px)); }
+        @media (min-width: 1500px) { .tt-doodle { display: block; } }
+        .tt-doodle .soft { color: rgba(148, 163, 184, .28); }
+        .tt-doodle .route { stroke-dasharray: 6 8; animation: tt-dash 30s linear infinite; }
+        .tt-doodle .bob { animation: tt-bob 6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+        @keyframes tt-dash { to { stroke-dashoffset: -600; } }
+        @keyframes tt-bob  { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+        /* ── Frame ──────────────────────────────────────────────────── */
+        .tt-frame {
+            position: relative; z-index: 1; width: 100%; max-width: 1280px; min-height: 740px;
+            display: flex; gap: 18px; padding: 18px; border-radius: 28px;
+            background: var(--gray-950); border: 1px solid var(--gray-800);
+            box-shadow: 0 50px 120px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(234, 88, 12, .06);
+        }
+
+        /* ── Left: brand panel ──────────────────────────────────────── */
+        .tt-brand {
+            position: relative; flex: 1.1; overflow: hidden; border-radius: 20px; display: none;
+            flex-direction: column; align-items: center; justify-content: center; padding: 60px 44px; text-align: center;
+            background:
+                radial-gradient(560px 380px at 50% 62%, rgba(255, 255, 255, .16), transparent 70%),
+                linear-gradient(160deg, var(--primary-400) 0%, var(--primary-500) 45%, var(--primary-700) 100%);
+        }
+        .tt-brand::after {  /* faint topographic rings */
+            content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .18;
+            background: repeating-radial-gradient(circle at 85% 10%, transparent 0 26px, rgba(255,255,255,.55) 26px 27px);
+            -webkit-mask: linear-gradient(200deg, #000 0%, transparent 55%); mask: linear-gradient(200deg, #000 0%, transparent 55%);
+        }
+        @media (min-width: 1000px) { .tt-brand { display: flex; } }
+        .tt-brand h2 { position: relative; margin: 0 0 12px; font-size: 36px; line-height: 1.2; font-weight: 700; color: #fff; letter-spacing: -.4px; }
+        .tt-brand p  { position: relative; margin: 0; font-size: 15px; color: rgba(255, 255, 255, .85); }
+
+        /* Placeholder illustration: a tilted mock of the admin dashboard (dark, like the real one) */
+        .tt-mock { position: relative; width: 100%; max-width: 480px; height: 330px; margin-top: 60px; }
+        .tt-mock-side, .tt-mock-main {
+            position: absolute; background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 8px;
+            box-shadow: 0 30px 60px -20px rgba(60, 15, 0, .75);
+        }
+        .tt-mock-side { left: 0; top: 56px; width: 74px; height: 270px; padding: 12px 9px; transform: rotate(-2deg); }
+        .tt-mock-main { right: 0; top: 0; width: 360px; height: 292px; padding: 14px; transform: rotate(6deg); }
+        .tt-mock-logo { width: 24px; height: 24px; margin-bottom: 14px; }
+        .tt-mock-nav  { height: 9px; border-radius: 3px; background: var(--gray-800); margin-bottom: 9px; }
+        .tt-mock-nav.on { background: var(--primary-500); }
+        .tt-mock-bar  { height: 10px; width: 45%; border-radius: 5px; background: var(--gray-800); margin-bottom: 14px; }
+        .tt-mock-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+        .tt-mock-stat { border: 1px solid var(--gray-800); border-radius: 6px; padding: 9px 8px; text-align: left; }
+        .tt-mock-stat i { display: block; width: 14px; height: 14px; border-radius: 4px; margin-bottom: 6px; }
+        .tt-mock-stat b { display: block; font-size: 13px; color: var(--gray-100); }
+        .tt-mock-stat span { display: block; font-size: 7px; color: var(--gray-500); }
+        .tt-mock-row { display: grid; grid-template-columns: 2fr 1.3fr 1fr .8fr; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--gray-800); }
+        .tt-mock-row.head { background: rgba(234, 88, 12, .14); border-radius: 4px; padding: 7px 4px; border: 0; }
+        .tt-mock-row > u { display: block; height: 6px; border-radius: 3px; background: var(--gray-700); text-decoration: none; }
+        .tt-mock-row.head > u { background: rgba(249, 115, 22, .55); }
+        .tt-pill { display: block; height: 9px; border-radius: 5px; }
+        .tt-pill.g { background: rgba(34, 197, 94, .55); } .tt-pill.o { background: rgba(249, 115, 22, .6); } .tt-pill.r { background: rgba(239, 68, 68, .55); }
+        .tt-mock-shadow { position: absolute; left: 12%; right: 12%; bottom: -28px; height: 26px; border-radius: 50%; background: rgba(60, 15, 0, .45); filter: blur(14px); }
+
+        /* ── Right: form panel ──────────────────────────────────────── */
+        .tt-form {
+            position: relative; flex: 1; display: flex; flex-direction: column;
+            border-radius: 20px; border: 1px solid var(--gray-800); background: var(--gray-900); padding: 32px 34px 26px;
+        }
+        .tt-org { display: flex; align-items: center; gap: 11px; }
+        .tt-org img { width: 36px; height: auto; }
+        .tt-org b { display: block; font-size: 18px; font-weight: 600; color: var(--gray-100); line-height: 1.2; }
+        .tt-org small { display: block; font-size: 11px; color: var(--primary-400); }
+
+        .tt-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 0; }
+        .tt-inner { width: 100%; max-width: 380px; }
+        .tt-inner h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; color: var(--gray-100); letter-spacing: -.3px; }
+        .tt-inner h1 span { color: var(--primary-400); }
+        .tt-inner .tt-sub { margin: 0 0 30px; font-size: 14px; color: var(--gray-400); }
+
+        /* Unfold field helpers, restyled to the dark palette */
+        .tt-inner label { color: var(--gray-300) !important; font-size: 13px !important; }
+        .tt-inner input[type="text"], .tt-inner input[type="email"], .tt-inner input[type="password"] {
+            width: 100%; height: 46px; background: var(--gray-950) !important; color: var(--gray-100) !important;
+            border: 1px solid var(--gray-700) !important; border-radius: 8px !important;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        .tt-inner input:focus { border-color: var(--primary-500) !important; box-shadow: 0 0 0 3px rgba(234, 88, 12, .25) !important; outline: none !important; }
+
+        .tt-submit {
+            width: 100%; height: 46px; margin-top: 8px; border: 0; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-size: 14px; font-weight: 600; color: #fff; background: var(--primary-600);
+            box-shadow: 0 10px 24px -12px rgba(234, 88, 12, .8); transition: background .15s ease;
+        }
+        .tt-submit:hover { background: var(--primary-500); }
+        .tt-submit .material-symbols-outlined { font-size: 19px; transition: transform .15s ease; }
+        .tt-submit:hover .material-symbols-outlined { transform: translateX(3px); }
+
+        .tt-divider { height: 1px; background: var(--gray-800); margin: 24px 0; }
+        .tt-reset {
+            display: flex; align-items: center; justify-content: center; height: 46px; border-radius: 8px;
+            border: 1px solid var(--gray-700); font-size: 13px; color: var(--gray-300); text-decoration: none;
+        }
+        .tt-reset:hover { border-color: var(--primary-500); color: var(--primary-400); }
+
+        .tt-foot { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--gray-500); }
+        .tt-foot .material-symbols-outlined { font-size: 14px; color: #22c55e; }
+
+        @media (prefers-reduced-motion: reduce) { .tt-doodle .route, .tt-doodle .bob { animation: none; } }
+    </style>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} login{% endblock %}
+{% block usertools %}{% endblock %}
+{% block nav-global %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}
+{% block breadcrumbs %}{% endblock %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block base %}
+<div class="tt-page">
+
+    {# ── Left doodles: flight route, globe, compass, pin ── #}
+    <svg class="tt-doodle left" viewBox="0 0 260 760" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path class="route" d="M40 20 C 200 90, 20 200, 150 290 S 230 470, 90 560 S 60 700, 200 740"/>
+        <g transform="translate(140 270) rotate(40)"><g class="bob">
+            <path d="M0 -14 L3 -4 L16 2 L16 5 L3 2 L2 11 L6 14 L6 16 L0 14 L-6 16 L-6 14 L-2 11 L-3 2 L-16 5 L-16 2 L-3 -4 Z" fill="rgba(249,115,22,.35)"/>
+        </g></g>
+        <g class="soft">
+            <circle cx="70" cy="120" r="38"/>
+            <ellipse cx="70" cy="120" rx="16" ry="38"/>
+            <path d="M32 120 H108 M38 100 H102 M38 140 H102"/>
+        </g>
+        <g transform="translate(180 440)">
+            <circle r="26"/>
+            <circle r="3" fill="currentColor"/>
+            <path d="M0 -18 L6 0 L0 18 L-6 0 Z" fill="rgba(249,115,22,.3)"/>
+            <path d="M0 -34 V-28 M0 28 V34 M-34 0 H-28 M28 0 H34"/>
+        </g>
+        <g class="soft" transform="translate(60 640)">
+            <path d="M0 0 C 0 -14, 22 -14, 22 0 C 22 12, 11 22, 11 30 C 11 22, 0 12, 0 0 Z"/>
+            <circle cx="11" cy="-1" r="4"/>
+        </g>
+        <g class="soft" stroke-width="1.2">
+            <path d="M200 150 l6 0 M203 147 l0 6"/>
+            <path d="M30 380 l6 0 M33 377 l0 6"/>
+            <path d="M220 610 l6 0 M223 607 l0 6"/>
+        </g>
+    </svg>
+
+    {# ── Right doodles: mountains, sun, palm, suitcase, clouds ── #}
+    <svg class="tt-doodle right" viewBox="0 0 260 760" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <g class="soft">
+            <path d="M60 60 q 12 -18 30 -6 q 16 -14 30 2 q 16 0 14 14 H58 q -10 -2 2 -10 Z"/>
+            <path d="M150 200 q 10 -14 24 -4 q 12 -10 24 2 q 12 0 10 10 H148 q -8 -2 2 -8 Z"/>
+        </g>
+        <g transform="translate(180 110)">
+            <circle r="18" fill="rgba(249,115,22,.18)"/>
+            <path d="M0 -30 V-24 M0 24 V30 M-30 0 H-24 M24 0 H30 M-21 -21 L-17 -17 M17 17 L21 21 M-21 21 L-17 17 M17 -17 L21 -21"/>
+        </g>
+        <g transform="translate(20 330)">
+            <path d="M0 80 L50 10 L78 44 L100 20 L160 80 Z"/>
+            <path class="soft" d="M40 24 L50 10 L60 24 L54 20 L50 26 L46 20 Z"/>
+            <path class="soft" d="M-10 92 H180" stroke-dasharray="3 7"/>
+        </g>
+        <g transform="translate(170 520)"><g class="bob">
+            <path d="M0 90 C 4 60, 2 30, -4 0"/>
+            <path d="M-4 0 C -30 -8, -44 4, -52 16 C -34 6, -18 6, -4 0 Z" fill="rgba(249,115,22,.2)"/>
+            <path d="M-4 0 C 20 -14, 38 -6, 48 6 C 30 -2, 14 0, -4 0 Z" fill="rgba(249,115,22,.2)"/>
+            <path d="M-4 0 C -8 -26, 4 -40, 18 -44 C 8 -30, 2 -16, -4 0 Z" fill="rgba(249,115,22,.2)"/>
+            <path class="soft" d="M-40 92 H44"/>
+        </g></g>
+        <g class="soft" transform="translate(40 640)">
+            <rect x="0" y="12" width="56" height="42" rx="7"/>
+            <path d="M18 12 V4 H38 V12 M14 12 V54 M42 12 V54"/>
+        </g>
+        <path class="route" d="M230 20 C 120 120, 250 260, 200 330"/>
+        <g class="soft" stroke-width="1.2">
+            <path d="M40 250 l6 0 M43 247 l0 6"/>
+            <path d="M230 460 l6 0 M233 457 l0 6"/>
+            <path d="M120 720 l6 0 M123 717 l0 6"/>
+        </g>
+    </svg>
+
+    <div class="tt-frame">
+
+        {# ── Brand panel ── #}
+        <aside class="tt-brand" aria-hidden="true">
+            <h2>Keep every trip moving</h2>
+            <p>Manage trips, payouts and safety from one dashboard.</p>
+
+            <div class="tt-mock">
+                <div class="tt-mock-side">
+                    <img class="tt-mock-logo" src="{% static 'img/logo.png' %}" alt="">
+                    <div class="tt-mock-nav on"></div>
+                    <div class="tt-mock-nav"></div>
+                    <div class="tt-mock-nav"></div>
+                    <div class="tt-mock-nav"></div>
+                    <div class="tt-mock-nav"></div>
+                </div>
+                <div class="tt-mock-main">
+                    <div class="tt-mock-bar"></div>
+                    <div class="tt-mock-stats">
+                        <div class="tt-mock-stat"><i style="background:rgba(34,197,94,.35)"></i><b>128</b><span>Active trips</span></div>
+                        <div class="tt-mock-stat"><i style="background:rgba(249,115,22,.4)"></i><b>14</b><span>Pending payouts</span></div>
+                        <div class="tt-mock-stat"><i style="background:rgba(239,68,68,.35)"></i><b>2</b><span>Open reports</span></div>
+                    </div>
+                    <div class="tt-mock-row head"><u></u><u></u><u></u><u></u></div>
+                    <div class="tt-mock-row"><u></u><u></u><span class="tt-pill g"></span><u></u></div>
+                    <div class="tt-mock-row"><u></u><u></u><span class="tt-pill o"></span><u></u></div>
+                    <div class="tt-mock-row"><u></u><u></u><span class="tt-pill g"></span><u></u></div>
+                    <div class="tt-mock-row"><u></u><u></u><span class="tt-pill r"></span><u></u></div>
+                    <div class="tt-mock-row"><u></u><u></u><span class="tt-pill g"></span><u></u></div>
+                </div>
+                <div class="tt-mock-shadow"></div>
+            </div>
+        </aside>
+
+        {# ── Form panel ── #}
+        <main class="tt-form">
+            <div class="tt-org">
+                <img src="{% static 'img/logo.png' %}" alt="">
+                <div><b>{{ site_title }}</b><small>Admin Dashboard</small></div>
+            </div>
+
+            <div class="tt-body">
+                <div class="tt-inner">
+                    <h1>Welcome to your <span>dashboard</span></h1>
+                    <p class="tt-sub">Sign in with your admin email and password.</p>
+
+                    {% include "unfold/helpers/messages.html" %}
+                    {% include "unfold/helpers/messages/errornote.html" with errors=form.errors %}
+                    {% include "unfold/helpers/messages/error.html" with errors=form.non_field_errors %}
+
+                    {% if user.is_authenticated %}
+                        {% blocktranslate trimmed asvar message %}
+                            You are authenticated as {{ username }}, but are not authorized to
+                            access this page. Would you like to login to a different account?
+                        {% endblocktranslate %}
+                        {% include "unfold/helpers/messages/error.html" with error=message %}
+                    {% endif %}
+
+                    <form action="{{ app_path }}" method="post" id="login-form">
+                        {% csrf_token %}
+                        {% include "unfold/helpers/field.html" with field=form.username %}
+                        {% include "unfold/helpers/field.html" with field=form.password %}
+
+                        <div class="submit-row">
+                            <button type="submit" class="tt-submit">
+                                {% translate 'Log in' %}
+                                <span class="material-symbols-outlined">arrow_forward</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    {% url 'admin_password_reset' as password_reset_url %}
+                    {% if password_reset_url %}
+                        <div class="tt-divider"></div>
+                        <a class="tt-reset" href="{{ password_reset_url }}">{% translate 'Forgotten your password?' %}</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="tt-foot"><span class="material-symbols-outlined">lock</span>&copy; {% now "Y" %} {{ site_title }} &middot; Secure admin access</div>
+        </main>
+    </div>
+</div>
+{% endblock %}

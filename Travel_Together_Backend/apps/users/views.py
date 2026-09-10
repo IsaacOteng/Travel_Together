@@ -46,7 +46,7 @@ from .utils import (
     increment_otp_rate,
     is_ip_rate_limited,
     increment_ip_rate,
-    generate_unique_username,
+    generate_placeholder_username,
     clear_otp_rate,
 )
 from .account_lifecycle import (
@@ -179,7 +179,7 @@ class SendOTPView(APIView):
             if created:
                 carry_over_retired_debt(user)
                 if not user.username:
-                    user.username = generate_unique_username(email)
+                    user.username = generate_placeholder_username()
                     user.save(update_fields=["username"])
 
             # Invalidate any previous unused OTPs for login purpose
@@ -290,7 +290,7 @@ class VerifyOTPView(APIView):
 
         # Ensure every account always has a username
         if not user.username:
-            user.username = generate_unique_username(user.email)
+            user.username = generate_placeholder_username()
             user.save(update_fields=["username"])
 
         is_new_user = not user.onboarding_complete
@@ -567,7 +567,7 @@ class AppleAuthView(APIView):
                 first_name=data.get("first_name", ""),
                 last_name=data.get("last_name", ""),
                 is_active=True,
-                username=generate_unique_username(email),
+                username=generate_placeholder_username(),
             )
             carry_over_retired_debt(user)
         else:
@@ -666,7 +666,7 @@ class FirebaseAuthView(APIView):
                 user.google_uid = uid
             elif "apple" in provider:
                 user.apple_uid = uid
-            user.username = generate_unique_username(email)
+            user.username = generate_placeholder_username()
             user.save()
             carry_over_retired_debt(user)
         else:
@@ -683,7 +683,7 @@ class FirebaseAuthView(APIView):
                 user.email_verified = True
                 update_fields.append("email_verified")
             if not user.username:
-                user.username = generate_unique_username(email)
+                user.username = generate_placeholder_username()
                 update_fields.append("username")
             if update_fields:
                 user.save(update_fields=update_fields)
@@ -773,7 +773,7 @@ class MeView(APIView):
         UserPreferences.objects.get_or_create(user=request.user)
         # Back-fill missing username (covers accounts created before auto-generation)
         if not request.user.username:
-            request.user.username = generate_unique_username(request.user.email)
+            request.user.username = generate_placeholder_username()
             request.user.save(update_fields=["username"])
         serializer = UserMeSerializer(request.user)
         return Response(serializer.data)
