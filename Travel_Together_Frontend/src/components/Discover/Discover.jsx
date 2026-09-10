@@ -15,6 +15,8 @@ import GuestDialog from '../shared/GuestDialog.jsx';
 import { useNotifications } from '../../context/NotificationsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../services/api.js';
+import { formatDriveTime } from "../../utils/driveTime.js";
+import { displayName } from "../../utils/name.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 function absUrl(url) {
@@ -42,7 +44,7 @@ function normalise(t) {
                     : [],
     chief: {
       id:         t.chief_id,
-      name:       [t.chief_first_name, t.chief_last_name].filter(Boolean).join(" ") || t.chief_username || "Organiser",
+      name:       displayName({ first_name: t.chief_first_name, last_name: t.chief_last_name }, "Organiser"),
       username:   t.chief_username || "",
       avatarUrl:  absUrl(t.chief_avatar_url) || null,
       trips:      t.chief_trip_count ?? 0,
@@ -58,7 +60,7 @@ function normalise(t) {
     })),
     tags:         t.tags || [],
     meetingPlace: t.meeting_point || t.meetingPlace || t.meeting_place || "",
-    drive:        t.drive_time    || t.drive        || "",
+    drive:        formatDriveTime(t.drive_time || t.drive),
     distance:     t.distance_km   ? `${t.distance_km} km` : "",
     mapCoords:    (t.destination_lat && t.destination_lng)
                     ? { lat: t.destination_lat, lng: t.destination_lng }

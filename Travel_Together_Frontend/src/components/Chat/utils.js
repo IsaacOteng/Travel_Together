@@ -1,4 +1,5 @@
 import { AV_COLORS } from "./constants.js";
+import { displayName } from "../../utils/name.js";
 
 export function fuzzyMatch(text, query) {
   if (!query) return true;
@@ -54,7 +55,7 @@ export function normaliseConv(c, myUserId) {
 
   const other = c.other_user;
   const name  = other
-    ? `${other.first_name || ""} ${other.last_name || ""}`.trim() || other.username || "User"
+    ? displayName(other, "User")
     : "Unknown";
 
   return {

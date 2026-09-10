@@ -28,6 +28,7 @@ import ReportIssueModal from './ReportIssueModal.jsx';
 import OrganizerReportCard from './OrganizerReportCard.jsx';
 import JoinRequestCard from './JoinRequestCard.jsx';
 import { PollCard, CreatePollModal } from './PollComponents.jsx';
+import { displayName } from "../../utils/name.js";
 
 export default function GroupDashboard() {
   const navigate     = useNavigate();
@@ -79,7 +80,7 @@ export default function GroupDashboard() {
       setMembers(approved.map((m, idx) => ({
         id:         m.user_id || m.id,
         user_id:    m.user_id,
-        name:       `${m.first_name || ""} ${m.last_name || ""}`.trim() || m.username || "Member",
+        name:       displayName(m, "Member"),
         role:       m.role === "chief" ? "chief" : m.role === "scout" ? "scout" : "member",
         karma:      m.travel_karma ?? m.karma_earned ?? 0,
         status:     "offline",
@@ -92,7 +93,7 @@ export default function GroupDashboard() {
       const pending = all.filter(m => m.status === "pending");
       setRequests(pending.map((m, idx) => ({
         id:       m.user_id || m.id,
-        name:     `${m.first_name || ""} ${m.last_name || ""}`.trim() || m.username || "Member",
+        name:     displayName(m, "Member"),
         karma:    m.travel_karma ?? 0,
         trips:    m.trips_count ?? 0,
         rating:   m.average_rating ?? 0,
@@ -749,7 +750,7 @@ export default function GroupDashboard() {
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {stop.checked_in_users.map(u => (
                       <span key={u.user_id} className="text-[9px] text-white/40 bg-white/[0.04] border border-white/[0.06] rounded-full px-2 py-px">
-                        {u.first_name || u.username}
+                        {displayName(u, "Member")}
                       </span>
                     ))}
                   </div>

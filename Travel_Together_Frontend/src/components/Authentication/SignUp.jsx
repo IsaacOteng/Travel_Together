@@ -4,7 +4,7 @@ import signuppic from "../../assets/signup_pic.png";
 import { authApi } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { auth, googleProvider } from "../../services/firebase";
-import { officialLogo, ttLogo } from "../../assets/logos";
+import { officialLogo } from "../../assets/logos";
 
 export default function SignUp({ onVerify }) {
     const { login } = useAuth();
@@ -63,16 +63,12 @@ export default function SignUp({ onVerify }) {
             {/* LEFT */}
             <div className="w-full lg:w-[50%] flex flex-col justify-between px-8 py-8">
 
-                {/* Logo */}
-                <div>
-                    <img src={officialLogo} alt="logo"
-                        className="absolute lg:top-5 lg:left-2 top-10 left-46 w-15 inline-block" />
-                    <img src={ttLogo} alt="logo"
-                        className="absolute lg:hidden top-10 left-33 w-40 inline-block" />
-                </div>
+                <div aria-hidden="true" />
 
                 {/* Form */}
-                <div className="w-full max-w-sm mx-auto -mt-15">
+                <div className="w-full max-w-sm mx-auto">
+                    <img src={officialLogo} alt="Travel Together"
+                        className="w-12 h-auto mb-6" />
                     <h1 className="text-3xl font-light font-serif text-[#1E3A5F] tracking-tight mb-7">
                         Log in or sign up
                     </h1>
