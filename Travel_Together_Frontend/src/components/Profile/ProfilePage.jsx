@@ -20,6 +20,7 @@ import TripCard from "./TripCard.jsx";
 import Section from "./Section.jsx";
 import EditModal from "./EditModal.jsx";
 import { normaliseTrip } from "./helpers.js";
+import { displayName } from "../../utils/name.js";
 
 const globalStyles = `
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
@@ -55,10 +56,8 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
   const effectiveIsOwner = isOwner || (!!user?.id && String(user.id) === String(userId));
 
   const profileUser = effectiveIsOwner ? user : publicUser;
-  const displayName = profileUser
-    ? `${profileUser.first_name || ""} ${profileUser.last_name || ""}`.trim() || profileUser.username || "Traveller"
-    : "Traveller";
-  const initials    = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const name = displayName(profileUser);
+  const initials    = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const karma       = profileUser?.travel_karma ?? 0;
   const level       = profileUser?.karma_level  ?? "Explorer";
   const joinDate    = profileUser?.created_at
@@ -75,7 +74,7 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
 
   const d = (v) => dataLoaded ? v : "—";
   const editProfile = {
-    name:              displayName,
+    name:              name,
     username:          user?.username            || "",
     bio:               user?.bio                 || "",
     city:              user?.city                || "",
@@ -319,7 +318,7 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
   const Avatar = ({ size }) => (
     <div className="relative shrink-0">
       {profileUser?.avatar_url
-        ? <img src={profileUser.avatar_url} alt={displayName}
+        ? <img src={profileUser.avatar_url} alt={name}
             className="rounded-full object-cover ring-4 ring-[#071422]"
             style={{ width: size, height: size }} />
         : <div className="bg-linear-to-br from-[#4ade80] to-[#22c55e] rounded-full flex items-center justify-center font-black text-white font-serif ring-4 ring-[#071422]"
@@ -420,7 +419,7 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
             </div>
 
             <div className="flex items-center gap-2.5 mb-2 flex-wrap">
-              <h1 className="text-[24px] font-bold text-white font-serif tracking-tight leading-none">{displayName}</h1>
+              <h1 className="text-[24px] font-bold text-white font-serif tracking-tight leading-none">{name}</h1>
               <LevelBadge level={level} />
             </div>
             <MetaLine compact />
@@ -482,7 +481,7 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
             <Avatar size={128} />
             <div className="flex-1 min-w-0 pb-1">
               <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h1 className="text-[34px] font-bold text-white font-serif tracking-tight leading-none">{displayName}</h1>
+                <h1 className="text-[34px] font-bold text-white font-serif tracking-tight leading-none">{name}</h1>
                 <LevelBadge level={level} />
               </div>
               <MetaLine />

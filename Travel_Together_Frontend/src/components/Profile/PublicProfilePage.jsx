@@ -8,6 +8,7 @@ import {
 import AppNav from "../shared/AppNav.jsx";
 import MobileBottomNav from "../shared/MobileBottomNav.jsx";
 import { usersApi, chatApi } from "../../services/api.js";
+import { displayName } from "../../utils/name.js";
 
 const PANEL_BG = "#09162a";
 
@@ -106,8 +107,8 @@ export default function PublicProfilePage() {
     }
   };
 
-  const displayName = profile
-    ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.username || "Traveller"
+  const name = profile
+    ? displayName(profile)
     : "Traveller";
 
   const levelColor = LEVEL_COLORS[profile?.karma_level] ?? "#FF6B35";
@@ -158,12 +159,12 @@ export default function PublicProfilePage() {
               marginBottom: 20,
             }}>
               <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-                <Avatar name={displayName} avatarUrl={profile.avatar_url} size={80} />
+                <Avatar name={name} avatarUrl={profile.avatar_url} size={80} />
 
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
                     <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#fff" }}>
-                      {displayName}
+                      {name}
                     </h1>
                     {profile.is_verified_traveller && (
                       <CheckCircle size={16} color="#4ade80" />

@@ -20,6 +20,8 @@ import { useOnboardingGate } from "../shared/OnboardingGate.jsx";
 import { tripsApi, usersApi } from "../../services/api.js";
 import api from "../../services/api.js";
 import { officialLogo } from "../../assets/logos";
+import { displayName } from "../../utils/name.js";
+import { formatDriveTime } from "../../utils/driveTime.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -42,7 +44,7 @@ function normalise(t) {
     dateEnd: t.date_end
       ? new Date(t.date_end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
       : "—",
-    drive:       t.drive_time || "",
+    drive:       formatDriveTime(t.drive_time),
     distance:    t.distance_km ? `${t.distance_km} km` : "",
     spotsTotal:  t.spots_total  ?? 0,
     spotsFilled: t.spots_filled ?? (t.spots_total || 0) - (t.spots_left || 0),
@@ -50,7 +52,7 @@ function normalise(t) {
     tags:        t.tags || [],
     chief: {
       id:       t.chief_id,
-      name:     [t.chief_first_name, t.chief_last_name].filter(Boolean).join(" ") || t.chief_username || "Organiser",
+      name:     displayName({ first_name: t.chief_first_name, last_name: t.chief_last_name }, "Organiser"),
       username: t.chief_username  || "",
       avatarUrl: t.chief_avatar_url ? (t.chief_avatar_url.startsWith("/") ? `${import.meta.env.VITE_API_URL || "http://localhost:8000"}${t.chief_avatar_url}` : t.chief_avatar_url) : null,
       trips:    t.chief_trip_count ?? 0,

@@ -4,6 +4,7 @@ import { ChevronLeft, Star, CheckCircle } from "lucide-react";
 import { tripsApi } from "../../services/api.js";
 import AppNav from "../shared/AppNav.jsx";
 import MobileBottomNav from "../shared/MobileBottomNav.jsx";
+import { displayName } from "../../utils/name.js";
 
 const GOLD = "#F5C518";
 const GOLD_DIM = "rgba(245,197,24,0.18)";
@@ -170,9 +171,7 @@ export default function RatingPage() {
         {/* Member list */}
         <div className="flex flex-col gap-3">
           {pending.map((member, i) => {
-            const name  = member.first_name
-              ? `${member.first_name} ${member.last_name || ""}`.trim()
-              : member.username || "Member";
+            const name  = displayName(member, "Member");
             const stars = ratings[member.user_id] ?? 0;
             const rated = stars > 0;
 
