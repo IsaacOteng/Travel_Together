@@ -5,7 +5,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.utils import timezone
 
 
-# ─── Manager ──────────────────────────────────────────────────────────────────
 
 class UserManager(BaseUserManager):
     def create_user(self, email, **extra_fields):
