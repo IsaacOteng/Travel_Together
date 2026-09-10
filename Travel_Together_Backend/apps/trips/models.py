@@ -20,11 +20,13 @@ class Trip(models.Model):
         UNLISTED  = "unlisted",  "Unlisted"
 
     class DriveTime(models.TextChoices):
-        UNDER_1H = "under_1h", "Under 1hr"
-        H1_2     = "1_2h",    "1–2hrs"
-        H2_4     = "2_4h",    "2–4hrs"
-        H4_6     = "4_6h",    "4–6hrs"
-        H6_PLUS  = "6h_plus", "6hrs+"
+        # Labels mirror Travel_Together_Frontend/src/utils/driveTime.js so the
+        # admin and the app read the same. Hyphens, not en dashes.
+        UNDER_1H = "under_1h", "Under 1h"
+        H1_2     = "1_2h",    "1-2h"
+        H2_4     = "2_4h",    "2-4h"
+        H4_6     = "4_6h",    "4-6h"
+        H6_PLUS  = "6h_plus", "6h+"
 
     id                      = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title                   = models.CharField(max_length=200)
@@ -313,11 +315,11 @@ class IncidentReport(models.Model):
     trip             = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="incident_reports")
     reporter         = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="incident_reports")
     reported_user    = models.ForeignKey(
-                           "users.User",
-                           on_delete=models.SET_NULL,
-                           null=True, blank=True,
-                           related_name="incident_reports_against",
-                       )
+                            "users.User",
+                            on_delete=models.SET_NULL,
+                            null=True, blank=True,
+                            related_name="incident_reports_against",
+                        )
     incident_type    = models.CharField(max_length=20, choices=IncidentType.choices)
     description      = models.TextField()                            # min 50 chars enforced in serializer
     evidence_urls    = models.JSONField(default=list)               # up to 5 URLs

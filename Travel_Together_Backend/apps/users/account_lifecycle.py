@@ -33,7 +33,7 @@ from apps.users.models import (
     UserLocation,
     UserPreferences,
 )
-from apps.users.utils import generate_unique_username
+from apps.users.utils import generate_placeholder_username
 
 
 def is_retired(user: User) -> bool:
@@ -146,5 +146,5 @@ def fresh_account_if_retired(user: User) -> User:
     return carry_over_retired_debt(User.objects.create_user(
         email=email,
         is_active=True,
-        username=generate_unique_username(email),
+        username=generate_placeholder_username(),
     ))

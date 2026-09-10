@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
+from django.templatetags.static import static
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -74,7 +76,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -114,6 +116,7 @@ USE_TZ = True
 # ─── Static & Media ───────────────────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -421,11 +424,12 @@ UNFOLD = {
     "SITE_HEADER":  "Travel Together",
     "SITE_SUBHEADER": "Admin Dashboard",
     "SITE_URL":     "/",
-    "SITE_ICON": {
-        "light": None,
-        "dark":  None,
-    },
-    "SITE_SYMBOL": "flight_takeoff",   # Material Symbols icon name
+    # Must be a callable or absent never a dict of Nones. Unfold's template
+    # branches on `{% if site_icon %}`, and a dict with None values is still
+    # truthy, so it fell through to `<img src="{{ site_icon }}">` and rendered
+    # the dict's repr as the URL (the broken image in the admin header).
+    "SITE_ICON": lambda request: static("img/logo.png"),
+    "SITE_SYMBOL": "flight_takeoff",   # fallback Material Symbol if the icon is removed
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
     "COLORS": {

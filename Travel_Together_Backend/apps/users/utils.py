@@ -1,5 +1,4 @@
 import logging
-import re
 import secrets
 import bcrypt
 import redis as redis_lib
@@ -27,25 +26,29 @@ def verify_otp_hash(code: str, hashed: str) -> bool:
 
 _RESERVED = {"admin", "traveler", "explorer", "wanderer", "tripper", "nomad"}
 
-def generate_unique_username(email: str) -> str:
+# Kept short so that "<adj>_<noun>_<4 hex>" always fits the 20-char handle limit.
+_ADJECTIVES = ("sunny", "brave", "calm", "lucky", "swift", "bold", "merry", "keen")
+_NOUNS      = ("fox", "otter", "heron", "koala", "tapir", "lynx", "crane", "ibex")
+
+
+def generate_placeholder_username() -> str:
     """
-    Derive a unique username from the email prefix.
-    e.g. junior.bandez@gmail.com → junior_bandez, then junior_bandez_4f2a if taken.
+    Generate a neutral placeholder handle for a newly created account.
+
+    Deliberately NOT derived from the email address. The handle is public — it
+    shows on profiles, join requests and group listings — so seeding it from the
+    address would publish the local part of every user's email (mrrike17@gmail.com
+    would become the visible @mrrike17). Onboarding asks the user to choose their
+    own handle; this only has to hold the slot until they do.
     """
     from apps.users.models import User  # local import to avoid circular
 
-    prefix = email.split("@")[0].lower()
-    base   = re.sub(r"[^a-z0-9._]", "_", prefix)   # replace invalid chars
-    base   = re.sub(r"[._]{2,}", "_", base)          # collapse consecutive separators
-    base   = base.strip("._")[:16] or "traveler"     # strip edges, max 16 chars
-
-    candidate = base
-    if candidate not in _RESERVED and not User.objects.filter(username=candidate).exists():
-        return candidate
-
     for _ in range(10):
-        suffix = secrets.token_hex(2)               # e.g. "4f2a"
-        candidate = f"{base}_{suffix}"[:20]
+        candidate = (
+            f"{secrets.choice(_ADJECTIVES)}_"
+            f"{secrets.choice(_NOUNS)}_"
+            f"{secrets.token_hex(2)}"
+        )
         if candidate not in _RESERVED and not User.objects.filter(username=candidate).exists():
             return candidate
 
