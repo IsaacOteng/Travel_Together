@@ -9,6 +9,7 @@ import SettingsContent from "./SettingsContent.jsx";
 import AddContactModal from "./AddContactModal.jsx";
 import DeleteModal from "./DeleteModal.jsx";
 import SignOutModal from "./SignOutModal.jsx";
+import { displayName } from "../../utils/name.js";
 
 const globalStyles = `
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
@@ -89,8 +90,8 @@ export default function SettingsPage() {
     logout();
   };
 
-  const displayName = user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username || "Traveller" : "Traveller";
-  const initials    = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const name = displayName(user);
+  const initials    = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const userEmail   = user?.email || "";
 
   const Modals = (
@@ -117,11 +118,11 @@ export default function SettingsPage() {
         </header>
         <div className="px-5 pt-7 pb-6 flex flex-col items-center gap-3 border-b border-white/[0.06]">
           {user?.avatar_url
-            ? <img src={user.avatar_url} alt={displayName} className="w-16 h-16 rounded-full object-cover shadow-[0_0_24px_rgba(74,222,128,0.2)]" />
+            ? <img src={user.avatar_url} alt={name} className="w-16 h-16 rounded-full object-cover shadow-[0_0_24px_rgba(74,222,128,0.2)]" />
             : <div className="w-16 h-16 bg-[#4ade80] rounded-full flex items-center justify-center font-bold text-white text-xl font-serif shadow-[0_0_24px_rgba(74,222,128,0.2)]">{initials}</div>
           }
           <div className="text-center">
-            <div className="text-[17px] font-bold text-white leading-tight">{displayName}</div>
+            <div className="text-[17px] font-bold text-white leading-tight">{name}</div>
             <div className="text-[12px] text-white/40 mt-0.5">@{user?.username}</div>
             {userEmail && <div className="text-[11px] text-white/30 mt-1 font-mono">{userEmail}</div>}
           </div>
@@ -177,11 +178,11 @@ export default function SettingsPage() {
           <div className="mt-4 bg-[#0d1b2a] border border-white/[0.07] rounded-2xl p-4">
             <div className="flex items-center gap-2.5 mb-3">
               {user?.avatar_url
-                ? <img src={user.avatar_url} alt={displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                ? <img src={user.avatar_url} alt={name} className="w-10 h-10 rounded-full object-cover shrink-0" />
                 : <div className="w-10 h-10 bg-[#4ade80] rounded-full flex items-center justify-center font-bold text-white text-sm font-serif shrink-0">{initials}</div>
               }
               <div className="min-w-0">
-                <div className="text-[13px] font-bold text-white truncate">{displayName}</div>
+                <div className="text-[13px] font-bold text-white truncate">{name}</div>
                 <div className="text-[10px] text-white/35 truncate">@{user?.username}</div>
               </div>
             </div>

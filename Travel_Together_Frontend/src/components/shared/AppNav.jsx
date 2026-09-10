@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useNotifications } from '../../context/NotificationsContext.jsx';
 import { useChatUnread } from '../../context/ChatUnreadContext.jsx';
 import { officialLogo } from "../../assets/logos";
+import { initials } from "../../utils/name.js";
 
 const TABS = [
   { label: "Discover", path: "/discover",  protected: false },
@@ -35,9 +36,7 @@ export default function AppNav({
     fn();
   };
 
-  const initials = user
-    ? ((user.first_name?.[0] || "") + (user.last_name?.[0] || "")).toUpperCase() || user.username?.[0]?.toUpperCase() || "?"
-    : null;
+  const avatarInitials = user ? initials(user) : null;
   const avatarUrl = user?.avatar_url || null;
 
   const isActive = (path) =>
@@ -165,14 +164,14 @@ export default function AppNav({
                 className="w-[38px] h-[38px] rounded-full flex-shrink-0 border-none cursor-pointer hover:ring-2 hover:ring-[#4ade80]/50 transition-all overflow-hidden p-0"
               >
                 {avatarUrl
-                  ? <img src={avatarUrl} alt={initials} className="w-full h-full object-cover rounded-full"
+                  ? <img src={avatarUrl} alt={avatarInitials} className="w-full h-full object-cover rounded-full"
                       onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
                   : null}
                 <span
                   className="w-full h-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] rounded-full flex items-center justify-center text-[12px] font-bold text-white font-serif"
                   style={{ display: avatarUrl ? "none" : "flex" }}
                 >
-                  {initials}
+                  {avatarInitials}
                 </span>
               </button>
             ) : (
