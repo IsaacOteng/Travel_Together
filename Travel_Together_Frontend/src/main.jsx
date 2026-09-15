@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import './Globalstyles.css'
 import App from './App.jsx'
+import { ThemeProvider } from './context/ThemeContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { NotificationsProvider } from './context/NotificationsContext.jsx'
 import { ChatUnreadProvider } from './context/ChatUnreadContext.jsx'
@@ -11,13 +12,15 @@ import { ChatUnreadProvider } from './context/ChatUnreadContext.jsx'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <NotificationsProvider>
-          <ChatUnreadProvider>
-            <App />
-          </ChatUnreadProvider>
-        </NotificationsProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <NotificationsProvider>
+            <ChatUnreadProvider>
+              <App />
+            </ChatUnreadProvider>
+          </NotificationsProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </StrictMode>,
 )

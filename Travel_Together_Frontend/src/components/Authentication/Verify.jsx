@@ -1,12 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
-import signuppic from "../../assets/signup_pic.png";
+import { useState, useRef, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 import { authApi } from "../../services/api";
-import { officialLogo } from "../../assets/logos";
+import AuthLayout, { AuthHeading, AuthButton, AuthError } from "./AuthLayout.jsx";
 
 const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
     const [code, setCode] = useState(["", "", "", "", "", ""]);
-    const [touched, setTouched] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(300);
@@ -54,7 +52,6 @@ const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
     const isFilled = code.every((d) => d !== "");
 
     const handleSubmit = async () => {
-        setTouched(true);
         if (!isFilled) {
             setError("Please enter the full 6-digit code.");
             return;
@@ -71,7 +68,7 @@ const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
             let msg;
 
             if (!err.response) {
-                msg = "Network error check your connection and try again.";
+                msg = "Network error — check your connection and try again.";
             } else if (status === 429 || detail.toLowerCase().includes("too many")) {
                 msg = "Too many attempts. Please request a new code.";
                 setResendCooldown(0);
@@ -108,125 +105,76 @@ const Verify = ({ email = "name@email.com", onVerified, onBack }) => {
     };
 
     return (
-        <div className="min-h-screen flex bg-white font-sans">
+        <AuthLayout>
+            <AuthHeading title="Check your email">
+                We sent a six-digit code to{" "}
+                <span className="font-semibold text-ink">{email}</span>
+            </AuthHeading>
 
-            {/* LEFT SIDE */}
-            <div className="w-full lg:w-[50%] flex flex-col justify-between px-8 py-8">
-
-                <div aria-hidden="true" />
-
-                {/* Form Area */}
-                <div className="w-full max-w-sm mx-auto">
-                    <img src={officialLogo} alt="Travel Together"
-                        className="w-12 h-auto mb-6" />
-
-                    <h1 className="text-3xl font-light font-serif text-[#1E3A5F] tracking-tight mb-2">
-                        Check your email
-                    </h1>
-                    <p className="text-sm text-gray-500 mb-7 leading-relaxed">
-                        We sent a 6-digit verification code to{" "}
-                        <span className="text-[#1E3A5F] font-medium">{email}</span>
-                    </p>
-
-                    {/* Code Inputs */}
-                    <div
-                        className={`flex gap-2.5 mb-4 ${isShaking ? "animate-[shake_1s_ease-in-out]" : ""}`}
-                        onPaste={handlePaste}
-                        style={isShaking ? { animation: "shake 1s ease-in-out" } : {}}
-                    >
-                        {code.map((digit, index) => (
-                            <input
-                                key={index}
-                                ref={(current) => (inputRefs.current[index] = current)}
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={1}
-                                value={digit}
-                                onChange={(e) => handleChange(index, e.target.value)}
-                                onKeyDown={(e) => handleKeyDown(index, e)}
-                                className={`w-full aspect-square text-center text-xl font-semibold text-[#1E3A5F] border rounded focus:outline-none focus:ring-2 transition
-                                    ${error
-                                        ? "border-red-400 focus:ring-red-300 bg-red-50"
-                                        : digit
-                                            ? "border-[#FF6B35] focus:ring-[#FF6B35]/30 bg-[#fff9f7]"
-                                            : "border-gray-300 focus:ring-gray-400 bg-white"
-                                    }`}
-                            />
-                        ))}
-                    </div>
-
-                    {/* Error */}
-                    {error && (
-                        <p className="text-red-500 text-xs mb-3">{error}</p>
-                    )}
-
-                    {/* Submit */}
-                    <button
-                        onClick={handleSubmit}
-                        disabled={!isFilled || loading}
-                        className={`w-full py-2.5 text-sm rounded transition font-medium mb-4 ${
-                            isFilled && !loading
-                                ? "bg-[#FF6B35] text-white hover:bg-[#af370c]"
-                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            <div
+                className="flex gap-2.5"
+                onPaste={handlePaste}
+                style={isShaking ? { animation: "ttShake 1s ease-in-out" } : undefined}
+            >
+                {code.map((digit, index) => (
+                    <input
+                        key={index}
+                        ref={(current) => (inputRefs.current[index] = current)}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete={index === 0 ? "one-time-code" : "off"}
+                        maxLength={1}
+                        value={digit}
+                        aria-label={`Digit ${index + 1} of 6`}
+                        onChange={(e) => handleChange(index, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(index, e)}
+                        className={`aspect-square w-full rounded-xl border bg-surface text-center font-display text-[22px] font-semibold text-ink transition-colors focus:outline-none focus:ring-2 focus:ring-accent/30 ${
+                            error
+                                ? "border-accent"
+                                : digit
+                                    ? "border-accent"
+                                    : "border-line focus:border-accent"
                         }`}
-                    >
-                        {loading ? "Verifying…" : "Verify email"}
-                    </button>
-
-                    {/* Resend */}
-                    <p className="text-sm text-gray-500 text-center">
-                        Didn't receive a code?{" "}
-                        {resendCooldown > 0 ? (
-                            <span className="text-gray-400">
-                                Resend in <span className="font-medium text-[#1E3A5F]">{Math.floor(resendCooldown / 60)}:{String(resendCooldown % 60).padStart(2, "0")}</span>
-                            </span>
-                        ) : (
-                            <button
-                                onClick={handleResend}
-                                className="text-[#FF6B35] font-medium hover:underline"
-                            >
-                                Resend code
-                            </button>
-                        )} 
-                    </p>
-
-                
-
-                    {/* Back */}
-                    <div className="mt-6 text-center">
-                        <button onClick={onBack} className="text-xs text-[#5576a0] hover:text-[#1E3A5F] flex items-center gap-1 mx-auto transition">
-                            <ChevronLeft size={14} />
-                            Back to login
-                        </button>
-                    </div>
-                </div>
-
-                <div className="text-xs text-[#5576a0] text-center">
-                    © {new Date().getFullYear()} Travel Together, Inc.
-                </div>
+                    />
+                ))}
             </div>
 
-            {/* RIGHT SIDE full-height image */}
-            <div
-                className="hidden lg:block lg:w-[49%] bg-cover bg-center"
-                style={{
-                    backgroundImage: `url(${signuppic})`,
-                    margin: "12px 12px 12px 0",
-                    borderRadius: "12px",
-                }}
-            />
+            {error && <div className="mt-4"><AuthError>{error}</AuthError></div>}
 
-            {/* Shake keyframe */}
-            <style>{`
-                @keyframes shake {
-                    0%, 100% { transform: translateX(0); }
-                    20% { transform: translateX(-6px); }
-                    40% { transform: translateX(6px); }
-                    60% { transform: translateX(-4px); }
-                    80% { transform: translateX(4px); }
-                }
-            `}</style>
-        </div>
+            <div className="mt-6">
+                <AuthButton onClick={handleSubmit} disabled={!isFilled || loading}>
+                    {loading ? "Verifying…" : "Verify email"}
+                </AuthButton>
+            </div>
+
+            <p className="mt-6 text-center text-[13.5px] text-ink-soft">
+                Didn&apos;t get it?{" "}
+                {resendCooldown > 0 ? (
+                    <span className="text-ink-mute">
+                        Resend in{" "}
+                        <span className="font-semibold tabular-nums text-ink">
+                            {Math.floor(resendCooldown / 60)}:
+                            {String(resendCooldown % 60).padStart(2, "0")}
+                        </span>
+                    </span>
+                ) : (
+                    <button
+                        onClick={handleResend}
+                        className="cursor-pointer border-none bg-transparent p-0 font-semibold text-accent underline-offset-2 hover:underline"
+                    >
+                        Resend code
+                    </button>
+                )}
+            </p>
+
+            <button
+                onClick={onBack}
+                className="mx-auto mt-7 flex cursor-pointer items-center gap-1 border-none bg-transparent text-[13px] text-ink-mute transition-colors hover:text-accent"
+            >
+                <ChevronLeft size={14} />
+                Use a different email
+            </button>
+        </AuthLayout>
     );
 };
 

@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { signInWithPopup } from "firebase/auth";
-import signuppic from "../../assets/signup_pic.png";
 import { authApi } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { auth, googleProvider } from "../../services/firebase";
-import { officialLogo } from "../../assets/logos";
+import AuthLayout, { AuthHeading, AuthButton, AuthError } from "./AuthLayout.jsx";
 
 export default function SignUp({ onVerify }) {
     const { login } = useAuth();
@@ -18,8 +17,9 @@ export default function SignUp({ onVerify }) {
 
     const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
     const isValid = validateEmail(email);
+    const showEmailError = touched && email && !isValid;
 
-    /* ── Google popup sign-in ───────────────────────────────────────── */
+    /* ── Google popup sign-in ───────────────────────────────────── */
     const handleSocialSignIn = async (provider) => {
         setSocialError("");
         setGoogleLoading(true);
@@ -58,100 +58,78 @@ export default function SignUp({ onVerify }) {
     };
 
     return (
-        <div className="min-h-screen flex bg-white font-sans">
+        <AuthLayout>
+            <AuthHeading title="Log in or sign up">
+                One email gets you in. No password to forget, no card to enter.
+            </AuthHeading>
 
-            {/* LEFT */}
-            <div className="w-full lg:w-[50%] flex flex-col justify-between px-8 py-8">
+            <AuthButton
+                type="button"
+                variant="secondary"
+                onClick={() => handleSocialSignIn(googleProvider)}
+                disabled={googleLoading}
+            >
+                {googleLoading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                ) : (
+                    <img
+                        src="https://www.svgrepo.com/show/475656/google-color.svg"
+                        alt=""
+                        className="h-[18px] w-[18px]"
+                    />
+                )}
+                {googleLoading ? "Signing in…" : "Continue with Google"}
+            </AuthButton>
 
-                <div aria-hidden="true" />
+            {socialError && <div className="mt-4"><AuthError>{socialError}</AuthError></div>}
 
-                {/* Form */}
-                <div className="w-full max-w-sm mx-auto">
-                    <img src={officialLogo} alt="Travel Together"
-                        className="w-12 h-auto mb-6" />
-                    <h1 className="text-3xl font-light font-serif text-[#1E3A5F] tracking-tight mb-7">
-                        Log in or sign up
-                    </h1>
-
-                    {/* ── Google ── */}
-                    <button
-                        type="button"
-                        onClick={() => handleSocialSignIn(googleProvider)}
-                        disabled={googleLoading}
-                        className="w-full border border-[#FF6B35] text-sm text-[#FF6B35] py-2.5 px-4 mb-5 flex items-center justify-center gap-3 hover:bg-[#1E3A5F] hover:text-white hover:border-[#1E3A5F] transition rounded disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                        {googleLoading ? (
-                            <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                        ) : (
-                            <img src="https://www.svgrepo.com/show/475656/google-color.svg"
-                                alt="" className="w-4 h-4" />
-                        )}
-                        {googleLoading ? "Signing in…" : "Continue with Google"}
-                    </button>
-
-                    {/* Social error */}
-                    {socialError && (
-                        <p className="text-red-500 text-xs mb-4 text-center">{socialError}</p>
-                    )}
-
-                    {/* Divider */}
-                    <div className="flex items-center gap-4 mb-5">
-                        <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-gray-400 text-xs">OR</span>
-                        <div className="flex-1 h-px bg-gray-200" />
-                    </div>
-
-                    {/* Email */}
-                    <form onSubmit={handleSubmit} className="space-y-3">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1.5">Email</label>
-                            <input
-                                type="email"
-                                placeholder="name@email.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                onBlur={() => setTouched(true)}
-                                className={`w-full border text-sm px-3 py-2.5 rounded focus:outline-none focus:ring-2 focus:ring-gray-400 transition ${
-                                    touched && !isValid && email
-                                        ? "border-red-400 focus:ring-red-300"
-                                        : "border-gray-300"
-                                }`}
-                            />
-                            {touched && !isValid && email && (
-                                <p className="text-red-500 text-xs mt-1">Enter a valid email address</p>
-                            )}
-                        </div>
-
-                        {apiError && <p className="text-red-500 text-xs">{apiError}</p>}
-
-                        <button
-                            type="submit"
-                            disabled={!email || loading}
-                            className={`w-full py-2.5 text-sm rounded transition font-medium ${
-                                email && isValid && !loading
-                                    ? "bg-[#FF6B35] text-white hover:bg-[#af370c]"
-                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            }`}
-                        >
-                            {loading ? "Sending…" : "Continue with email"}
-                        </button>
-                    </form>
-                </div>
-
-                <div className="text-xs text-[#5576a0] text-center">
-                    © {new Date().getFullYear()} Travel Together, Inc.
-                </div>
+            <div className="my-7 flex items-center gap-4">
+                <span className="h-px flex-1 bg-line" />
+                <span className="text-[11px] uppercase tracking-[0.18em] text-ink-mute">or</span>
+                <span className="h-px flex-1 bg-line" />
             </div>
 
-            {/* RIGHT image */}
-            <div
-                className="hidden lg:block lg:w-[49%] bg-cover bg-center"
-                style={{
-                    backgroundImage: `url(${signuppic})`,
-                    margin: "12px 12px 12px 0",
-                    borderRadius: "12px",
-                }}
-            />
-        </div>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div>
+                    <label
+                        htmlFor="email"
+                        className="mb-2 block text-[13px] font-medium text-ink"
+                    >
+                        Email address
+                    </label>
+                    <input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="name@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onBlur={() => setTouched(true)}
+                        aria-invalid={showEmailError || undefined}
+                        className={`w-full rounded-xl border bg-surface px-4 py-3.5 text-[15px] text-ink transition-colors placeholder:text-ink-mute focus:outline-none focus:ring-2 focus:ring-accent/30 ${
+                            showEmailError
+                                ? "border-accent focus:border-accent"
+                                : "border-line focus:border-accent"
+                        }`}
+                    />
+                    {showEmailError && (
+                        <p className="mt-2 text-[12.5px] text-accent">
+                            That doesn&apos;t look like a valid email address.
+                        </p>
+                    )}
+                </div>
+
+                <AuthError>{apiError}</AuthError>
+
+                <AuthButton type="submit" disabled={!isValid || loading}>
+                    {loading ? "Sending…" : "Continue with email"}
+                </AuthButton>
+            </form>
+
+            <p className="mt-7 text-[12.5px] leading-relaxed text-ink-mute">
+                We&apos;ll email you a six-digit code to sign in. By continuing you
+                agree to our terms and privacy policy.
+            </p>
+        </AuthLayout>
     );
 }

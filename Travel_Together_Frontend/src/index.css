@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./theme.css";
 
 /* Leaflet map fix ensure tiles load correctly in Vite */
 .leaflet-container { z-index: 0; }

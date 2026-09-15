@@ -1,27 +1,13 @@
-import { useState, useEffect } from "react";
 import { useInView } from "./hooks.js";
 
-export function AnimatedCounter({ target, suffix = "", isDecimal = false }) {
-  const [ref, inView] = useInView(0.4);
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    let raf;
-    const start = performance.now();
-    const dur = 1800;
-    const tick = (now) => {
-      const p = Math.min((now - start) / dur, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setVal(isDecimal ? +(eased * target).toFixed(1) : Math.round(eased * target));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [inView, target, isDecimal]);
+/* Small caps label with a leading rule — the section marker used
+   throughout the page instead of a coloured pill. */
+export function Eyebrow({ children, className = "" }) {
   return (
-    <span ref={ref}>
-      {isDecimal ? val.toFixed(1) : val.toLocaleString()}{suffix}
-    </span>
+    <p className={`flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-accent ${className}`}>
+      <span className="h-px w-7 bg-accent/50" aria-hidden="true" />
+      {children}
+    </p>
   );
 }
 
@@ -32,9 +18,9 @@ export function Reveal({ children, delay = 0, className = "" }) {
       ref={ref}
       className={className}
       style={{
-        transition: `opacity .65s ease ${delay}s, transform .65s ease ${delay}s`,
-        opacity:    inView ? 1 : 0,
-        transform:  inView ? "translateY(0)" : "translateY(28px)",
+        transition: `opacity .7s ease ${delay}s, transform .7s ease ${delay}s`,
+        opacity:   inView ? 1 : 0,
+        transform: inView ? "translateY(0)" : "translateY(18px)",
       }}
     >
       {children}
@@ -42,12 +28,15 @@ export function Reveal({ children, delay = 0, className = "" }) {
   );
 }
 
-export function Avatar({ name, color, size = "w-10 h-10" }) {
+export function Avatar({ name, size = 36 }) {
   const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
-    <div className={`${size} rounded-full flex items-center justify-center font-bold text-white text-sm flex-shrink-0`}
-      style={{ background: color }}>
+    <div
+      className="flex flex-shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold text-accent"
+      style={{ width: size, height: size, fontSize: size * 0.34 }}
+    >
       {initials}
     </div>
   );
 }
+

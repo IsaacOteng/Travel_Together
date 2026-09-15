@@ -1,55 +1,124 @@
 import { useState } from "react";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { officialLogo } from "../../assets/logos";
+import { NAV_LINKS } from "./constants.js";
+import ThemeToggle from "../shared/ThemeToggle.jsx";
 
 export default function Navbar({ scrolled, onGetStarted, onSignIn, onBrowse }) {
   const [open, setOpen] = useState(false);
+
+  /* At the top of the page the bar floats on the hero photograph, so it
+     runs white; once past it, it picks the page palette back up. */
+  const overlay = !scrolled && !open;
+
+  const wordmark = overlay ? "text-white" : "text-ink";
+  const link = overlay
+    ? "text-white/80 hover:text-white"
+    : "text-ink-soft hover:text-accent";
+  const ghost = overlay
+    ? "text-white/80 hover:text-white"
+    : "text-ink-soft hover:text-accent";
+
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "bg-[#071422]/96 backdrop-blur-xl border-b border-white/[0.07] shadow-2xl" : "bg-transparent"}`}>
-        <div className="max-w-[1200px] mx-auto px-6 h-[68px] flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <img src={officialLogo} alt="logo" className="w-9 h-9"
-              onError={e => { e.target.style.display = "none"; }} />
-            <span className="text-[16px] font-bold text-white tracking-tight">Travel Together</span>
-          </div>
+      <header
+        className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+          overlay
+            ? "border-b border-transparent"
+            : "border-b border-line bg-ground/90 backdrop-blur-md"
+        }`}
+      >
+        <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-6">
+          <a href="#top" className="flex flex-shrink-0 items-center gap-2.5 no-underline">
+            <img
+              src={officialLogo}
+              alt=""
+              className="h-8 w-8"
+              onError={e => { e.target.style.display = "none"; }}
+            />
+            <span className={`font-display text-[19px] font-semibold transition-colors ${wordmark}`}>
+              Travel Together
+            </span>
+          </a>
 
-          <div className="hidden md:flex items-center gap-3">
-            <button onClick={onBrowse}
-              className="text-[13px] text-white/55 font-semibold hover:text-white transition-colors px-3 py-2 bg-transparent border-none cursor-pointer">
-              Browse trips
-            </button>
-            <button onClick={onSignIn}
-              className="text-[13px] text-white/55 font-semibold hover:text-white transition-colors px-3 py-2 bg-transparent border-none cursor-pointer">
+          <nav className="hidden items-center gap-8 md:flex">
+            {NAV_LINKS.map(l => (
+              <a
+                key={l.href}
+                href={l.href}
+                className={`text-[14px] no-underline transition-colors ${link}`}
+              >
+                {l.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="hidden items-center gap-3 md:flex">
+            <ThemeToggle overlay={overlay} />
+            <button
+              onClick={onSignIn}
+              className={`cursor-pointer border-none bg-transparent px-2 text-[14px] font-medium transition-colors ${ghost}`}
+            >
               Sign in
             </button>
-            <button onClick={onGetStarted}
-              className="flex items-center gap-1.5 bg-[#FF6B35] text-white text-[13px] font-bold px-4 py-2.5 rounded-xl hover:bg-[#e55c28] transition-all shadow-[0_4px_14px_rgba(255,107,53,0.35)] hover:shadow-[0_6px_20px_rgba(255,107,53,0.45)] hover:-translate-y-0.5 border-none cursor-pointer">
-              Get started <ArrowRight size={14} />
+            <button
+              onClick={onGetStarted}
+              className="cursor-pointer rounded-full border-none bg-accent px-5 py-2.5 text-[14px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
+            >
+              Start free
             </button>
           </div>
 
-          <button onClick={() => setOpen(o => !o)} className="md:hidden bg-transparent border-none cursor-pointer text-white/60 hover:text-white p-1">
-            {open ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggle overlay={overlay} />
+            <button
+              onClick={() => setOpen(o => !o)}
+              aria-label={open ? "Close menu" : "Open menu"}
+              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border transition-colors ${
+                overlay
+                  ? "border-white/30 bg-white/10 text-white backdrop-blur-sm"
+                  : "border-line bg-surface text-ink"
+              }`}
+            >
+              {open ? <X size={17} /> : <Menu size={17} />}
+            </button>
+          </div>
         </div>
-      </nav>
+      </header>
 
       {open && (
-        <div className="fixed inset-0 z-40 bg-[#071422]/98 backdrop-blur-xl flex flex-col pt-[68px]"
-          style={{ animation: "fadeIn .15s ease" }}>
-          <div className="flex flex-col gap-3 p-5 mt-4">
-            <button onClick={() => { setOpen(false); onBrowse(); }}
-              className="w-full py-3 text-center text-[14px] font-semibold text-white border border-white/15 rounded-2xl hover:bg-white/5 transition-colors bg-transparent cursor-pointer">
+        <div className="fixed inset-0 z-40 flex flex-col bg-ground pt-[72px] md:hidden">
+          <nav className="flex flex-col gap-1 border-t border-line px-6 pt-6">
+            {NAV_LINKS.map(l => (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="border-b border-line-soft py-4 font-display text-[22px] text-ink no-underline"
+              >
+                {l.label}
+              </a>
+            ))}
+            <button
+              onClick={() => { setOpen(false); onBrowse(); }}
+              className="cursor-pointer border-none border-b border-line-soft bg-transparent py-4 text-left font-display text-[22px] text-ink"
+            >
               Browse trips
             </button>
-            <button onClick={() => { setOpen(false); onSignIn(); }}
-              className="w-full py-3 text-center text-[14px] font-semibold text-white/60 border border-white/10 rounded-2xl hover:bg-white/5 transition-colors bg-transparent cursor-pointer">
-              Sign in
+          </nav>
+
+          <div className="mt-auto flex flex-col gap-3 p-6">
+            <button
+              onClick={() => { setOpen(false); onGetStarted(); }}
+              className="w-full cursor-pointer rounded-full border-none bg-accent py-3.5 text-[15px] font-semibold text-accent-ink"
+            >
+              Start free
             </button>
-            <button onClick={() => { setOpen(false); onGetStarted(); }}
-              className="w-full py-3 text-center text-[14px] font-bold text-white bg-[#FF6B35] rounded-2xl hover:bg-[#e55c28] transition-colors shadow-[0_4px_14px_rgba(255,107,53,0.35)] border-none cursor-pointer">
-              Get started free
+            <button
+              onClick={() => { setOpen(false); onSignIn(); }}
+              className="w-full cursor-pointer rounded-full border border-line bg-transparent py-3.5 text-[15px] font-medium text-ink"
+            >
+              Sign in
             </button>
           </div>
         </div>

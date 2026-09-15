@@ -1,33 +1,53 @@
-import { Reveal } from "./uiComponents.jsx";
+import { ArrowRight } from "lucide-react";
+import { Reveal, Eyebrow } from "./uiComponents.jsx";
 import { HOW_IT_WORKS } from "./constants.js";
 
-export default function HowItWorks() {
+/* Deliberately vertical, to play against the bento grid above it.
+   Oversized numerals carry the rhythm; the heading sticks alongside. */
+export default function HowItWorks({ onGetStarted }) {
   return (
-    <section id="how-it-works" className="py-24 bg-[#0d1b2a]">
-      <div className="max-w-[1200px] mx-auto px-6">
-        <Reveal className="text-center max-w-[480px] mx-auto mb-16">
-          <p className="text-[11px] font-bold tracking-[.2em] uppercase text-[#FF6B35] mb-3">Simple process</p>
-          <h2 className="text-[42px] font-light text-white font-serif tracking-tight leading-[1.1]">
-            From signup to<br />summit in 4 steps.
+    <section id="how-it-works" className="border-y border-line bg-ground-alt py-24">
+      <div className="mx-auto grid max-w-[1180px] gap-14 px-6 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
+        <Reveal className="lg:sticky lg:top-28 lg:self-start">
+          <Eyebrow className="mb-5">How it works</Eyebrow>
+          <h2 className="font-display text-[clamp(34px,4.4vw,52px)] font-semibold leading-[1.02] text-ink">
+            Four steps from signup to summit.
           </h2>
+          <p className="mt-5 max-w-[360px] text-[16px] leading-[1.7] text-ink-soft">
+            No paperwork, no deposit, no phone calls. You can be on a trip list
+            the same afternoon you sign up.
+          </p>
+          <button
+            onClick={onGetStarted}
+            className="mt-8 flex cursor-pointer items-center gap-2 rounded-full border-none bg-accent px-6 py-3 text-[14.5px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
+          >
+            Start free <ArrowRight size={15} />
+          </button>
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
-          <div className="hidden lg:block absolute top-8 left-[12.5%] right-[12.5%] h-px bg-gradient-to-r from-[#FF6B35]/0 via-[#FF6B35]/30 to-[#FF6B35]/0" />
+        <ol className="m-0 list-none p-0">
           {HOW_IT_WORKS.map((step, i) => (
-            <Reveal key={step.num} delay={i * 0.1}>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FF6B35] to-[#ff8c5a] flex items-center justify-center flex-shrink-0 shadow-[0_6px_20px_rgba(255,107,53,0.35)]">
-                    <span className="text-[13px] font-black text-white font-serif">{step.num}</span>
-                  </div>
-                </div>
-                <h3 className="text-[16px] font-bold text-white mb-2">{step.title}</h3>
-                <p className="text-[13px] text-white/40 leading-relaxed">{step.body}</p>
-              </div>
+            <Reveal
+              key={step.num}
+              delay={i * 0.07}
+              className="border-t border-line last:border-b"
+            >
+              <li className="group flex items-baseline gap-6 py-8 transition-colors sm:gap-10">
+                <span className="font-display text-[clamp(38px,5vw,60px)] font-semibold leading-none text-accent/30 transition-colors group-hover:text-accent">
+                  {step.num}
+                </span>
+                <span className="flex-1">
+                  <h3 className="font-display text-[clamp(21px,2.4vw,27px)] font-semibold leading-tight text-ink">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2.5 max-w-[46ch] text-[15px] leading-[1.7] text-ink-soft">
+                    {step.body}
+                  </p>
+                </span>
+              </li>
             </Reveal>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );

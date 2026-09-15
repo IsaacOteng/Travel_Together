@@ -18,68 +18,64 @@ export default function GuestDialog({ open, reason, onClose }) {
 
   return createPortal(
     <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 9999,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 16,
-        background: "rgba(0,0,0,0.72)",
-        backdropFilter: "blur(10px)",
-        animation: "guestFadeIn .18s ease",
+        background: "rgba(0,0,0,0.55)",
+        backdropFilter: "blur(8px)",
+        animation: "ttFadeIn .18s ease",
       }}
       onClick={onClose}
     >
       <div
-        className="bg-[#0d1b2a] border border-white/[0.12] rounded-2xl w-full max-w-sm text-center overflow-hidden"
-        style={{ animation: "guestSlideUp .22s cubic-bezier(0.34,1.4,0.64,1)", boxShadow: "0 24px 64px rgba(0,0,0,0.65)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sign in required"
+        className="w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-surface text-center"
+        style={{
+          animation: "ttDialogIn .22s cubic-bezier(0.34,1.4,0.64,1)",
+          boxShadow: "0 24px 64px var(--tt-shadow-lg)",
+        }}
         onClick={e => e.stopPropagation()}
       >
-        {/* top accent stripe */}
-        <div className="h-1 w-full" style={{ background: "linear-gradient(90deg,#FF6B35,#ff8c5a)" }} />
+        <div className="h-1 w-full bg-accent" />
 
         <div className="p-7 pb-6">
-          <div className="w-14 h-14 rounded-full bg-[#FF6B35]/15 flex items-center justify-center mx-auto mb-5">
-            <Lock size={24} color="#FF6B35" />
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft">
+            <Lock size={22} className="text-accent" />
           </div>
 
-          <h3 className="text-[19px] font-bold text-white mb-2 font-serif leading-tight">
+          <h3 className="m-0 mb-2 font-display text-[21px] font-semibold leading-tight text-ink">
             Join Travel Together
           </h3>
-          <p className="text-[13px] text-white/50 leading-relaxed mb-7">
+          <p className="mb-7 text-[14px] leading-relaxed text-ink-soft">
             {reason
               ? <>{reason}.<br />Create a free account or log in to continue.</>
               : <>Sign up or log in to access this feature and travel with verified groups across Ghana.</>
             }
           </p>
 
-          {/* actions */}
           <button
             onClick={() => { onClose(); navigate('/signup'); }}
-            className="w-full flex items-center justify-center gap-2 bg-[#FF6B35] text-white font-bold py-3.5 rounded-xl mb-3 hover:bg-[#e55c28] transition-all border-none cursor-pointer text-[14px] shadow-[0_4px_16px_rgba(255,107,53,0.4)]"
+            className="mb-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border-none bg-accent py-3.5 text-[14.5px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
           >
             Create free account <ArrowRight size={15} />
           </button>
 
           <button
             onClick={() => { onClose(); navigate('/signup'); }}
-            className="w-full flex items-center justify-center gap-2 bg-white/[0.06] border border-white/15 text-white/80 font-semibold py-3 rounded-xl hover:bg-white/10 transition-all cursor-pointer text-[13px] mb-4"
+            className="mb-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-line bg-transparent py-3 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent"
           >
             <LogIn size={15} /> Log in to existing account
           </button>
 
           <button
             onClick={onClose}
-            className="w-full text-white/30 text-[12px] hover:text-white/55 transition-colors bg-transparent border-none cursor-pointer py-1"
+            className="w-full cursor-pointer border-none bg-transparent py-1 text-[12.5px] text-ink-mute transition-colors hover:text-ink"
           >
             Continue browsing
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes guestFadeIn   { from{opacity:0} to{opacity:1} }
-        @keyframes guestSlideUp  { from{opacity:0;transform:translateY(20px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-      `}</style>
     </div>,
     document.body
   );

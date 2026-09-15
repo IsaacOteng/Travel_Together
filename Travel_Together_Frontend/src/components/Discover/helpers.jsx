@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Award, MapPin, X, Users, Lock } from 'lucide-react';
 import { AV_COLORS } from './constants.js';
 import { displayName } from "../../utils/name.js";
 
 export function Avatar({ name, src, size = 36, className = "" }) {
-  const color = AV_COLORS[(name?.charCodeAt(0) || 0) % AV_COLORS.length];
   const initials = name?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
   const fontSize = Math.round(size * 0.34);
   if (src) {
@@ -20,12 +18,8 @@ export function Avatar({ name, src, size = 36, className = "" }) {
   }
   return (
     <div
-      className={`rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 font-serif ${className}`}
-      style={{
-        width: size, height: size,
-        background: `linear-gradient(135deg,${color},${color}99)`,
-        fontSize,
-      }}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold text-accent ${className}`}
+      style={{ width: size, height: size, fontSize }}
     >
       {initials}
     </div>
@@ -44,14 +38,13 @@ export function MemberStack({ members = [], max = 4, total }) {
         const name     = typeof m === "object"
           ? (m.name || displayName(m, "?"))
           : String(i);
-        const color    = AV_COLORS[(name.charCodeAt(0) || i) % AV_COLORS.length];
         const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
         const avatarUrl = typeof m === "object" ? m.avatar_url : null;
         const shared = {
           style: {
             width: 28, height: 28,
             borderRadius: "50%",
-            border: "2px solid #0d1b2a",
+            border: "2px solid var(--tt-surface)",
             marginLeft: i > 0 ? -8 : 0,
             zIndex: shown.length - i,
             flexShrink: 0,
@@ -75,14 +68,13 @@ export function MemberStack({ members = [], max = 4, total }) {
             {...shared}
             style={{
               ...shared.style,
-              background: `linear-gradient(135deg,${color},${color}88)`,
+              background: "var(--tt-accent-soft)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: 9,
-              fontWeight: 800,
-              color: "#fff",
-              fontFamily: "serif",
+              fontWeight: 700,
+              color: "var(--tt-accent)",
             }}
           >
             {initials}

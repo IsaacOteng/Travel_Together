@@ -6,23 +6,18 @@ import { Bell } from "lucide-react";
   Props:
     count   – number of unread notifications (default 0)
     onClick – called when the button is clicked
-    light   – use dark icon on light background (default false = white icon)
+    light   – kept for call-site compatibility; the bell now follows the theme
 */
-export default function NotificationBell({ count = 0, onClick, light = false }) {
+export default function NotificationBell({ count = 0, onClick }) {
   return (
     <button
       onClick={onClick}
       aria-label="Notifications"
-      className="relative w-9 h-9 rounded-full flex items-center justify-center cursor-pointer border transition-all
-        bg-white/[0.07] border-white/10 hover:bg-white/15"
+      className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-mute transition-colors hover:border-accent/40 hover:text-accent"
     >
-      <Bell
-        size={16}
-        className={light ? "text-[#071422]" : "text-white/60"}
-      />
+      <Bell size={16} />
       {count > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-[#FF6B35] rounded-full
-          text-[9px] font-black text-white flex items-center justify-center px-1 leading-none">
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold leading-none text-accent-ink">
           {count > 99 ? "99+" : count}
         </span>
       )}

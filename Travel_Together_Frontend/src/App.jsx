@@ -31,7 +31,7 @@ function LandingRoute() {
   const nav = useNavigate();
   const { user, loading } = useAuth();
 
-  if (loading) return <div className="min-h-screen bg-[#071422]" />;
+  if (loading) return <div className="min-h-screen bg-ground" />;
   if (user) return <Navigate to="/discover" replace />;
 
   return (

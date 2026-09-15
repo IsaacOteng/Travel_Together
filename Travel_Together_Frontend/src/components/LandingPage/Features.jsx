@@ -1,37 +1,120 @@
-import { Reveal } from "./uiComponents.jsx";
+import { ArrowRight } from "lucide-react";
+import { Reveal, Eyebrow } from "./uiComponents.jsx";
 import { FEATURES } from "./constants.js";
+import {
+  FleetViz,
+  CrewViz,
+  SafetyViz,
+  PollViz,
+  KarmaViz,
+  EncryptionViz,
+} from "./FeatureVisuals.jsx";
 
-export default function Features() {
+/* Each tile shows the feature working rather than captioning it with an
+   icon. The wide tiles put the preview beside the copy; the narrow ones
+   run it underneath, so the grid never repeats the same shape twice. */
+const TILES = {
+  crew:       { viz: CrewViz,       span: "",              layout: "stack", tone: "plain"  },
+  fleet:      { viz: FleetViz,      span: "sm:col-span-2", layout: "bleed", tone: "plain"  },
+  safety:     { viz: SafetyViz,     span: "",              layout: "stack", tone: "accent" },
+  chat:       { viz: PollViz,       span: "",              layout: "stack", tone: "plain"  },
+  karma:      { viz: KarmaViz,      span: "",              layout: "stack", tone: "plain"  },
+  encryption: { viz: EncryptionViz, span: "sm:col-span-2", layout: "side",  tone: "plain"  },
+};
+
+const TONE = {
+  plain:  "bg-surface border border-line",
+  accent: "bg-accent border border-accent",
+};
+
+export default function Features({ onGetStarted }) {
   return (
-    <section id="features" className="py-24 bg-[#071422]">
-      <div className="max-w-[1200px] mx-auto px-6">
-        <Reveal className="max-w-[520px] mb-16">
-          <p className="text-[11px] font-bold tracking-[.2em] uppercase text-[#FF6B35] mb-3">Everything you need</p>
-          <h2 className="text-[42px] font-light text-white font-serif tracking-tight leading-[1.1] mb-4">
-            Group travel,<br />done properly.
+    <section id="features" className="bg-ground py-24">
+      <div className="mx-auto max-w-[1180px] px-6">
+        <Reveal className="mb-14 max-w-[560px]">
+          <Eyebrow className="mb-5">What you get</Eyebrow>
+          <h2 className="font-display text-[clamp(34px,4.4vw,52px)] font-semibold leading-[1.02] text-ink">
+            Group travel, done properly.
           </h2>
-          <p className="text-[15px] text-white/40 leading-relaxed">
-            Every feature is built around one idea that travelling with others should be easier, safer, and more memorable than going alone.
+          <p className="mt-5 text-[16px] leading-[1.7] text-ink-soft">
+            Every part of this is built around one idea — travelling with other
+            people should be easier and safer than going alone, not harder.
           </p>
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURES.map((f, i) => (
-            <Reveal key={f.title} delay={i * 0.07}>
-              <div
-                className="group bg-[#0d1b2a] border border-white/[0.07] rounded-2xl p-6 hover:border-[var(--c)]/30 transition-all duration-300 hover:-translate-y-1.5 h-full"
-                style={{ "--c": f.color }}>
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110"
-                  style={{ background: `${f.color}15`, border: `1px solid ${f.color}25` }}>
-                  <f.icon size={19} color={f.color} />
-                </div>
-                <h3 className="text-[16px] font-bold text-white mb-2 group-hover:text-[var(--c)] transition-colors" style={{ "--c": f.color }}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f, i) => {
+            const t = TILES[f.id];
+            const Viz = t.viz;
+            const accent = t.tone === "accent";
+
+            const heading = (
+              <>
+                <h3
+                  className={`font-display text-[19px] font-semibold ${
+                    accent ? "text-accent-ink" : "text-ink"
+                  }`}
+                >
                   {f.title}
                 </h3>
-                <p className="text-[13px] text-white/45 leading-relaxed">{f.body}</p>
-              </div>
-            </Reveal>
-          ))}
+                <p
+                  className={`mt-2.5 text-[14.5px] leading-[1.7] ${
+                    accent ? "text-accent-ink/80" : "text-ink-soft"
+                  }`}
+                >
+                  {f.body}
+                </p>
+              </>
+            );
+
+            return (
+              <Reveal
+                key={f.id}
+                delay={(i % 3) * 0.07}
+                className={`${t.span} overflow-hidden rounded-3xl ${TONE[t.tone]}`}
+              >
+                {t.layout === "bleed" ? (
+                  /* preview runs to the tile edge */
+                  <div className="flex h-full flex-col">
+                    <div className="p-7 pb-5">{heading}</div>
+                    <div className="mt-auto h-[190px] w-full border-t border-line">
+                      <Viz />
+                    </div>
+                  </div>
+                ) : t.layout === "side" ? (
+                  <div className="flex h-full flex-col justify-between gap-6 p-7 lg:flex-row lg:items-center">
+                    <div className="lg:max-w-[46%]">{heading}</div>
+                    <Viz />
+                  </div>
+                ) : (
+                  <div className="flex h-full flex-col p-7">
+                    {heading}
+                    <div className="mt-6">
+                      <Viz />
+                    </div>
+                  </div>
+                )}
+              </Reveal>
+            );
+          })}
+
+          {/* the grid's last cell is the way in */}
+          <Reveal delay={0.21} className="rounded-3xl bg-ink">
+            <button
+              onClick={onGetStarted}
+              className="flex h-full w-full cursor-pointer flex-col justify-between gap-8 border-none bg-transparent p-7 text-left"
+            >
+              <span className="font-display text-[22px] font-semibold leading-[1.15] text-ground">
+                Ready when
+                <br />
+                you are.
+              </span>
+              <span className="flex items-center gap-2 text-[14px] font-semibold text-ground">
+                Start free
+                <ArrowRight size={16} />
+              </span>
+            </button>
+          </Reveal>
         </div>
       </div>
     </section>

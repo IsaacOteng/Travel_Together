@@ -1,170 +1,155 @@
 import { useState } from "react";
 import { fmtDate, fmtTime } from "../../utils/date.js";
-import {
-  MapPin, Calendar, Car, Users,
-  Star, TrendingUp, Heart, ChevronRight, Share2,
-} from "lucide-react";
+import { MapPin, Calendar, Car, Users, Star, Heart, Share2, ChevronRight } from "lucide-react";
 import { Avatar, MemberStack } from './helpers.jsx';
+import { formatPrice, titleCase } from "../../utils/money.js";
 import ShareToast from './ShareToast.jsx';
 
 export default function MobileTripCard({ trip, onView, onSave }) {
-  const [sharing,  setSharing]  = useState(false);
+  const [sharing, setSharing] = useState(false);
   const spotsLeft = trip.spotsTotal - trip.spotsFilled;
-  const pct       = trip.spotsTotal > 0 ? (trip.spotsFilled / trip.spotsTotal) * 100 : 0;
+  const pct = trip.spotsTotal > 0 ? (trip.spotsFilled / trip.spotsTotal) * 100 : 0;
+  const almostFull = spotsLeft > 0 && spotsLeft <= 2;
 
   return (
-    <article
-      className="mx-3 my-2.5 bg-[#0d1b2a] rounded-[20px] overflow-hidden"
-      style={{
-        border: "1.5px solid rgba(255,255,255,0.07)",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.35)",
-      }}
-    >
-      {/* ── Cover image ───────────────────────────────────────── */}
+    <article className="mx-3.5 my-3 overflow-hidden rounded-3xl border border-line bg-surface">
+      {/* ── cover ───────────────────────────────────────────────── */}
       <div
-        className="relative h-[260px] overflow-hidden cursor-pointer"
+        className="relative cursor-pointer overflow-hidden bg-surface-alt aspect-16/10"
         onClick={() => onView(trip)}
       >
-        <div className="absolute inset-0 bg-[#0a1628]" />
         {trip.media?.[0]?.url && (
           <img
             src={trip.media[0].url}
-            alt={trip.title}
-            className="absolute inset-0 w-full h-full object-cover block"
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover"
           />
         )}
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/45 to-transparent" />
 
-        {/* Gradient */}
-        <div
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(to top, rgba(13,27,42,0.94) 0%, rgba(13,27,42,0.3) 55%, transparent 100%)" }}
-        />
-
-        {/* Tags top left */}
-        <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-          {trip.tags.slice(0, 2).map(tag => (
-            <span
-              key={tag}
-              className="text-[10px] px-[9px] py-[3px] rounded-full bg-white/[0.18] backdrop-blur-md text-white font-bold"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        {/* Price top right */}
-        <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
-          <div className={`backdrop-blur-md rounded-lg px-[9px] py-1 text-[12px] font-extrabold text-white
-            ${trip.entryPrice === 0 ? "bg-green-500/80" : "bg-[rgba(255,107,53,0.85)]"}`}>
-            {trip.entryPrice === 0 ? "Free" : `GH₵${trip.entryPrice}`}
+        <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {trip.tags.slice(0, 2).map(tag => (
+              <span
+                key={tag}
+                className="rounded-full bg-black/35 px-2.5 py-1 text-[10.5px] font-semibold text-white backdrop-blur-sm"
+              >
+                {titleCase(tag)}
+              </span>
+            ))}
           </div>
-        </div>
-
-        {/* Title + destination bottom overlay */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 py-4">
-          <h3
-            className="m-0 mb-1 text-[22px] font-light text-white font-serif tracking-[-0.4px] leading-tight"
-            style={{ textShadow: "0 1px 6px rgba(0,0,0,0.6)" }}
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-bold backdrop-blur-sm ${
+              trip.entryPrice === 0 ? "bg-moss text-white" : "bg-accent text-accent-ink"
+            }`}
           >
-            {trip.title}
-          </h3>
-          <div className="flex items-center gap-1.5">
-            <MapPin size={11} color="rgba(255,255,255,0.6)" />
-            <span className="text-[12px] text-white/65">{trip.destination}</span>
-          </div>
+            {formatPrice(trip.entryPrice)}
+          </span>
         </div>
+
+        {almostFull && (
+          <span className="absolute bottom-3 left-3 rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-accent">
+            Only {spotsLeft} left
+          </span>
+        )}
       </div>
 
-      {/* ── Card body ─────────────────────────────────────────── */}
+      {/* ── body ────────────────────────────────────────────────── */}
       <div className="p-4">
-
-        {/* Chief row */}
-        <div className="flex items-center gap-2.5 mb-3.5">
-          <Avatar name={trip.chief.name} src={trip.chief.avatarUrl} size={34} />
-          <div className="flex-1 min-w-0">
-            <span className="text-[13px] text-white/80 font-semibold">{trip.chief.name}</span>
-            <div className="flex items-center gap-[3px] mt-[1px]">
-              <Star size={10} color="#fbbf24" fill="#fbbf24" />
-              <span className="text-[10px] text-[#fbbf24]">{trip.chief.rating ? trip.chief.rating.toFixed(1) : "—"}</span>
-              <span className="text-[10px] text-white/30">· {trip.chief.trips} trips</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1" title="Chief's travel karma">
-            <TrendingUp size={13} color="#FF6B35" />
-            <span className="text-[13px] font-bold text-[#FF6B35]">{trip.chief.karma}</span>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="m-0 mb-3.5 text-[13px] text-white/50 leading-[1.6] line-clamp-2">
-          {trip.description}
+        <h3
+          onClick={() => onView(trip)}
+          className="cursor-pointer font-display text-[21px] font-semibold leading-tight text-ink"
+        >
+          {trip.title}
+        </h3>
+        <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-ink-mute">
+          <MapPin size={12} className="shrink-0" />
+          <span className="truncate">{trip.destination}</span>
         </p>
 
-        {/* Meta pills */}
-        <div className="flex gap-1.5 flex-wrap mb-4">
-          {[
-            { icon: Calendar, text: `${fmtDate(trip.dateStart)}${trip.start_time ? ` · ${fmtTime(trip.start_time)}` : ""}` },
-            trip.drive && { icon: Car, text: trip.drive },
-            { icon: Users,    text: `${trip.spotsFilled}/${trip.spotsTotal}` },
-          ].filter(Boolean).map((m, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-1.5 bg-white/[0.06] rounded-lg px-[9px] py-[5px] border border-white/[0.07]"
-            >
-              <m.icon size={12} color="rgba(255,255,255,0.4)" />
-              <span className="text-[12px] text-white/55 font-medium">{m.text}</span>
-            </div>
-          ))}
-        </div>
+        {trip.description && (
+          <p className="mt-3 line-clamp-2 text-[13.5px] leading-[1.6] text-ink-soft">
+            {trip.description}
+          </p>
+        )}
 
-        {/* Member stack + progress bar */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-[7px]">
+        <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] text-ink-soft">
+          <div className="flex items-center gap-1.5">
+            <Calendar size={13} className="shrink-0 text-ink-mute" />
+            {fmtDate(trip.dateStart)}
+            {trip.start_time ? ` · ${fmtTime(trip.start_time)}` : ""}
+          </div>
+          {trip.drive && (
+            <div className="flex items-center gap-1.5">
+              <Car size={13} className="shrink-0 text-ink-mute" />
+              {trip.drive}
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <Users size={13} className="shrink-0 text-ink-mute" />
+            {trip.spotsFilled}/{trip.spotsTotal}
+          </div>
+        </dl>
+
+        <div className="mt-4">
+          <div className="h-1.5 overflow-hidden rounded-full bg-line">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${
+                pct >= 80 ? "bg-accent" : "bg-moss"
+              }`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <MemberStack members={trip.membersPreview || []} max={4} total={trip.spotsFilled} />
               {trip.spotsFilled > 0 && (
-                <span className="text-[12px] text-white/40 font-medium">{trip.spotsFilled} going</span>
+                <span className="text-[11.5px] text-ink-mute">{trip.spotsFilled} going</span>
               )}
             </div>
-            <span
-              className="text-[12px] font-bold"
-              style={{ color: spotsLeft <= 2 ? "#fb923c" : "#4ade80" }}
-            >
+            <span className="text-[11.5px] font-medium text-ink-mute">
               {spotsLeft > 0 ? `${spotsLeft} spot${spotsLeft !== 1 ? "s" : ""} left` : "Full"}
             </span>
           </div>
-          <div className="h-[3px] bg-white/[0.08] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${pct}%`, background: pct >= 80 ? "#fb923c" : "#FF6B35" }}
-            />
+        </div>
+
+        <div className="mt-4 flex items-center gap-2.5 border-t border-line-soft pt-4">
+          <Avatar name={trip.chief.name} src={trip.chief.avatarUrl} size={34} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12.5px] font-semibold text-ink">{trip.chief.name}</p>
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-mute">
+              <Star size={10} className="text-sun" fill="currentColor" />
+              {trip.chief.rating ? trip.chief.rating.toFixed(1) : "—"}
+              <span aria-hidden="true">·</span>
+              {trip.chief.trips} trips
+            </p>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
+        <div className="mt-4 flex gap-2">
           <button
             onClick={() => onView(trip)}
-            className="flex-1 py-3 rounded-[10px] border-none bg-gradient-to-br from-[#FF6B35] to-[#ff8c5a] text-white text-[13px] font-bold cursor-pointer flex items-center justify-center gap-1.5"
-            style={{ boxShadow: "0 4px 14px rgba(255,107,53,.25)" }}
+            className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full border-none bg-accent py-3 text-[14px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
           >
             View trip <ChevronRight size={15} />
           </button>
           <button
             onClick={() => onSave(trip.id)}
-            className="w-11 h-11 rounded-[10px] flex-shrink-0 flex items-center justify-center cursor-pointer transition-all duration-200"
-            style={{
-              background: trip.saved ? "rgba(255,107,53,0.2)" : "rgba(255,255,255,0.07)",
-              color: trip.saved ? "#FF6B35" : "rgba(255,255,255,0.5)",
-              border: `1.5px solid ${trip.saved ? "rgba(255,107,53,0.4)" : "rgba(255,255,255,0.1)"}`,
-            }}
+            aria-label={trip.saved ? "Remove from saved" : "Save this trip"}
+            aria-pressed={trip.saved}
+            className={`flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-colors ${
+              trip.saved
+                ? "border-accent bg-accent-soft text-accent"
+                : "border-line bg-surface text-ink-mute"
+            }`}
           >
-            <Heart size={17} fill={trip.saved ? "#FF6B35" : "none"} />
+            <Heart size={17} fill={trip.saved ? "currentColor" : "none"} />
           </button>
           <button
             onClick={() => setSharing(true)}
-            className="w-11 h-11 rounded-[10px] flex-shrink-0 flex items-center justify-center cursor-pointer transition-all duration-200 bg-white/[0.07] text-white/50"
-            style={{ border: "1.5px solid rgba(255,255,255,0.1)" }}
+            aria-label="Share this trip"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-mute"
           >
             <Share2 size={17} />
           </button>

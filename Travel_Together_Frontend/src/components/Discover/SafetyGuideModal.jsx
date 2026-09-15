@@ -107,26 +107,26 @@ export default function SafetyGuideModal({ open, onClose }) {
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="bg-[#0d1b2a] border border-white/[0.12] rounded-2xl w-full max-w-[640px] max-h-[88vh] overflow-hidden flex flex-col"
-        style={{ animation: "safetySlideUp .24s cubic-bezier(0.34,1.4,0.64,1)", boxShadow: "0 24px 64px rgba(0,0,0,0.65)" }}
+        className="flex max-h-[88vh] w-full max-w-[640px] flex-col overflow-hidden rounded-3xl border border-line bg-surface"
+        style={{ animation: "safetySlideUp .24s cubic-bezier(0.34,1.4,0.64,1)", boxShadow: "0 24px 64px var(--tt-shadow-lg)" }}
       >
         {/* top accent stripe */}
-        <div className="h-1 w-full flex-shrink-0" style={{ background: "linear-gradient(90deg,#3b82f6,#60a5fa)" }} />
+        <div className="h-1 w-full shrink-0 bg-accent" />
 
         {/* Sticky header */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-white/[0.08] flex-shrink-0 bg-[#0d1b2a]">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-6 py-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[rgba(96,165,250,0.14)] border border-[rgba(96,165,250,0.3)] flex items-center justify-center flex-shrink-0">
-              <Shield size={20} color="#60a5fa" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft">
+              <Shield size={20} className="text-accent" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-[17px] font-bold text-white font-serif leading-tight m-0">Travel safely</h2>
-              <p className="text-[11px] text-white/40 m-0 mt-0.5 truncate">Your guide to staying safe on every trip</p>
+              <h2 className="m-0 font-display text-[18px] font-semibold leading-tight text-ink">Travel safely</h2>
+              <p className="m-0 mt-0.5 truncate text-[11.5px] text-ink-mute">Your guide to staying safe on every trip</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/[0.07] border border-white/10 flex items-center justify-center cursor-pointer text-white/50 hover:bg-white/15 hover:text-white/80 transition-all flex-shrink-0"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-mute transition-colors hover:border-accent hover:text-accent"
             aria-label="Close"
           >
             <X size={15} />
@@ -136,22 +136,22 @@ export default function SafetyGuideModal({ open, onClose }) {
         {/* Scrollable body */}
         <div className="overflow-y-auto px-6 py-5 flex flex-col gap-5">
           {/* intro */}
-          <p className="text-[12.5px] text-white/55 leading-[1.7] m-0">
+          <p className="m-0 text-[13.5px] leading-[1.7] text-ink-soft">
             Travel Together connects you with identity-verified organisers and groups across Ghana.
             Verification helps, but your own judgement keeps you safest here's how to make every trip a safe one.
           </p>
 
           {SECTIONS.map(({ icon: Icon, title, points }) => (
-            <div key={title} className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+            <div key={title} className="rounded-2xl border border-line bg-surface-alt p-4">
               <div className="flex items-center gap-2.5 mb-3">
-                <Icon size={15} color="#60a5fa" />
-                <h3 className="text-[13px] font-bold text-white m-0 tracking-[-0.1px]">{title}</h3>
+                <Icon size={15} className="text-accent" />
+                <h3 className="m-0 font-display text-[14.5px] font-semibold text-ink">{title}</h3>
               </div>
               <ul className="m-0 p-0 list-none flex flex-col gap-2">
                 {points.map((p, i) => (
                   <li key={i} className="flex items-start gap-2.5">
-                    <CheckCircle2 size={14} color="#4ade80" className="flex-shrink-0 mt-[2px]" />
-                    <span className="text-[12px] text-white/65 leading-[1.6]">{p}</span>
+                    <CheckCircle2 size={14} className="mt-[2px] shrink-0 text-moss" />
+                    <span className="text-[12.5px] leading-[1.6] text-ink-soft">{p}</span>
                   </li>
                 ))}
               </ul>
@@ -159,34 +159,33 @@ export default function SafetyGuideModal({ open, onClose }) {
           ))}
 
           {/* Emergency numbers */}
-          <div className="rounded-2xl p-4 border border-[rgba(239,68,68,0.25)]" style={{ background: "linear-gradient(135deg,rgba(239,68,68,0.12),rgba(239,68,68,0.05))" }}>
+          <div className="rounded-2xl border border-accent/30 bg-accent-soft p-4">
             <div className="flex items-center gap-2.5 mb-3">
-              <AlertTriangle size={15} color="#f87171" />
-              <h3 className="text-[13px] font-bold text-white m-0">Ghana emergency numbers</h3>
+              <AlertTriangle size={15} className="text-accent" />
+              <h3 className="m-0 font-display text-[14.5px] font-semibold text-ink">Ghana emergency numbers</h3>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {EMERGENCY.map(({ label, number }) => (
-                <div key={number} className="flex items-center gap-2.5 bg-black/20 border border-white/[0.06] rounded-xl px-3 py-2.5">
-                  <Phone size={14} color="#f87171" className="flex-shrink-0" />
+                <div key={number} className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2.5">
+                  <Phone size={14} className="shrink-0 text-accent" />
                   <div className="min-w-0">
-                    <div className="text-[10px] text-white/40 leading-tight truncate">{label}</div>
-                    <div className="text-[15px] font-black text-white leading-tight">{number}</div>
+                    <div className="truncate text-[10.5px] leading-tight text-ink-mute">{label}</div>
+                    <div className="font-display text-[16px] font-semibold leading-tight text-ink">{number}</div>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="text-[10.5px] text-white/40 leading-snug mt-3 mb-0">
+            <p className="mb-0 mt-3 text-[11px] leading-snug text-ink-mute">
               In a real-world emergency, always call local services first then raise an in-app SOS so your group and contacts are alerted.
             </p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/[0.08] flex-shrink-0 bg-[#0d1b2a]">
+        <div className="shrink-0 border-t border-line bg-surface px-6 py-4">
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-xl text-[13.5px] font-bold cursor-pointer border-none text-white transition-all hover:-translate-y-px"
-            style={{ background: "linear-gradient(135deg,#3b82f6,#60a5fa)", boxShadow: "0 4px 16px rgba(59,130,246,0.35)" }}
+            className="w-full cursor-pointer rounded-full border-none bg-accent py-3 text-[14px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
           >
             Got it keep me safe
           </button>
