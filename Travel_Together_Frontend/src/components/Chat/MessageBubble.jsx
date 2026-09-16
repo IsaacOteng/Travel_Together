@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, MapPin } from "lucide-react";
 
 const URL_RE   = /(https?:\/\/[^\s]+)/g;
 const URL_TEST = /^https?:\/\//;
@@ -29,12 +29,15 @@ export function SystemMessage({ msg }) {
   const textBeforeUrl = msg.text?.split(URL_RE)[0].trim();
 
   return (
-    <div className="flex justify-center w-full my-2">
-      <div className={`max-w-[80%] rounded-2xl overflow-hidden text-[12px]
-        ${isSOS
-          ? "bg-red-900/30 border border-red-500/40 shadow-[0_0_20px_rgba(244,63,94,0.15)]"
-          : "bg-white/[0.06] border border-white/[0.08]"}`}>
-        <div className="px-4 py-3 leading-relaxed text-center text-white/80 whitespace-pre-line">
+    <div className="my-2 flex w-full justify-center">
+      <div className={`max-w-[85%] overflow-hidden rounded-2xl text-[12.5px] ${
+        isSOS
+          ? "border-2 border-accent bg-accent-soft"
+          : "border border-line bg-surface-alt"
+      }`}>
+        <div className={`whitespace-pre-line px-4 py-3 text-center leading-relaxed ${
+          isSOS ? "font-semibold text-accent" : "text-ink-soft"
+        }`}>
           {textBeforeUrl}
         </div>
         {mapRef && (
@@ -42,14 +45,19 @@ export function SystemMessage({ msg }) {
             href={mapRef.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-3 bg-black/30 hover:bg-black/50 transition-colors border-t border-red-500/20 no-underline"
+            className="flex items-center gap-3 border-t border-accent/30 bg-surface px-4 py-3 no-underline transition-colors hover:bg-surface-alt"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-bold text-white truncate">View location on Google Maps</div>
-              <div className="text-[10px] text-white/40 mt-0.5 truncate">{mapRef.lat.toFixed(5)}, {mapRef.lng.toFixed(5)}</div>
-            </div>
-            <div className="text-[10px] font-bold text-red-400 flex-shrink-0">Open →</div>
+            <MapPin size={15} className="shrink-0 text-accent" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[12.5px] font-semibold text-ink">
+                View location on Google Maps
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] text-ink-mute">
+                {mapRef.lat.toFixed(5)}, {mapRef.lng.toFixed(5)}
+              </span>
+            </span>
+            <span className="shrink-0 text-[12px] font-semibold text-accent">Open →</span>
           </a>
         )}
       </div>
@@ -95,11 +103,10 @@ export default function MessageBubble({ msg, onDelete }) {
 
   if (msg.isDeleted) {
     return (
-      <div className={`px-4 py-2.5 rounded-2xl text-[12px] italic select-none border
-        ${isMe
-          ? "bg-[#FF6B35]/10 border-[#FF6B35]/20 text-white/40 rounded-br-sm"
-          : "bg-white/[0.04] border-white/[0.07] text-white/35 rounded-bl-sm"}`}>
-        [this message was deleted]
+      <div className={`select-none rounded-2xl border border-dashed border-line px-4 py-2.5 text-[12.5px] italic text-ink-mute ${
+        isMe ? "rounded-br-sm" : "rounded-bl-sm"
+      }`}>
+        This message was deleted
       </div>
     );
   }
@@ -111,20 +118,18 @@ export default function MessageBubble({ msg, onDelete }) {
     <button
       onPointerDown={doDelete}
       title="Delete message"
-      className={`flex-shrink-0 w-7 h-7 rounded-full bg-[#0d1b2a] border border-red-500/40
-        flex items-center justify-center cursor-pointer
-        hover:bg-red-500/25 active:bg-red-500/40 shadow-lg
-        transition-all duration-150
-        ${showDelete ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"}`}
+      aria-label="Delete message"
+      className={`flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-surface transition-all duration-150 hover:border-accent hover:text-accent ${
+        showDelete ? "scale-100 opacity-100" : "pointer-events-none scale-75 opacity-0"
+      }`}
     >
-      <Trash2 size={11} className="text-red-400" />
+      <Trash2 size={12} className="text-ink-mute" />
     </button>
   );
 
   return (
     <div
-      className={`flex items-center gap-2 max-w-[68%]
-        ${isMe ? "flex-row-reverse" : "flex-row"}`}
+      className={`flex max-w-[68%] items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onTouchStart={onTouchStart}
@@ -132,19 +137,20 @@ export default function MessageBubble({ msg, onDelete }) {
       onTouchMove={cancelLp}
       onTouchCancel={cancelLp}
     >
-      <div className={`relative w-fit min-w-0`}>
+      <div className="relative w-fit min-w-0">
         {isImage
-          ? <div className={`overflow-hidden rounded-2xl ${isMe ? "rounded-br-sm" : "rounded-bl-sm"}`}>
+          ? <div className={`overflow-hidden rounded-2xl border border-line ${isMe ? "rounded-br-sm" : "rounded-bl-sm"}`}>
               <img
                 src={msg.mediaUrl}
                 alt=""
-                className="block max-w-[220px] max-h-[280px] w-auto h-auto object-cover"
+                className="block h-auto max-h-70 w-auto max-w-60 object-cover"
               />
             </div>
-          : <div className={`px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words
-              ${isMe
-                ? "bg-[#FF6B35] text-white rounded-br-sm"
-                : "bg-[#132032] text-white/85 rounded-bl-sm border border-white/[0.06]"}`}>
+          : <div className={`wrap-break-word rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${
+              isMe
+                ? "rounded-br-sm bg-accent text-accent-ink"
+                : "rounded-bl-sm border border-line bg-surface text-ink"
+            }`}>
               {renderTextWithLinks(msg.text)}
             </div>
         }

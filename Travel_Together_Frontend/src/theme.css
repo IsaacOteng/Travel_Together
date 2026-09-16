@@ -67,6 +67,10 @@
   --tt-accent-ink:  #FFFDF9;
   --tt-moss:        #3D6B52;
   --tt-sun:         #C69034;
+  /* Reserved for genuine emergencies — SOS, active alerts. Deliberately not
+     the brand accent, which appears on ordinary buttons all over the app. */
+  --tt-danger:      #C0392B;
+  --tt-danger-soft: #F7DDD9;
 
   --tt-shadow:    rgba(28, 25, 22, .09);
   --tt-shadow-lg: rgba(28, 25, 22, .13);
@@ -94,6 +98,8 @@
   --tt-accent-ink:  #16120F;
   --tt-moss:        #7FB394;
   --tt-sun:         #DBAF5D;
+  --tt-danger:      #E5675A;
+  --tt-danger-soft: #3B1F1C;
 
   --tt-shadow:    rgba(0, 0, 0, .45);
   --tt-shadow-lg: rgba(0, 0, 0, .6);
@@ -121,6 +127,8 @@
   --color-accent-ink:   var(--tt-accent-ink);
   --color-moss:         var(--tt-moss);
   --color-sun:          var(--tt-sun);
+  --color-danger:       var(--tt-danger);
+  --color-danger-soft:  var(--tt-danger-soft);
 
   --font-sans:    "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Clash Display", "Satoshi", ui-sans-serif, system-ui, sans-serif;
@@ -147,6 +155,12 @@ body {
 @keyframes ttQuoteIn { from { opacity:0; transform:translateY(8px) }  to { opacity:1; transform:translateY(0) } }
 @keyframes ttPulse   { 0% { transform:scale(1); opacity:.6 } 70%,100% { transform:scale(2.6); opacity:0 } }
 @keyframes ttShimmer  { 0%,100% { opacity:1 } 50% { opacity:.55 } }
+/* SOS control pulse — lives here so it survives outside GroupDashboard. */
+@keyframes sosPulse {
+  0%,100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--tt-danger) 45%, transparent); }
+  50%     { box-shadow: 0 0 0 12px color-mix(in oklab, var(--tt-danger) 0%, transparent); }
+}
+@keyframes ttSpin    { to { transform:rotate(360deg) } }
 @keyframes ttFadeIn   { from { opacity:0 } to { opacity:1 } }
 @keyframes ttDialogIn { from { opacity:0; transform:translateY(20px) scale(.97) } to { opacity:1; transform:translateY(0) scale(1) } }
 @keyframes ttBadgePop { from { transform:scale(.4); opacity:0 } to { transform:scale(1); opacity:1 } }

@@ -7,55 +7,58 @@ export default function ConvRow({ c, isActive, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 cursor-pointer text-left transition-all duration-100 border-b border-white/[0.07]
-        ${isActive ? "lg:bg-[#FF6B35]/10 lg:border-l-[3px] lg:border-l-[#FF6B35]" : "bg-transparent hover:bg-white/[0.04]"}`}
+      className={`relative flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left transition-colors ${
+        isActive ? "bg-accent-soft" : "bg-transparent hover:bg-surface-alt"
+      }`}
     >
+      {isActive && <span className="absolute inset-y-0 left-0 w-[3px] bg-accent" aria-hidden="true" />}
+
       {isGroup
-        ? <div className="relative w-11 h-11 flex-shrink-0">
+        ? <div className="relative h-11 w-11 shrink-0">
             {c.cover
-              ? <img src={c.cover} alt={c.name} className="w-11 h-11 rounded-full object-cover"
-                  onError={e => { e.target.style.background = "#1a2e45"; }} />
-              : <div className={`w-11 h-11 rounded-full ${c.avatar} flex items-center justify-center font-bold text-white font-serif text-[14px]`}>
+              ? <img src={c.cover} alt="" className="h-11 w-11 rounded-full object-cover" />
+              : <div className={`h-11 w-11 ${c.avatar} flex items-center justify-center rounded-full text-[15px] font-semibold text-accent`}>
                   {c.name?.slice(0, 1).toUpperCase()}
                 </div>
             }
-            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-[#0d1b2a] rounded-full flex items-center justify-center border border-white/10">
-              <Users size={10} className="text-[#FF6B35]" />
-            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-surface">
+              <Users size={10} className="text-accent" />
+            </span>
           </div>
         : <Avatar name={c.name} colorClass={c.avatar} online={c.online} imgSrc={c.avatarUrl} />
       }
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-0.5">
-          <span className={`text-[14px] truncate ${c.unread > 0 ? "text-white font-bold" : "text-white/75 font-semibold"}`}>
+      <span className="min-w-0 flex-1">
+        <span className="mb-0.5 flex items-center justify-between gap-2">
+          <span className={`truncate text-[14.5px] ${c.unread > 0 ? "font-semibold text-ink" : "font-medium text-ink"}`}>
             {c.name}
           </span>
-          <span className={`text-[10px] flex-shrink-0 ml-2 ${c.unread > 0 ? "text-[#FF6B35] font-semibold" : "text-white/30"}`}>
+          <span className={`shrink-0 text-[11.5px] ${c.unread > 0 ? "font-semibold text-accent" : "text-ink-mute"}`}>
             {c.time}
           </span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[12px] text-white/40 truncate flex items-center gap-1 min-w-0">
+        </span>
+
+        <span className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1 truncate text-[13px] text-ink-mute">
             {c.typing
-              ? <span className="flex items-center gap-1.5 text-[#FF6B35] text-[11px] font-medium">
-                  <TypingDots /> typing...
+              ? <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-accent">
+                  <TypingDots /> typing…
                 </span>
               : <>
                   {isGroup && c.previewSender && (
-                    <span className="text-white/30 flex-shrink-0">{c.previewSender}:</span>
+                    <span className="shrink-0 text-ink-mute">{c.previewSender}:</span>
                   )}
                   <span className="truncate">{c.preview}</span>
                 </>
             }
           </span>
           {c.unread > 0 && (
-            <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center text-[9px] font-black text-white flex-shrink-0">
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold text-accent-ink">
               {c.unread > 9 ? "9+" : c.unread}
-            </div>
+            </span>
           )}
-        </div>
-      </div>
+        </span>
+      </span>
     </button>
   );
 }

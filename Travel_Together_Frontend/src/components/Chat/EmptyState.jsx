@@ -2,13 +2,17 @@ import { MessageCircle } from "lucide-react";
 
 export default function EmptyState() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[#071422]">
-      <div className="w-14 h-14 rounded-full bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-        <MessageCircle size={26} className="text-white/20" />
+    <div className="flex flex-1 flex-col items-center justify-center gap-5 bg-ground px-6 text-center">
+      <span className="flex h-16 w-16 items-center justify-center rounded-full border border-line bg-surface text-ink-mute">
+        <MessageCircle size={26} strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="m-0 font-display text-[19px] font-semibold text-ink">Your messages</p>
+        <p className="m-0 mt-2 max-w-[34ch] text-[14px] leading-relaxed text-ink-soft">
+          Pick a conversation on the left. Group chats open once you've joined a
+          trip and confirmed your spot.
+        </p>
       </div>
-      <p className="text-[14px] font-semibold text-white/30">
-        Select a conversation to start chatting
-      </p>
     </div>
   );
 }

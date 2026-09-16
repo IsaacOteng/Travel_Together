@@ -29,37 +29,38 @@ export default function InputBar({ onSend, onSendImage, uploading }) {
   };
 
   return (
-    <div className="flex items-end gap-2 px-3 py-3 bg-[#0d1b2a] border-t border-white/[0.06] flex-shrink-0">
+    <div className="flex shrink-0 items-end gap-2 border-t border-line bg-ground px-3 py-3">
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
       <button
         onClick={() => fileRef.current?.click()}
         disabled={uploading}
-        className="w-9 h-9 rounded-full bg-white/[0.06] flex items-center justify-center cursor-pointer flex-shrink-0 hover:bg-white/[0.1] transition-colors disabled:opacity-40 border border-white/[0.08]"
+        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-mute transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
         title="Send image"
       >
         {uploading
-          ? <Loader size={14} className="text-white/40 animate-spin" />
-          : <ImageIcon size={15} className="text-white/45" />
+          ? <Loader size={15} className="animate-spin" />
+          : <ImageIcon size={16} />
         }
       </button>
 
       <textarea
         ref={inputRef}
+        aria-label="Message"
         value={val}
         onChange={e => setVal(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-        placeholder="Type a message..."
+        placeholder="Type a message…"
         rows={1}
-        className="flex-1 bg-white/[0.06] border border-white/[0.08] rounded-2xl py-2.5 px-4 text-[13px] text-white placeholder-white/25 outline-none focus:border-[#FF6B35]/30 transition-colors resize-none leading-relaxed"
+        className="flex-1 resize-none rounded-3xl border border-line bg-surface px-4 py-2.5 text-[14px] leading-relaxed text-ink outline-none transition-colors placeholder:text-ink-mute focus:border-accent"
         style={{ minHeight: 42, overflowY: "hidden" }}
       />
       <button
         onClick={send}
         disabled={!val.trim()}
-        className="w-9 h-9 rounded-full bg-[#FF6B35] flex items-center justify-center cursor-pointer flex-shrink-0 hover:bg-[#e55c28] transition-colors shadow-[0_4px_12px_rgba(255,107,53,0.4)] disabled:opacity-40 disabled:cursor-not-allowed"
+        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-accent transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-line"
         style={{ marginBottom: 1 }}
       >
-        <Send size={15} className="text-white" />
+        <Send size={16} className="text-accent-ink" />
       </button>
     </div>
   );

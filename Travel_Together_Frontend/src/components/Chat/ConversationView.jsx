@@ -281,29 +281,42 @@ export default function ConversationView({ conv, onBack, isMobile, onNewMessage,
     }
   }, [conv.id]);
 
+  /* Long histories were an undifferentiated wall — every message looked like
+     it happened just now. normaliseMsg already carries a `timestamp`. */
+  const dayLabel = (ts) => {
+    if (!ts) return "";
+    const d = new Date(ts);
+    const today = new Date();
+    const y = new Date(); y.setDate(today.getDate() - 1);
+    const same = (a, b) => a.toDateString() === b.toDateString();
+    if (same(d, today)) return "Today";
+    if (same(d, y))     return "Yesterday";
+    return d.toLocaleDateString([], { day: "numeric", month: "short", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+  };
+
   const typingNames = Object.keys(typingUsers);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-[#0d1b2a] border-b border-white/[0.06] flex-shrink-0">
+      <div className="flex shrink-0 items-center gap-3 border-b border-line bg-ground px-4 py-3">
         {isMobile && (
-          <button onClick={onBack} className="bg-transparent border-none cursor-pointer text-white/50 flex-shrink-0 flex">
+          <button onClick={onBack} aria-label="Back to conversations" className="flex shrink-0 cursor-pointer border-none bg-transparent text-ink-soft">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
         )}
 
         {isGroup
-          ? <div className="relative flex-shrink-0">
+          ? <div className="relative shrink-0">
               {conv.cover
-                ? <img src={conv.cover} alt={conv.name} className="w-10 h-10 rounded-full object-cover border border-[#FF6B35]/30"
+                ? <img src={conv.cover} alt={conv.name} className="h-10 w-10 rounded-full border border-line object-cover"
                     onError={e => { e.target.style.display = "none"; }} />
-                : <div className={`w-10 h-10 rounded-full ${conv.avatar} flex items-center justify-center font-bold text-white font-serif text-[13px]`}>
+                : <div className={`h-10 w-10 rounded-full ${conv.avatar} flex items-center justify-center text-[14px] font-semibold text-accent`}>
                     {conv.name?.slice(0, 1).toUpperCase()}
                   </div>
               }
-              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-[#0d1b2a] rounded-full flex items-center justify-center border border-white/10">
-                <Users size={9} className="text-[#FF6B35]" />
+              <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-surface">
+                <Users size={10} className="text-accent" />
               </div>
             </div>
           : <Avatar name={conv.name} colorClass={conv.avatar} imgSrc={conv.avatarUrl} online={conv.online} size="w-10 h-10" />
@@ -311,15 +324,22 @@ export default function ConversationView({ conv, onBack, isMobile, onNewMessage,
 
         <div className="flex-1 min-w-0">
           <div
-            className="text-[14px] font-bold text-white truncate cursor-pointer hover:text-[#FF6B35] transition-colors"
+            className="cursor-pointer truncate font-display text-[16px] font-semibold text-ink transition-colors hover:text-accent"
             onClick={() => {
               if (isGroup && conv.tripId) navigate(`/group-dashboard/${conv.tripId}`);
               else if (!isGroup && conv.otherUserId) navigate(`/profile/${conv.otherUserId}`);
             }}
           >{conv.name}</div>
-          {isGroup && conv.members && (
-            <div className="text-[11px] font-medium text-white/35">{conv.members}</div>
-          )}
+          {wsStatus === "connected"
+            ? (isGroup && conv.members && (
+                <div className="mt-0.5 text-[12.5px] text-ink-mute">{conv.members}</div>
+              ))
+            : (
+              <div className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-ink-mute">
+                <span className="h-1.5 w-1.5 rounded-full bg-sun" />
+                {wsStatus === "reconnecting" ? "Reconnecting…" : "Connecting…"}
+              </div>
+            )}
         </div>
       </div>
 
@@ -330,44 +350,58 @@ export default function ConversationView({ conv, onBack, isMobile, onNewMessage,
           className="h-full overflow-y-auto"
           onScroll={handleScroll}
         >
-          <div className="min-h-full flex flex-col justify-end px-4 py-5 gap-0.5">
+          <div className="flex min-h-full flex-col justify-end gap-0.5 px-4 py-5">
             {messages.length === 0 && typingNames.length === 0 && (
               <div className="flex items-center justify-center py-10">
-                <p className="text-[12px] text-white/20">No messages yet. Say hello!</p>
+                <p className="text-[13.5px] text-ink-mute">No messages yet — say hello.</p>
               </div>
             )}
 
             {messages.map((msg, i) => {
               const isMe     = msg.from === "me";
-              const prevFrom = i > 0 ? messages[i - 1].from : null;
+              const prev     = i > 0 ? messages[i - 1] : null;
+              const prevFrom = prev ? prev.from : null;
               const showName = isGroup && !isMe && prevFrom !== msg.from;
               const grouped  = i > 0 && prevFrom === msg.from;
+
+              const today = dayLabel(msg.timestamp);
+              const showDay = today && (!prev || dayLabel(prev.timestamp) !== today);
+              const daySeparator = showDay ? (
+                <div className="my-4 flex items-center gap-3">
+                  <span className="h-px flex-1 bg-line" aria-hidden="true" />
+                  <span className="text-[11.5px] font-medium text-ink-mute">{today}</span>
+                  <span className="h-px flex-1 bg-line" aria-hidden="true" />
+                </div>
+              ) : null;
 
               if (msg.messageType === "system") {
                 return (
                   <div key={msg.id} className="mt-2">
+                    {daySeparator}
                     <SystemMessage msg={msg} />
                     <div className="flex justify-center mt-0.5">
-                      <span className="text-[10px] text-white/20">{msg.time}</span>
+                      <span className="text-[11px] text-ink-mute">{msg.time}</span>
                     </div>
                   </div>
                 );
               }
 
               return (
-                <div key={msg.id}
-                  className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${grouped ? "mt-0.5" : "mt-3"}`}>
+                <div key={msg.id}>
+                  {daySeparator}
+                  <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${grouped ? "mt-0.5" : "mt-3"}`}>
                   {showName && (
                     <div className="flex items-center gap-1.5 mb-1 ml-1">
                       <Avatar name={msg.senderName} size="w-4 h-4" colorClass={msg.color} imgSrc={msg.senderAvatarUrl} />
-                      <span className="text-[11px] font-bold text-white/50">{msg.senderName}</span>
+                      <span className="text-[12px] font-semibold text-ink-soft">{msg.senderName}</span>
                     </div>
                   )}
 
                   <MessageBubble msg={msg} onDelete={handleDelete} />
 
                   <div className={`flex items-center gap-1 mt-0.5 px-1 ${isMe ? "flex-row" : "flex-row-reverse"}`}>
-                    <span className="text-[10px] text-white/20">{msg.time}</span>
+                      <span className="text-[11px] text-ink-mute">{msg.time}</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -375,9 +409,9 @@ export default function ConversationView({ conv, onBack, isMobile, onNewMessage,
 
             {typingNames.length > 0 && (
               <div className="flex items-start mt-3">
-                <div className="bg-[#132032] border border-white/[0.06] rounded-2xl rounded-bl-sm px-4 py-2.5 flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm border border-line bg-surface px-4 py-2.5">
                   <TypingDots />
-                  <span className="text-[12px] text-white/40 ml-1.5">
+                  <span className="ml-1.5 text-[13px] text-ink-mute">
                     {typingNames.join(", ")} typing…
                   </span>
                 </div>
@@ -390,7 +424,7 @@ export default function ConversationView({ conv, onBack, isMobile, onNewMessage,
           <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10 pointer-events-none">
             <button
               onClick={() => { scrollToBottom("smooth"); setNewMsgBelow(false); }}
-              className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FF6B35] text-white text-[11px] font-bold shadow-lg cursor-pointer hover:bg-[#e55c28] transition-all"
+              className="pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-full border-none bg-accent px-4 py-2 text-[12.5px] font-semibold text-accent-ink shadow-[0_6px_18px_var(--tt-shadow)] transition-colors hover:bg-accent-hover"
             >
               New message <ChevronDown size={12} />
             </button>
@@ -399,7 +433,7 @@ export default function ConversationView({ conv, onBack, isMobile, onNewMessage,
       </div>
 
       <InputBar onSend={handleSend} onSendImage={handleSendImage} uploading={imgUploading} />
-      {isMobile && <div className="h-[58px] flex-shrink-0 bg-[#0d1b2a]" />}
+      {isMobile && <div className="h-[58px] shrink-0 bg-ground" />}
     </div>
   );
 }

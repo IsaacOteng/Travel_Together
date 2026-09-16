@@ -17,7 +17,7 @@ const globalStyles = `
     50%       { transform: translateY(-4px); }
   }
   ::-webkit-scrollbar { width: 3px; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb { background: var(--tt-line); border-radius: 99px; }
 `;
 
 export default function ChatPage() {
@@ -200,20 +200,20 @@ export default function ChatPage() {
   if (mobile) {
     const inChat = mobileView === "chat";
     return (
-      <div className="h-screen bg-[#071422] font-sans flex flex-col overflow-hidden">
+      <div className="flex h-screen flex-col overflow-hidden bg-ground font-sans">
         <style>{globalStyles}</style>
         {!inChat && (
-          <header className="h-14 bg-[#0d1b2a] border-b border-white/[0.06] flex items-center px-4 flex-shrink-0">
+          <header className="flex h-14 shrink-0 items-center border-b border-line bg-ground px-4">
             <div className="flex items-center gap-2">
               <img src={officialLogo} alt="logo" className="w-7 h-7"
                 onError={e => { e.target.style.display = "none"; }} />
-              <span className="text-[14px] font-bold text-white tracking-tight">Travel Together</span>
+              <span className="font-display text-[16px] font-semibold text-ink">Travel Together</span>
             </div>
           </header>
         )}
         <div className="flex-1 overflow-hidden min-h-0">
           {!inChat
-            ? <div className="h-full overflow-hidden flex flex-col bg-[#0d1b2a]">
+            ? <div className="flex h-full flex-col overflow-hidden bg-ground">
                 <ChatList onOpen={openConv} activeId={active?.id} conversations={conversations} />
               </div>
             : <div className="h-full flex flex-col overflow-hidden">{ConvView}</div>
@@ -225,15 +225,22 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-screen bg-[#071422] font-sans flex flex-col overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-ground font-sans">
       <style>{globalStyles}</style>
       <AppNav />
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        <div className="w-[300px] flex-shrink-0 border-r border-white/[0.06] flex flex-col overflow-hidden bg-[#0d1b2a]">
-          <ChatList onOpen={openConv} activeId={active?.id} conversations={conversations} />
-        </div>
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-[#071422]">
-          {ConvView}
+      {/* Same measure as Discover — tt-shell caps at 1440px with 32px gutters,
+          so chat sits on the page instead of running edge to edge. The two
+          panes share one rounded frame so they read as a single surface. */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="tt-shell flex min-h-0 flex-1 overflow-hidden py-5">
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-3xl border border-line bg-ground">
+            <div className="flex w-[330px] shrink-0 flex-col overflow-hidden border-r border-line bg-ground">
+              <ChatList onOpen={openConv} activeId={active?.id} conversations={conversations} />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ground-alt">
+              {ConvView}
+            </div>
+          </div>
         </div>
       </div>
     </div>

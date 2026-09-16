@@ -1,7 +1,13 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import ConvRow from "./ConvRow.jsx";
 import { fuzzyMatch } from "./utils.js";
+
+const TABS = [
+  { id: "message", label: "All"    },
+  { id: "unread",  label: "Unread" },
+  { id: "groups",  label: "Groups" },
+];
 
 export default function ChatList({ onOpen, activeId, conversations = [] }) {
   const [tab,    setTab]    = useState("message");
@@ -13,42 +19,64 @@ export default function ChatList({ onOpen, activeId, conversations = [] }) {
     conversations;
 
   const filtered = shown.filter(c => fuzzyMatch(c.name, search));
+  const unreadTotal = conversations.reduce((n, c) => n + (c.unread || 0), 0);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 pt-5 pb-3 flex-shrink-0">
-        <h1 className="text-xl font-light text-white font-serif tracking-tight mb-4">Messages</h1>
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 px-4 pb-3 pt-5">
+        <div className="mb-4 flex items-baseline gap-2.5">
+          <h1 className="m-0 font-display text-[22px] font-semibold text-ink">Messages</h1>
+          {unreadTotal > 0 && (
+            <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[12px] font-semibold text-accent">
+              {unreadTotal} new
+            </span>
+          )}
+        </div>
 
         <div className="relative mb-4">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <Search size={14} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-mute" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search messages"
-            className="w-full bg-white/[0.06] border border-white/[0.08] rounded-2xl py-2.5 pl-9 pr-4 text-[13px] text-white placeholder-white/30 outline-none focus:border-[#FF6B35]/40 transition-colors"
+            aria-label="Search messages"
+            className="w-full rounded-full border border-line bg-surface py-2.5 pl-10 pr-9 text-[13.5px] text-ink outline-none transition-colors placeholder:text-ink-mute focus:border-accent"
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              className="absolute right-3.5 top-1/2 flex -translate-y-1/2 cursor-pointer items-center border-none bg-transparent p-0 text-ink-mute hover:text-ink"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        <div className="flex gap-2 pb-3 border-b border-white/[0.06]">
-          {[
-            { id: "message", label: "Message" },
-            { id: "unread",  label: "Unread"  },
-            { id: "groups",  label: "Groups"  },
-          ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 py-2 rounded-full text-[12px] font-bold border cursor-pointer transition-all duration-150
-                ${tab === t.id
-                  ? "bg-[#FF6B35] border-[#FF6B35] text-white shadow-[0_4px_14px_rgba(255,107,53,0.35)]"
-                  : "bg-transparent border-white/20 text-white/50 hover:border-white/40"}`}>
+        <div className="flex gap-2" role="tablist">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 cursor-pointer rounded-full border py-2 text-[13px] transition-colors ${
+                tab === t.id
+                  ? "border-accent bg-accent font-semibold text-accent-ink"
+                  : "border-line bg-surface font-medium text-ink-soft hover:border-accent hover:text-accent"
+              }`}
+            >
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 divide-y divide-line-soft overflow-y-auto border-t border-line">
         {filtered.length === 0
-          ? <p className="text-center py-12 text-[12px] text-white/25">No conversations found</p>
+          ? <p className="px-6 py-14 text-center text-[13.5px] leading-relaxed text-ink-mute">
+              {search ? "No conversations match that search." : "No conversations yet."}
+            </p>
           : filtered.map(c => (
               <ConvRow key={c.id} c={c} isActive={activeId === c.id} onClick={() => onOpen(c)} />
             ))
