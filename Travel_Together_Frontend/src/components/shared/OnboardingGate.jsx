@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { X, UserCog } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 /* ────────────────────────────────────────────────────────────────
@@ -17,51 +18,55 @@ function OnboardingGateModal({ onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(7,20,34,.55)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)", animation: "ttFadeIn .18s ease" }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-sm p-7 relative"
-        style={{ boxShadow: "0 20px 60px rgba(0,0,0,.18)", animation: "popIn .2s ease both" }}
+        role="dialog"
+        aria-modal="true"
+        className="relative w-full max-w-sm rounded-3xl border border-line bg-surface p-7"
+        style={{ boxShadow: "0 24px 64px var(--tt-shadow-lg)", animation: "ttDialogIn .22s cubic-bezier(0.34,1.4,0.64,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* close */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-300 hover:text-gray-500 transition text-xl leading-none cursor-pointer"
+          aria-label="Close"
+          className="absolute right-4 top-4 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-mute transition-colors hover:border-accent hover:text-accent"
         >
-          ×
+          <X size={15} />
         </button>
 
-        <div className="text-3xl mb-3">🗺️</div>
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">
+          <UserCog size={22} strokeWidth={1.8} />
+        </span>
 
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1E3A5F", marginBottom: 6 }}>
+        <h2 className="m-0 mt-5 font-display text-[20px] font-semibold leading-tight text-ink">
           Finish setting up your profile
         </h2>
-        <p style={{ fontSize: 13, color: "#5576a0", lineHeight: 1.6, marginBottom: 24 }}>
-          Complete your travel profile to join trips, send messages, and connect with other travelers. It only takes 2 minutes.
+        <p className="m-0 mb-6 mt-2.5 text-[14px] leading-relaxed text-ink-soft">
+          Complete your travel profile to join trips, send messages and connect
+          with other travellers. It takes about two minutes.
         </p>
 
         <button
           type="button"
           onClick={goSetup}
-          className="w-full py-3 rounded-xl text-white text-[14px] font-bold cursor-pointer"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#ff8c5a)", border: "none" }}
+          className="w-full cursor-pointer rounded-full border-none bg-accent py-3.5 text-[14.5px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
         >
-          Complete my profile →
+          Complete my profile
         </button>
 
         <button
           type="button"
           onClick={onClose}
-          className="w-full mt-3 text-[12px] text-gray-400 hover:text-[#5576a0] transition cursor-pointer bg-transparent border-none"
+          className="mt-3 w-full cursor-pointer border-none bg-transparent py-1 text-[13px] text-ink-mute transition-colors hover:text-ink"
         >
           Maybe later
         </button>
       </div>
 
-      <style>{`@keyframes popIn { from { opacity:0; transform:scale(.88); } to { opacity:1; transform:scale(1); } }`}</style>
     </div>
   );
 }
