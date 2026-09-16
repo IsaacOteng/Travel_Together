@@ -22,6 +22,8 @@ import SOSButton from './SOSButton.jsx';
 import Countdown from './GDCountdown.jsx';
 import Section from './GDSection.jsx';
 import QuickAction from './QuickAction.jsx';
+import TripPhaseHeader from './TripPhaseHeader.jsx';
+import LiveStatus from './LiveStatus.jsx';
 import MemberRow from './MemberRow.jsx';
 import TripCompletionPrompt from './TripCompletionPrompt.jsx';
 import ReportIssueModal from './ReportIssueModal.jsx';
@@ -63,6 +65,7 @@ export default function GroupDashboard() {
   const [loading,       setLoading]       = useState(true);
   const [departing,     setDeparting]     = useState(false);
   const [departMsg,     setDepartMsg]     = useState("");
+  const [tab,           setTab]           = useState("overview");
 
   const isChief = !!user && (
     (chiefId && String(chiefId) === String(user.id)) ||
@@ -455,48 +458,19 @@ export default function GroupDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTripLive]);
 
+  /* One derived phase drives the header, the tabs and which controls appear.
+     Previously each panel re-decided this for itself, which is how a finished
+     trip kept offering check-in and a live map. */
+  const phase = trip?.status === "completed" || trip?.phase === "ended"
+    ? "ended"
+    : isTripLive ? "live" : "upcoming";
+
   const STATUS_CFG = {
     active:    { label: "Active",    cls: "bg-green-400/10 text-green-400 border-green-400/20"   },
     published: { label: "Published", cls: "bg-blue-400/10  text-blue-400  border-blue-400/20"   },
     draft:     { label: "Draft",     cls: "bg-surface-alt text-ink-mute  border-line"  },
     completed: { label: "Completed", cls: "bg-surface-alt text-ink-mute  border-line"  },
   };
-
-  const TripHeader = (
-    <div className="bg-surface border border-line rounded-2xl p-5">
-      <div className="flex items-center gap-1.5 mb-3">
-        <button onClick={() => navigate('/dashboard')} className="bg-transparent border-none cursor-pointer text-ink-mute flex p-0">
-          <ArrowLeft size={14} />
-        </button>
-        <span className="text-[10px] text-ink-mute">My Trips</span>
-        <ChevronRight size={10} className="text-ink-mute" />
-        <span className="text-[10px] text-accent/70 font-semibold">Group Dashboard</span>
-      </div>
-
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h1 className="text-[22px] font-light text-ink font-serif tracking-tight leading-tight">
-              {trip?.title ?? "—"}
-            </h1>
-            {trip?.status && STATUS_CFG[trip.status] && (
-              <span className={`text-[9px] font-black uppercase tracking-wider border rounded-full px-2 py-px flex-shrink-0 ${STATUS_CFG[trip.status].cls}`}>
-                {STATUS_CFG[trip.status].label}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <MapPin size={11} className="text-ink-mute" />
-            <span className="text-[12px] text-ink-mute">{trip?.destination ?? ""}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 mt-4">
-        <Countdown targetMs={trip?.countdownTo ?? null} phase={trip?.phase ?? "starting"} />
-      </div>
-    </div>
-  );
 
   const handleOpenGroupChat = async () => {
     if (!tripId) return;
@@ -508,82 +482,93 @@ export default function GroupDashboard() {
     }
   };
 
-  const preTripTitle = "Check-in opens an hour before the trip starts";
+  const primaryAction =
+    phase === "ended" ? (
+      <button
+        onClick={handleOpenGroupChat}
+        className="flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent"
+      >
+        <MessageCircle size={15} /> Open group chat
+      </button>
+    ) : checkInOpen && canCheckIn ? (
+      <button
+        onClick={handleCheckIn}
+        className="flex cursor-pointer items-center gap-2 rounded-full border-none bg-accent px-6 py-3 text-[14.5px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
+      >
+        <CheckCircle size={16} /> Check in{pendingStop ? ` at ${pendingStop.name}` : ""}
+      </button>
+    ) : (
+      <button
+        onClick={handleOpenGroupChat}
+        className="flex cursor-pointer items-center gap-2 rounded-full border-none bg-accent px-6 py-3 text-[14.5px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
+      >
+        <MessageCircle size={16} /> Open group chat
+      </button>
+    );
+
+  const TripHeader = (
+    <TripPhaseHeader
+      trip={trip}
+      phase={phase}
+      memberCount={members.length}
+      onBack={() => navigate('/dashboard')}
+      primaryAction={primaryAction}
+    />
+  );
+
+  /* Check-in is the header's primary action, so it is deliberately absent
+     here — it used to appear in both places. What's left is phase-aware:
+     SOS only exists while the trip is actually running. */
   const QuickActionsPanel = (
     <div className="rounded-3xl border border-line bg-surface p-5">
-      <p className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">Quick actions</p>
-      <div className={`grid gap-2 ${isChief ? "grid-cols-3" : "grid-cols-4"}`}>
-        <div className="relative"
-          title={!checkInOpen ? preTripTitle : itinerary.length === 0 ? "Add an itinerary stop first." : !canCheckIn ? "All stops checked in." : undefined}>
-          <QuickAction
-            icon={CheckCircle}
-            label="Check In"
-            tone="accent"
-            onClick={checkInOpen && canCheckIn ? handleCheckIn : undefined}
-          />
-          {checkInOpen && !canCheckIn && itinerary.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-moss flex items-center justify-center border-2 border-surface pointer-events-none">
-              <Check size={8} className="text-white" />
-            </span>
-          )}
-        </div>
+      <p className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">
+        Quick actions
+      </p>
+      <div className="grid grid-cols-3 gap-2">
         <QuickAction icon={MessageCircle} label="Chat" onClick={handleOpenGroupChat} />
-        <div title={!isTripLive ? preTripTitle : undefined}>
-          <QuickAction
-            icon={AlertTriangle}
-            label="SOS"
-            tone="danger"
-            onClick={isTripLive ? () => setShowSOS(true) : undefined}
-          />
-        </div>
+
+        {phase === "live" && (
+          <QuickAction icon={AlertTriangle} label="SOS" tone="danger" onClick={() => setShowSOS(true)} />
+        )}
+
         {/* Members only: the organizer answers reports, they don't file them
             against their own trip. Available from approval onward — problems
             at the meeting point need saying before the trip is over, not
             after the payout has moved. */}
         {!isChief && (
-          <div title="Raise a problem with this trip">
-            <QuickAction
-              icon={Flag}
-              label="Report"
-              tone="plain"
-              onClick={() => setShowReport(true)}
-            />
-          </div>
+          <QuickAction icon={Flag} label="Report" onClick={() => setShowReport(true)} />
+        )}
+
+        {isChief && (
+          <QuickAction icon={Users} label="Members" onClick={() => setTab("people")} />
         )}
       </div>
-      {checkedIn && pendingStop === undefined && itinerary.length > 0 && (
-        <div className="mt-3 px-3 py-2 rounded-xl border border-moss/25 bg-moss/10 flex items-center gap-2 text-[12.5px] font-medium text-moss">
-          <CheckCircle size={14} className="shrink-0 text-moss" /> All stops checked in!
-        </div>
+
+      {phase === "upcoming" && (
+        <p className="mt-3.5 text-[12.5px] leading-relaxed text-ink-mute">
+          Check-in and SOS open an hour before the trip starts.
+        </p>
       )}
-      {checkedIn && pendingStop && (
-        <div className="mt-3 px-3 py-2 rounded-xl border border-moss/25 bg-moss/10 flex items-center gap-2 text-[12.5px] font-medium text-moss">
-          <CheckCircle size={14} className="shrink-0 text-moss" />
-          Checked in{pendingStop ? ` next: ${pendingStop.name}` : ""}
+
+      {checkedIn && itinerary.length > 0 && (
+        <div className="mt-3.5 flex items-center gap-2 rounded-xl border border-moss/25 bg-moss/10 px-3.5 py-2.5 text-[12.5px] font-medium text-moss">
+          <CheckCircle size={14} className="shrink-0" />
+          {pendingStop ? `Checked in at ${checkedInStopName ?? "the last stop"}` : "All stops checked in"}
         </div>
       )}
     </div>
   );
 
   const locatedCount = members.filter(m => m.lat != null).length;
-  const HealthPanel = (
-    <div className="rounded-3xl border border-line bg-surface p-5">
-      <p className="text-[9px] font-bold tracking-[.1em] uppercase text-ink-mute mb-3">Group Health</p>
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { label: "Sharing Loc", val: `${locatedCount}/${members.length}`, sub: "location active",                                        color: "text-ink"   },
-          { label: "Check-ins",   val: `${checkedInCount}/${members.length}`, sub: checkedInStopName ? `at ${checkedInStopName}` : "checked in", color: "text-accent"  },
-          { label: "SOS Alerts",  val: `${sosAlerts.length}`,                 sub: sosAlerts.length ? "active alerts!" : "no active alerts", color: sosAlerts.length ? "text-red-400" : "text-ink" },
-          { label: "Spots Left",  val: `${(trip?.spotsTotal ?? 0) - (trip?.spotsFilled ?? 0)}`, sub: `${trip?.spotsFilled ?? 0}/${trip?.spotsTotal ?? 0} filled`, color: "text-ink" },
-        ].map(s => (
-          <div key={s.label} className="bg-surface-alt border border-line rounded-xl p-3">
-            <div className={`text-xl font-black leading-none font-serif ${s.color}`}>{s.val}</div>
-            <div className="text-[9px] font-bold uppercase tracking-wide text-ink-mute mt-1">{s.label}</div>
-            <div className="text-[9px] text-ink-mute mt-0.5">{s.sub}</div>
-          </div>
-        ))}
-      </div>
-    </div>
+  const StatusPanel = (
+    <LiveStatus
+      members={members}
+      locatedCount={locatedCount}
+      checkedInCount={checkedInCount}
+      checkedInStopName={checkedInStopName}
+      sosAlerts={sosAlerts}
+      phase={phase}
+    />
   );
 
   const MapPanel = (
@@ -881,61 +866,62 @@ export default function GroupDashboard() {
     </Section>
   );
 
-  const SafetyPanel = (
-    <div className="bg-surface border border-line rounded-2xl p-4">
-      <p className="text-[9px] font-bold tracking-[.1em] uppercase text-ink-mute mb-3">Safety Status</p>
-      <div className="flex items-center gap-3 mb-4">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${sosAlerts.length ? "bg-red-400/10 border border-red-400/30" : "bg-orange-400/10 border border-orange-400/30"}`}>
-          <Shield size={18} className={sosAlerts.length ? "text-red-400" : "text-orange-500"} />
-        </div>
-        <div>
-          <div className={`text-[13px] font-bold ${sosAlerts.length ? "text-red-400" : "text-orange-500"}`}>
-            {sosAlerts.length ? `${sosAlerts.length} Active Alert${sosAlerts.length > 1 ? "s" : ""}` : "All Clear"}
-          </div>
-          <div className="text-[10px] text-ink-mute">
-            {sosAlerts.length ? sosAlerts.map(a => a.name).join(", ") : "No active SOS alerts"}
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        {["GPS tracking", "Emergency contact", "Location sharing", "Notifications"].map(s => (
-          <div key={s} className="flex items-center justify-between text-[11px] text-ink-soft">
-            <span>{s}</span>
-            <Check size={13} className="text-orange-400" />
-          </div>
-        ))}
-      </div>
+  /* Tabs replace five stacked accordions. Requests fold into People with a
+     count, so an organiser sees pending joins without hunting for a panel. */
+  const TAB_DEFS = [
+    { id: "overview",  label: "Overview" },
+    { id: "itinerary", label: "Itinerary", count: itinerary.length },
+    { id: "people",    label: "People",    count: members.length, badge: isChief ? requests.length : 0 },
+    { id: "polls",     label: "Polls",     count: polls.length },
+  ];
+
+  const Tabs = (
+    <div className="scrollbar-none flex gap-2 overflow-x-auto" role="tablist">
+      {TAB_DEFS.map(t => (
+        <button
+          key={t.id}
+          role="tab"
+          aria-selected={tab === t.id}
+          onClick={() => setTab(t.id)}
+          className={`relative flex shrink-0 cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-[14px] transition-colors ${
+            tab === t.id
+              ? "border-accent bg-accent font-semibold text-accent-ink"
+              : "border-line bg-surface font-medium text-ink-soft hover:border-accent hover:text-accent"
+          }`}
+        >
+          {t.label}
+          {t.count > 0 && (
+            <span className={`text-[12.5px] ${tab === t.id ? "text-accent-ink/70" : "text-ink-mute"}`}>
+              {t.count}
+            </span>
+          )}
+          {t.badge > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+              {t.badge}
+            </span>
+          )}
+        </button>
+      ))}
     </div>
   );
 
-  const CompactMembers = (
-    <div className="bg-surface border border-line rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[9px] font-bold tracking-[.1em] uppercase text-ink-mute">Members</p>
-        <span className="text-[11px] font-semibold text-ink-mute">{members.length} total</span>
-      </div>
-      <div className="flex flex-col gap-2">
-        {members.map(m => (
-          <div
-            key={m.id}
-            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => handleViewProfile(m.user_id)}
-          >
-            <div className={`w-7 h-7 ${m.avatar} rounded-full flex items-center justify-center text-[10px] font-bold text-ink flex-shrink-0`}>
-              {m.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
-            </div>
-            <span className="flex-1 text-[11px] font-semibold text-ink truncate">{m.name.split(" ")[0]}</span>
-            {m.lat != null
-              ? <MapPin size={11} className="text-emerald-400/60 flex-shrink-0" title="Sharing location" />
-              : <MapPin size={11} className="text-ink-mute flex-shrink-0" title="No location" />
-            }
-            {m.checkedIn
-              ? <CheckCircle size={11} className="text-green-400 flex-shrink-0" />
-              : <Clock size={11} className="text-ink-mute flex-shrink-0" />
-            }
-          </div>
-        ))}
-      </div>
+  const TabPanel = (
+    <div key={tab} style={{ animation: "ttFadeUp .3s ease both" }} className="flex flex-col gap-4">
+      {tab === "overview" && (
+        <>
+          {phase !== "ended" && MapPanel}
+          {StatusPanel}
+          {QuickActionsPanel}
+        </>
+      )}
+      {tab === "itinerary" && ItineraryPanel}
+      {tab === "people" && (
+        <>
+          {isChief && requests.length > 0 && RequestsPanel}
+          {MembersPanel}
+        </>
+      )}
+      {tab === "polls" && PollsPanel}
     </div>
   );
 
@@ -1104,6 +1090,16 @@ export default function GroupDashboard() {
     </div>
   );
 
+  const Notices = (
+    <>
+      {isChief && <OrganizerReportCard tripId={tripId} />}
+      {trip?.status === "completed" && !isChief
+        && !trip?.confirmedCompletion && !trip?.hasReported
+        && <TripCompletionPrompt tripId={tripId} />}
+      {PreTripNotice}
+    </>
+  );
+
   const styles = `
     @keyframes sosPulse {
       0%,100% { box-shadow: 0 0 20px rgba(244,63,94,.4), 0 0 40px rgba(244,63,94,.15); }
@@ -1129,20 +1125,11 @@ export default function GroupDashboard() {
       )}
         {AddStopModal}
         {LocationAlertBanner}
-        <div className="p-3.5 flex flex-col gap-3">
+        <div className="flex flex-col gap-4 p-4 pb-6">
           {TripHeader}
-          {isChief && <OrganizerReportCard tripId={tripId} />}
-          {trip?.status === "completed" && !isChief
-            && !trip?.confirmedCompletion && !trip?.hasReported
-            && <TripCompletionPrompt tripId={tripId} />}
-          {PreTripNotice}
-          {QuickActionsPanel}
-          {HealthPanel}
-          {MapPanel}
-          {ItineraryPanel}
-          {PollsPanel}
-          {RequestsPanel}
-          {MembersPanel}
+          {Notices}
+          {Tabs}
+          {TabPanel}
         </div>
 
         <MobileBottomNav />
@@ -1181,36 +1168,32 @@ export default function GroupDashboard() {
 
       {LocationAlertBanner}
 
-      {/* The desktop branch starts at 768px, where three fixed rails left the
-          centre column ~170px wide. Wrapping (rather than hiding) keeps every
-          panel reachable: below xl the right rail drops to its own full-width
-          row instead of disappearing. */}
-      <div className="tt-shell flex flex-col gap-4 py-7 lg:flex-row lg:flex-wrap lg:items-start lg:gap-5">
-
-        <div className="flex w-full flex-col gap-4 lg:sticky lg:top-24 lg:w-[290px] lg:shrink-0">
+      <div className="tt-shell block py-7">
+        <div className="flex flex-col gap-5">
           {TripHeader}
-          {PreTripNotice}
-          {QuickActionsPanel}
-          {HealthPanel}
-        </div>
+          {Notices}
 
-        <div className="flex w-full min-w-0 flex-col gap-4 lg:min-w-[380px] lg:flex-1">
-          {isChief && <OrganizerReportCard tripId={tripId} />}
-          {trip?.status === "completed" && !isChief
-            && !trip?.confirmedCompletion && !trip?.hasReported
-            && <TripCompletionPrompt tripId={tripId} />}
-          {MapPanel}
-          {ItineraryPanel}
-          {PollsPanel}
-          {RequestsPanel}
-          {MembersPanel}
-        </div>
+          <div className="sticky top-20 z-30 -mx-1 bg-ground px-1 py-2">
+            {Tabs}
+          </div>
 
-        <div className="flex w-full flex-col gap-4 xl:sticky xl:top-24 xl:w-[270px] xl:shrink-0">
-          {SafetyPanel}
-          {CompactMembers}
+          {/* Overview keeps the map wide and puts status alongside it; the
+              other tabs get the full measure. */}
+          {tab === "overview" ? (
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+              <div className="min-w-0 flex-1">
+                {phase !== "ended" && MapPanel}
+                {phase === "ended" && StatusPanel}
+              </div>
+              <div className="flex w-full flex-col gap-4 lg:w-[320px] lg:shrink-0">
+                {phase !== "ended" && StatusPanel}
+                {QuickActionsPanel}
+              </div>
+            </div>
+          ) : (
+            TabPanel
+          )}
         </div>
-
       </div>
     </div>
   );
