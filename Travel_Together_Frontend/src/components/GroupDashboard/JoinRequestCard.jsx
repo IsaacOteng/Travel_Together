@@ -1,45 +1,47 @@
 import { useState } from "react";
-import { UserCheck } from "lucide-react";
+import { UserCheck, Check, X, Star } from "lucide-react";
 import Avatar from "./GDAvatar.jsx";
 
 export default function JoinRequestCard({ req, onApprove, onReject }) {
   const [decided, setDecided] = useState(null);
 
   if (decided) return (
-    <div className={`rounded-2xl py-2.5 text-center text-[12px] font-bold border
-      ${decided === "approve"
-        ? "bg-green-400/10 border-green-400/20 text-green-400"
-        : "bg-red-500/10   border-red-500/20  text-red-400"}`}
-    >
-      {decided === "approve" ? "✓ Approved" : "✗ Declined"}
+    <div className={`flex items-center justify-center gap-1.5 rounded-2xl border py-2.5 text-[13px] font-semibold ${
+      decided === "approve"
+        ? "border-moss/30 bg-moss/10 text-moss"
+        : "border-line bg-surface-alt text-ink-mute"
+    }`}>
+      {decided === "approve" ? <><Check size={14} /> Approved</> : <><X size={14} /> Declined</>}
     </div>
   );
 
   return (
-    <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3">
-      <div className="flex items-start gap-2.5 mb-3">
-        <Avatar name={req.name} colorClass={req.avatar ?? "bg-[#FF6B35]"} imgSrc={req.avatar_url} />
-        <div className="flex-1">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-[13px] font-bold text-white">{req.name}</span>
-            {req.verified && <UserCheck size={13} className="text-green-400" />}
+    <div className="rounded-2xl border border-line bg-surface-alt p-4">
+      <div className="mb-3.5 flex items-start gap-3">
+        <Avatar name={req.name} colorClass={req.avatar ?? "bg-accent-soft"} imgSrc={req.avatar_url} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[14px] font-semibold text-ink">{req.name}</span>
+            {req.verified && <UserCheck size={14} className="shrink-0 text-moss" />}
           </div>
-          <div className="flex gap-2.5 text-[10px] text-white/35">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[12px] text-ink-mute">
             <span>{req.trips} trip{req.trips !== 1 ? "s" : ""}</span>
-            <span>· ⭐ {req.rating}</span>
+            <span className="flex items-center gap-1">
+              <Star size={11} className="text-sun" fill="currentColor" />{req.rating}
+            </span>
+            <span>{req.time}</span>
           </div>
-          <span className="text-[10px] text-white/20">{req.time}</span>
         </div>
       </div>
       <div className="flex gap-2">
         <button
           onClick={() => { setDecided("approve"); onApprove?.(req.id); }}
-          className="flex-1 py-2 rounded-xl border border-green-400/30 bg-green-400/10 text-green-400 text-[12px] font-bold cursor-pointer hover:bg-green-400/20 transition-colors"
-        >✓ Approve</button>
+          className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full border-none bg-accent py-2.5 text-[13px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover"
+        ><Check size={14} /> Approve</button>
         <button
           onClick={() => { setDecided("reject"); onReject?.(req.id); }}
-          className="flex-1 py-2 rounded-xl border border-red-500/20 bg-red-500/[0.08] text-red-400 text-[12px] font-bold cursor-pointer hover:bg-red-500/15 transition-colors"
-        >✗ Decline</button>
+          className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-line bg-surface py-2.5 text-[13px] font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent"
+        ><X size={14} /> Decline</button>
       </div>
     </div>
   );

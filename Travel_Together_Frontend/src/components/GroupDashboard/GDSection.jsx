@@ -1,29 +1,30 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-export default function Section({ title, icon: Icon, iconColor, children, action, defaultOpen = true }) {
+export default function Section({ title, icon: Icon, children, action, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-[#0d1b2a] rounded-2xl border border-white/[0.07] overflow-hidden">
+    <div className="overflow-hidden rounded-3xl border border-line bg-surface">
       <button
         onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center gap-2.5 px-4 py-3.5 bg-transparent border-none cursor-pointer text-left
-          ${open ? "border-b border-white/[0.05]" : ""}`}
+        aria-expanded={open}
+        className={`flex w-full cursor-pointer items-center gap-3 border-none bg-transparent px-5 py-4 text-left ${
+          open ? "border-b border-line" : ""
+        }`}
       >
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: `${iconColor}18`, border: `1px solid ${iconColor}30` }}
-        >
-          <Icon size={14} color={iconColor} />
-        </div>
-        <span className="flex-1 text-[13px] font-bold text-white/85 tracking-tight">{title}</span>
+        {Icon && (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+            <Icon size={15} />
+          </span>
+        )}
+        <span className="flex-1 font-display text-[16px] font-semibold text-ink">{title}</span>
         {action}
         <ChevronDown
-          size={14}
-          className={`text-white/25 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          size={16}
+          className={`text-ink-mute transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
-      {open && <div className="p-4">{children}</div>}
+      {open && <div className="p-5">{children}</div>}
     </div>
   );
 }

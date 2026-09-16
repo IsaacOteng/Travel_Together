@@ -458,25 +458,25 @@ export default function GroupDashboard() {
   const STATUS_CFG = {
     active:    { label: "Active",    cls: "bg-green-400/10 text-green-400 border-green-400/20"   },
     published: { label: "Published", cls: "bg-blue-400/10  text-blue-400  border-blue-400/20"   },
-    draft:     { label: "Draft",     cls: "bg-white/[0.06] text-white/40  border-white/[0.09]"  },
-    completed: { label: "Completed", cls: "bg-white/[0.06] text-white/30  border-white/[0.08]"  },
+    draft:     { label: "Draft",     cls: "bg-surface-alt text-ink-mute  border-line"  },
+    completed: { label: "Completed", cls: "bg-surface-alt text-ink-mute  border-line"  },
   };
 
   const TripHeader = (
-    <div className="bg-[#0d1b2a] border border-white/[0.07] rounded-2xl p-5">
+    <div className="bg-surface border border-line rounded-2xl p-5">
       <div className="flex items-center gap-1.5 mb-3">
-        <button onClick={() => navigate('/dashboard')} className="bg-transparent border-none cursor-pointer text-white/40 flex p-0">
+        <button onClick={() => navigate('/dashboard')} className="bg-transparent border-none cursor-pointer text-ink-mute flex p-0">
           <ArrowLeft size={14} />
         </button>
-        <span className="text-[10px] text-white/25">My Trips</span>
-        <ChevronRight size={10} className="text-white/20" />
-        <span className="text-[10px] text-[#FF6B35]/70 font-semibold">Group Dashboard</span>
+        <span className="text-[10px] text-ink-mute">My Trips</span>
+        <ChevronRight size={10} className="text-ink-mute" />
+        <span className="text-[10px] text-accent/70 font-semibold">Group Dashboard</span>
       </div>
 
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h1 className="text-[22px] font-light text-white font-serif tracking-tight leading-tight">
+            <h1 className="text-[22px] font-light text-ink font-serif tracking-tight leading-tight">
               {trip?.title ?? "—"}
             </h1>
             {trip?.status && STATUS_CFG[trip.status] && (
@@ -486,8 +486,8 @@ export default function GroupDashboard() {
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            <MapPin size={11} className="text-white/30" />
-            <span className="text-[12px] text-white/40">{trip?.destination ?? ""}</span>
+            <MapPin size={11} className="text-ink-mute" />
+            <span className="text-[12px] text-ink-mute">{trip?.destination ?? ""}</span>
           </div>
         </div>
       </div>
@@ -510,29 +510,29 @@ export default function GroupDashboard() {
 
   const preTripTitle = "Check-in opens an hour before the trip starts";
   const QuickActionsPanel = (
-    <div className="bg-[#0d1b2a] rounded-2xl border border-white/[0.07] p-4">
-      <p className="text-[9px] font-bold tracking-[.1em] uppercase text-white/25 mb-3">Quick Actions</p>
+    <div className="rounded-3xl border border-line bg-surface p-5">
+      <p className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">Quick actions</p>
       <div className={`grid gap-2 ${isChief ? "grid-cols-3" : "grid-cols-4"}`}>
         <div className="relative"
           title={!checkInOpen ? preTripTitle : itinerary.length === 0 ? "Add an itinerary stop first." : !canCheckIn ? "All stops checked in." : undefined}>
           <QuickAction
             icon={CheckCircle}
             label="Check In"
-            color={checkInOpen && canCheckIn ? "#52A882" : "#4b5563"}
+            tone="accent"
             onClick={checkInOpen && canCheckIn ? handleCheckIn : undefined}
           />
           {checkInOpen && !canCheckIn && itinerary.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-400/80 flex items-center justify-center border-2 border-[#0d1b2a] pointer-events-none">
-              <Check size={7} className="text-white" />
+            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-moss flex items-center justify-center border-2 border-surface pointer-events-none">
+              <Check size={8} className="text-white" />
             </span>
           )}
         </div>
-        <QuickAction icon={MessageCircle} label="Chat" color="#8B9FC4" onClick={handleOpenGroupChat} />
+        <QuickAction icon={MessageCircle} label="Chat" onClick={handleOpenGroupChat} />
         <div title={!isTripLive ? preTripTitle : undefined}>
           <QuickAction
             icon={AlertTriangle}
             label="SOS"
-            color={isTripLive ? "#C0504A" : "#4b5563"}
+            tone="danger"
             onClick={isTripLive ? () => setShowSOS(true) : undefined}
           />
         </div>
@@ -545,20 +545,20 @@ export default function GroupDashboard() {
             <QuickAction
               icon={Flag}
               label="Report"
-              color="#E0A458"
+              tone="plain"
               onClick={() => setShowReport(true)}
             />
           </div>
         )}
       </div>
       {checkedIn && pendingStop === undefined && itinerary.length > 0 && (
-        <div className="mt-3 px-3 py-2 bg-emerald-500/[0.07] border border-emerald-500/20 rounded-xl flex items-center gap-2 text-[12px] text-emerald-400/80 font-semibold">
-          <CheckCircle size={13} className="text-emerald-400 flex-shrink-0" /> All stops checked in!
+        <div className="mt-3 px-3 py-2 rounded-xl border border-moss/25 bg-moss/10 flex items-center gap-2 text-[12.5px] font-medium text-moss">
+          <CheckCircle size={14} className="shrink-0 text-moss" /> All stops checked in!
         </div>
       )}
       {checkedIn && pendingStop && (
-        <div className="mt-3 px-3 py-2 bg-emerald-500/[0.07] border border-emerald-500/20 rounded-xl flex items-center gap-2 text-[12px] text-emerald-400/80 font-semibold">
-          <CheckCircle size={13} className="text-emerald-400 flex-shrink-0" />
+        <div className="mt-3 px-3 py-2 rounded-xl border border-moss/25 bg-moss/10 flex items-center gap-2 text-[12.5px] font-medium text-moss">
+          <CheckCircle size={14} className="shrink-0 text-moss" />
           Checked in{pendingStop ? ` next: ${pendingStop.name}` : ""}
         </div>
       )}
@@ -567,19 +567,19 @@ export default function GroupDashboard() {
 
   const locatedCount = members.filter(m => m.lat != null).length;
   const HealthPanel = (
-    <div className="bg-[#0d1b2a] rounded-2xl border border-white/[0.07] p-4">
-      <p className="text-[9px] font-bold tracking-[.1em] uppercase text-white/25 mb-3">Group Health</p>
+    <div className="rounded-3xl border border-line bg-surface p-5">
+      <p className="text-[9px] font-bold tracking-[.1em] uppercase text-ink-mute mb-3">Group Health</p>
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Sharing Loc", val: `${locatedCount}/${members.length}`, sub: "location active",                                        color: "text-white/70"   },
-          { label: "Check-ins",   val: `${checkedInCount}/${members.length}`, sub: checkedInStopName ? `at ${checkedInStopName}` : "checked in", color: "text-[#FF6B35]"  },
-          { label: "SOS Alerts",  val: `${sosAlerts.length}`,                 sub: sosAlerts.length ? "active alerts!" : "no active alerts", color: sosAlerts.length ? "text-red-400" : "text-white/70" },
-          { label: "Spots Left",  val: `${(trip?.spotsTotal ?? 0) - (trip?.spotsFilled ?? 0)}`, sub: `${trip?.spotsFilled ?? 0}/${trip?.spotsTotal ?? 0} filled`, color: "text-white/70" },
+          { label: "Sharing Loc", val: `${locatedCount}/${members.length}`, sub: "location active",                                        color: "text-ink"   },
+          { label: "Check-ins",   val: `${checkedInCount}/${members.length}`, sub: checkedInStopName ? `at ${checkedInStopName}` : "checked in", color: "text-accent"  },
+          { label: "SOS Alerts",  val: `${sosAlerts.length}`,                 sub: sosAlerts.length ? "active alerts!" : "no active alerts", color: sosAlerts.length ? "text-red-400" : "text-ink" },
+          { label: "Spots Left",  val: `${(trip?.spotsTotal ?? 0) - (trip?.spotsFilled ?? 0)}`, sub: `${trip?.spotsFilled ?? 0}/${trip?.spotsTotal ?? 0} filled`, color: "text-ink" },
         ].map(s => (
-          <div key={s.label} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3">
+          <div key={s.label} className="bg-surface-alt border border-line rounded-xl p-3">
             <div className={`text-xl font-black leading-none font-serif ${s.color}`}>{s.val}</div>
-            <div className="text-[9px] font-bold uppercase tracking-wide text-white/20 mt-1">{s.label}</div>
-            <div className="text-[9px] text-white/15 mt-0.5">{s.sub}</div>
+            <div className="text-[9px] font-bold uppercase tracking-wide text-ink-mute mt-1">{s.label}</div>
+            <div className="text-[9px] text-ink-mute mt-0.5">{s.sub}</div>
           </div>
         ))}
       </div>
@@ -592,13 +592,13 @@ export default function GroupDashboard() {
         <FleetMap height={300} members={members} myLocation={myLocation} flyTo={mapFlyTo} resetKey={mapResetKey} />
         <div className="flex gap-2 mt-3">
           <button onClick={handleLocate}
-            className="flex-1 py-1.5 rounded-xl text-[10px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 transition-colors bg-white/[0.03] border border-white/[0.07] text-white/35 hover:text-white/60 hover:bg-white/[0.06]"
+            className="flex-1 py-1.5 rounded-xl text-[10px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 transition-colors bg-surface-alt border border-line text-ink-mute hover:text-ink-soft hover:bg-surface-alt"
           >
             <MapPin size={11} className={locating ? "animate-spin" : ""} />
             {locating ? "Locating…" : "My Location"}
           </button>
           <button onClick={() => { setMapFlyTo(null); setMapResetKey(k => k + 1); }}
-            className="flex-1 py-1.5 rounded-xl text-[10px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 transition-colors bg-white/[0.03] border border-white/[0.07] text-white/35 hover:text-white/60 hover:bg-white/[0.06]"
+            className="flex-1 py-1.5 rounded-xl text-[10px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 transition-colors bg-surface-alt border border-line text-ink-mute hover:text-ink-soft hover:bg-surface-alt"
           >
             <RefreshCw size={11} /> Reset View
           </button>
@@ -684,14 +684,14 @@ export default function GroupDashboard() {
               onClick={handleDepart}
               disabled={departing || !!departBlockedReason}
               title={departBlockedReason || "Confirm the group has set off"}
-              className="flex items-center gap-1 text-[10px] font-bold text-[#FF6B35] bg-[#FF6B35]/10 border border-[#FF6B35]/25 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-[#FF6B35]/20 transition-colors disabled:opacity-60"
+              className="flex items-center gap-1 text-[10px] font-bold text-accent bg-accent/10 border border-accent/25 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-accent/20 transition-colors disabled:opacity-60"
             >
               <Navigation size={10} /> {departing ? "Departing…" : "Depart"}
             </button>
           )}
           <button
             onClick={() => setShowAddStop(true)}
-            className="flex items-center gap-1 text-[10px] font-bold text-[#6B7FA6] bg-[#6B7FA6]/10 border border-[#6B7FA6]/20 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-[#6B7FA6]/20 transition-colors"
+            className="flex items-center gap-1 text-[10px] font-bold text-accent bg-accent/10 border border-[#6B7FA6]/20 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-accent/20 transition-colors"
           >
             <Plus size={10} /> Add Stop
           </button>
@@ -699,25 +699,25 @@ export default function GroupDashboard() {
       )}
     >
       {departMsg && (
-        <p className="text-[10.5px] text-white/55 bg-white/[0.04] border border-white/[0.07] rounded-lg px-2.5 py-1.5 mb-2.5 leading-snug">
+        <p className="text-[10.5px] text-ink-soft bg-surface-alt border border-line rounded-lg px-2.5 py-1.5 mb-2.5 leading-snug">
           {departMsg}
         </p>
       )}
       {itinerary.length === 0 ? (
-        <p className="text-[11px] text-white/25 text-center py-2">No stops added yet.</p>
+        <p className="text-[11px] text-ink-mute text-center py-2">No stops added yet.</p>
       ) : (
         <div className="relative pl-5">
-          <div className="absolute left-[7px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-white/15 to-white/[0.03] rounded-full" />
+          <div className="absolute left-[7px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-line to-transparent rounded-full" />
           {itinerary.map((stop, i) => (
             <div key={stop.id} className={`relative flex gap-3 ${i < itinerary.length - 1 ? "mb-5" : ""}`}>
               <div className={`absolute -left-5 mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0
-                ${stop.is_current ? "border-[#6B7FA6] bg-[#6B7FA6]" : "border-white/10 bg-white/[0.05]"}`}
+                ${stop.is_current ? "border-[#6B7FA6] bg-accent" : "border-line bg-surface-alt"}`}
               />
               <div className={`flex-1 rounded-xl px-3 py-2.5 border
-                ${stop.is_current ? "bg-[#6B7FA6]/[0.07] border-[#6B7FA6]/20" : "bg-white/[0.02] border-white/[0.05]"}`}
+                ${stop.is_current ? "bg-accent/[0.07] border-[#6B7FA6]/20" : "bg-surface-alt border-line"}`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-[13px] font-bold ${stop.is_current ? "text-[#8BA4C8]" : "text-white/70"}`}>
+                  <span className={`text-[13px] font-bold ${stop.is_current ? "text-ink-soft" : "text-ink"}`}>
                     {stop.name}
                   </span>
                   <div className="flex items-center gap-2">
@@ -727,7 +727,7 @@ export default function GroupDashboard() {
                       </span>
                     )}
                     {stop.is_current && (
-                      <span className="text-[9px] font-semibold text-[#8BA4C8] bg-[#6B7FA6]/10 border border-[#6B7FA6]/20 px-2 py-px rounded-full tracking-wider uppercase">
+                      <span className="text-[9px] font-semibold text-ink-soft bg-accent/10 border border-[#6B7FA6]/20 px-2 py-px rounded-full tracking-wider uppercase">
                         Current
                       </span>
                     )}
@@ -736,20 +736,20 @@ export default function GroupDashboard() {
                     )}
                     {isChief && !stop.is_system && (
                       <button onClick={() => handleDeleteStop(stop.id)}
-                        className="text-white/15 hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer p-0">
+                        className="text-ink-mute hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer p-0">
                         <X size={11} />
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="flex gap-3 text-[10px] text-white/30">
+                <div className="flex gap-3 text-[10px] text-ink-mute">
                   {stop.arrival_time && <span className="flex items-center gap-1"><Clock size={9} />{stop.arrival_time}</span>}
                   {stop.note        && <span className="flex items-center gap-1"><MapPin size={9} />{stop.note}</span>}
                 </div>
                 {isChief && stop.checked_in_users?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {stop.checked_in_users.map(u => (
-                      <span key={u.user_id} className="text-[9px] text-white/40 bg-white/[0.04] border border-white/[0.06] rounded-full px-2 py-px">
+                      <span key={u.user_id} className="text-[9px] text-ink-mute bg-surface-alt border border-line rounded-full px-2 py-px">
                         {displayName(u, "Member")}
                       </span>
                     ))}
@@ -822,11 +822,11 @@ export default function GroupDashboard() {
       <Section
         title={`Polls${openCount > 0 ? ` (${openCount} open)` : ""}`}
         icon={BarChart2}
-        iconColor="#FF6B35"
+        iconColor="var(--tt-accent)"
         action={
           isChief && (
             <button onClick={e => { e.stopPropagation(); setShowCreate(true); }}
-              className="mr-2 flex items-center gap-1 text-[11px] font-bold text-[#FF6B35] bg-[#FF6B35]/10 border border-[#FF6B35]/25 rounded-lg px-2 py-1 cursor-pointer hover:bg-[#FF6B35]/20 transition-all">
+              className="mr-2 flex items-center gap-1 text-[11px] font-bold text-accent bg-accent/10 border border-accent/25 rounded-lg px-2 py-1 cursor-pointer hover:bg-accent/20 transition-all">
               <Plus size={12} /> New
             </button>
           )
@@ -834,12 +834,12 @@ export default function GroupDashboard() {
       >
         {polls.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-              <BarChart2 size={18} className="text-white/20" />
+            <div className="w-10 h-10 rounded-xl bg-surface-alt border border-line flex items-center justify-center">
+              <BarChart2 size={18} className="text-ink-mute" />
             </div>
-            <p className="text-[12px] text-white/25">No polls yet</p>
+            <p className="text-[12px] text-ink-mute">No polls yet</p>
             {isChief && (
-              <button onClick={() => setShowCreate(true)} className="mt-1 text-[11px] text-[#FF6B35]/70 hover:text-[#FF6B35] bg-transparent border-none cursor-pointer transition-colors">
+              <button onClick={() => setShowCreate(true)} className="mt-1 text-[11px] text-accent/70 hover:text-accent bg-transparent border-none cursor-pointer transition-colors">
                 Create the first poll
               </button>
             )}
@@ -867,7 +867,7 @@ export default function GroupDashboard() {
     >
       <div className="flex flex-col gap-2">
         {members.length === 0 && (
-          <p className="text-[11px] text-white/25 text-center py-3">No members yet.</p>
+          <p className="text-[11px] text-ink-mute text-center py-3">No members yet.</p>
         )}
         {members.map(m => (
           <MemberRow key={m.id} m={m} isChief={isChief} tripId={tripId} isTripLive={isTripLive}
@@ -882,8 +882,8 @@ export default function GroupDashboard() {
   );
 
   const SafetyPanel = (
-    <div className="bg-[#0d1b2a] border border-white/[0.07] rounded-2xl p-4">
-      <p className="text-[9px] font-bold tracking-[.1em] uppercase text-white/25 mb-3">Safety Status</p>
+    <div className="bg-surface border border-line rounded-2xl p-4">
+      <p className="text-[9px] font-bold tracking-[.1em] uppercase text-ink-mute mb-3">Safety Status</p>
       <div className="flex items-center gap-3 mb-4">
         <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${sosAlerts.length ? "bg-red-400/10 border border-red-400/30" : "bg-orange-400/10 border border-orange-400/30"}`}>
           <Shield size={18} className={sosAlerts.length ? "text-red-400" : "text-orange-500"} />
@@ -892,14 +892,14 @@ export default function GroupDashboard() {
           <div className={`text-[13px] font-bold ${sosAlerts.length ? "text-red-400" : "text-orange-500"}`}>
             {sosAlerts.length ? `${sosAlerts.length} Active Alert${sosAlerts.length > 1 ? "s" : ""}` : "All Clear"}
           </div>
-          <div className="text-[10px] text-white/30">
+          <div className="text-[10px] text-ink-mute">
             {sosAlerts.length ? sosAlerts.map(a => a.name).join(", ") : "No active SOS alerts"}
           </div>
         </div>
       </div>
       <div className="flex flex-col gap-2">
         {["GPS tracking", "Emergency contact", "Location sharing", "Notifications"].map(s => (
-          <div key={s} className="flex items-center justify-between text-[11px] text-white/45">
+          <div key={s} className="flex items-center justify-between text-[11px] text-ink-soft">
             <span>{s}</span>
             <Check size={13} className="text-orange-400" />
           </div>
@@ -909,10 +909,10 @@ export default function GroupDashboard() {
   );
 
   const CompactMembers = (
-    <div className="bg-[#0d1b2a] border border-white/[0.07] rounded-2xl p-4">
+    <div className="bg-surface border border-line rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[9px] font-bold tracking-[.1em] uppercase text-white/25">Members</p>
-        <span className="text-[11px] font-semibold text-white/40">{members.length} total</span>
+        <p className="text-[9px] font-bold tracking-[.1em] uppercase text-ink-mute">Members</p>
+        <span className="text-[11px] font-semibold text-ink-mute">{members.length} total</span>
       </div>
       <div className="flex flex-col gap-2">
         {members.map(m => (
@@ -921,17 +921,17 @@ export default function GroupDashboard() {
             className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => handleViewProfile(m.user_id)}
           >
-            <div className={`w-7 h-7 ${m.avatar} rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0`}>
+            <div className={`w-7 h-7 ${m.avatar} rounded-full flex items-center justify-center text-[10px] font-bold text-ink flex-shrink-0`}>
               {m.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
             </div>
-            <span className="flex-1 text-[11px] font-semibold text-white/75 truncate">{m.name.split(" ")[0]}</span>
+            <span className="flex-1 text-[11px] font-semibold text-ink truncate">{m.name.split(" ")[0]}</span>
             {m.lat != null
               ? <MapPin size={11} className="text-emerald-400/60 flex-shrink-0" title="Sharing location" />
-              : <MapPin size={11} className="text-white/15 flex-shrink-0" title="No location" />
+              : <MapPin size={11} className="text-ink-mute flex-shrink-0" title="No location" />
             }
             {m.checkedIn
               ? <CheckCircle size={11} className="text-green-400 flex-shrink-0" />
-              : <Clock size={11} className="text-white/15 flex-shrink-0" />
+              : <Clock size={11} className="text-ink-mute flex-shrink-0" />
             }
           </div>
         ))}
@@ -940,10 +940,10 @@ export default function GroupDashboard() {
   );
 
   if (loading) return (
-    <div className="min-h-screen bg-[#071422] flex items-center justify-center">
+    <div className="min-h-screen bg-ground flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 rounded-full border-2 border-[#FF6B35]/30 border-t-[#FF6B35] animate-spin" />
-        <span className="text-[12px] text-white/30 font-semibold">Loading trip…</span>
+        <div className="w-10 h-10 rounded-full border-2 border-accent/30 border-t-[var(--tt-accent)] animate-spin" />
+        <span className="text-[12px] text-ink-mute font-semibold">Loading trip…</span>
       </div>
     </div>
   );
@@ -967,16 +967,16 @@ export default function GroupDashboard() {
       </div>
     );
     if (locPerms === "prompt") return (
-      <div className="bg-[#FF6B35]/8 border-b border-[#FF6B35]/15 px-5 py-3 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full bg-[#FF6B35]/15 border border-[#FF6B35]/25 flex items-center justify-center flex-shrink-0">
-          <MapPin size={13} className="text-[#FF6B35]" />
+      <div className="bg-accent/8 border-b border-accent/15 px-5 py-3 flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full bg-accent/15 border border-accent/25 flex items-center justify-center flex-shrink-0">
+          <MapPin size={13} className="text-accent" />
         </div>
-        <p className="flex-1 text-[12px] text-white/60 leading-snug">
-          <span className="text-[#FF6B35] font-semibold">Trip is live</span> your location is required so the group can see you.
+        <p className="flex-1 text-[12px] text-ink-soft leading-snug">
+          <span className="text-accent font-semibold">Trip is live</span> your location is required so the group can see you.
         </p>
         <button
           onClick={() => wsSendLocationRef.current?.()}
-          className="text-[11px] font-bold text-white bg-[#FF6B35] rounded-lg px-3 py-1.5 border-none cursor-pointer hover:bg-[#e55c28] transition-colors flex-shrink-0 shadow-[0_2px_8px_rgba(255,107,53,0.35)]"
+          className="text-[11px] font-bold text-ink bg-accent rounded-lg px-3 py-1.5 border-none cursor-pointer hover:bg-[#e55c28] transition-colors flex-shrink-0 shadow-[0_2px_8px_rgba(255,107,53,0.35)]"
         >
           Share Now
         </button>
@@ -986,9 +986,9 @@ export default function GroupDashboard() {
   })();
 
   const PreTripNotice = (!isTripLive && trip?.startMs != null && Date.now() < trip.startMs) && (
-    <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-white/[0.025] border border-white/[0.06]">
+    <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-surface-alt border border-line">
 
-      <p className="text-[9px] text-white/35 leading-relaxed">
+      <p className="text-[9px] text-ink-mute leading-relaxed">
         Check-in opens an hour before departure. SOS and location sharing
         unlock when the trip starts. Check-ins don't block departure they
         just get your payout released sooner.
@@ -1039,18 +1039,18 @@ export default function GroupDashboard() {
       style={{ animation: "fadeIn .2s ease" }}
     >
       <div
-        className="bg-[#0d1b2a] border-2 border-red-500/30 rounded-3xl p-8 w-full max-w-sm text-center shadow-[0_0_60px_rgba(244,63,94,0.2)]"
+        className="bg-surface border-2 border-red-500/30 rounded-3xl p-8 w-full max-w-sm text-center shadow-[0_0_60px_rgba(244,63,94,0.2)]"
         style={{ animation: "slideUp .25s ease" }}
       >
         <p className="text-[11px] font-bold tracking-widest uppercase text-red-400 mb-1">Emergency Alert</p>
-        <h2 className="text-xl font-light text-white font-serif mb-2">Activate SOS?</h2>
-        <p className="text-[13px] text-white/45 leading-relaxed mb-6">
+        <h2 className="text-xl font-light text-ink font-serif mb-2">Activate SOS?</h2>
+        <p className="text-[13px] text-ink-soft leading-relaxed mb-6">
           Your live location will be sent immediately to the group chat so your travel group can reach you.
         </p>
         <SOSButton onFire={handleSOSFire} />
         <button
           onClick={() => setShowSOS(false)}
-          className="mt-5 bg-transparent border-none cursor-pointer text-[12px] text-white/30 underline block mx-auto"
+          className="mt-5 bg-transparent border-none cursor-pointer text-[12px] text-ink-mute underline block mx-auto"
         >
           Cancel
         </button>
@@ -1062,41 +1062,41 @@ export default function GroupDashboard() {
     <div onClick={e => { if (e.target === e.currentTarget) setShowAddStop(false); }}
       className="fixed inset-0 bg-black/70 backdrop-blur-md z-[2000] flex items-center justify-center p-4"
       style={{ animation: "fadeIn .2s ease" }}>
-      <div className="bg-[#0d1b2a] border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+      <div className="bg-surface border border-line rounded-3xl p-6 w-full max-w-sm shadow-2xl"
         style={{ animation: "slideUp .25s ease" }}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[15px] font-semibold text-white">Add Itinerary Stop</h2>
-          <button onClick={() => setShowAddStop(false)} className="bg-transparent border-none cursor-pointer text-white/30 hover:text-white/60"><X size={16} /></button>
+          <h2 className="text-[15px] font-semibold text-ink">Add Itinerary Stop</h2>
+          <button onClick={() => setShowAddStop(false)} className="bg-transparent border-none cursor-pointer text-ink-mute hover:text-ink-soft"><X size={16} /></button>
         </div>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wide text-white/30 mb-1 block">Stop Name *</label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-ink-mute mb-1 block">Stop Name *</label>
             <input value={stopForm.name} onChange={e => setStopForm(p => ({ ...p, name: e.target.value }))}
               placeholder="e.g. Ho, Volta Region"
-              className="w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/20 outline-none focus:border-white/25"
+              className="w-full bg-surface-alt border border-line rounded-xl px-3 py-2.5 text-[13px] text-ink placeholder-white/20 outline-none focus:border-line"
             />
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wide text-white/30 mb-1 block">Arrival Time</label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-ink-mute mb-1 block">Arrival Time</label>
             <input type="time" value={stopForm.arrival_time} onChange={e => setStopForm(p => ({ ...p, arrival_time: e.target.value }))}
-              className="w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-[13px] text-white/70 outline-none focus:border-white/25 [color-scheme:dark]"
+              className="w-full bg-surface-alt border border-line rounded-xl px-3 py-2.5 text-[13px] text-ink outline-none focus:border-line [color-scheme:dark]"
             />
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wide text-white/30 mb-1 block">Note</label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-ink-mute mb-1 block">Note</label>
             <input value={stopForm.note} onChange={e => setStopForm(p => ({ ...p, note: e.target.value }))}
               placeholder="Optional note"
-              className="w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/20 outline-none focus:border-white/25"
+              className="w-full bg-surface-alt border border-line rounded-xl px-3 py-2.5 text-[13px] text-ink placeholder-white/20 outline-none focus:border-line"
             />
           </div>
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={() => { setShowAddStop(false); setStopForm({ name: "", arrival_time: "", note: "" }); }}
-            className="flex-1 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 text-white/50 text-[13px] font-semibold cursor-pointer">
+            className="flex-1 py-2.5 rounded-xl bg-surface-alt border border-line text-ink-soft text-[13px] font-semibold cursor-pointer">
             Cancel
           </button>
           <button disabled={!stopForm.name.trim()} onClick={async () => { await handleAddStop(stopForm); setShowAddStop(false); setStopForm({ name: "", arrival_time: "", note: "" }); }}
-            className="flex-1 py-2.5 rounded-xl bg-[#6B7FA6] border-none text-white text-[13px] font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+            className="flex-1 py-2.5 rounded-xl bg-accent border-none text-ink text-[13px] font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
             Add Stop
           </button>
         </div>
@@ -1112,12 +1112,12 @@ export default function GroupDashboard() {
     @keyframes fadeIn  { from { opacity: 0; }                    to { opacity: 1; }                  }
     @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
     ::-webkit-scrollbar       { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb { background: var(--tt-line); border-radius: 99px; }
   `;
 
   if (mobile) {
     return (
-      <div className="min-h-screen bg-[#071422] font-sans pb-[78px]">
+      <div className="min-h-screen bg-ground font-sans pb-[78px]">
         <style>{styles}</style>
         {SOSOverlay}
       {showReport && (
@@ -1151,7 +1151,7 @@ export default function GroupDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071422] font-sans">
+    <div className="min-h-screen bg-ground font-sans">
       <style>{styles}</style>
       {SOSOverlay}
       {showReport && (
@@ -1165,11 +1165,12 @@ export default function GroupDashboard() {
       <AppNav rightExtra={
         <>
           {trip?.status && (
-            <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 border text-[11px] font-bold
-              ${trip.status === "active"    ? "bg-green-400/10  border-green-400/20  text-green-400" :
-                trip.status === "published" ? "bg-blue-400/10   border-blue-400/20   text-blue-400"  :
-                trip.status === "completed" ? "bg-white/[0.06]  border-white/[0.09]  text-white/40"  :
-                                              "bg-white/[0.06]  border-white/[0.09]  text-white/40"}`}
+            <div className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold ${
+              trip.status === "active"
+                ? "border-moss/30 bg-moss/10 text-moss"
+                : trip.status === "published"
+                ? "border-accent/30 bg-accent-soft text-accent"
+                : "border-line bg-surface-alt text-ink-mute"}`}
             >
               <Radio size={10} className={trip.status === "active" ? "animate-pulse" : ""} />
               <span className="capitalize">{trip.status}</span>
@@ -1180,16 +1181,20 @@ export default function GroupDashboard() {
 
       {LocationAlertBanner}
 
-      <div className="tt-shell flex gap-5 py-5">
+      {/* The desktop branch starts at 768px, where three fixed rails left the
+          centre column ~170px wide. Wrapping (rather than hiding) keeps every
+          panel reachable: below xl the right rail drops to its own full-width
+          row instead of disappearing. */}
+      <div className="tt-shell flex flex-col gap-4 py-7 lg:flex-row lg:flex-wrap lg:items-start lg:gap-5">
 
-        <div className="w-[280px] flex-shrink-0 flex flex-col gap-3.5">
+        <div className="flex w-full flex-col gap-4 lg:sticky lg:top-24 lg:w-[290px] lg:shrink-0">
           {TripHeader}
           {PreTripNotice}
           {QuickActionsPanel}
           {HealthPanel}
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col gap-3.5">
+        <div className="flex w-full min-w-0 flex-col gap-4 lg:min-w-[380px] lg:flex-1">
           {isChief && <OrganizerReportCard tripId={tripId} />}
           {trip?.status === "completed" && !isChief
             && !trip?.confirmedCompletion && !trip?.hasReported
@@ -1201,7 +1206,7 @@ export default function GroupDashboard() {
           {MembersPanel}
         </div>
 
-        <div className="w-[250px] flex-shrink-0 flex flex-col gap-3.5">
+        <div className="flex w-full flex-col gap-4 xl:sticky xl:top-24 xl:w-[270px] xl:shrink-0">
           {SafetyPanel}
           {CompactMembers}
         </div>

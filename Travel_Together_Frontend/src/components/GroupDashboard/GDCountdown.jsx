@@ -42,9 +42,9 @@ export default function Countdown({ targetMs, phase = "starting" }) {
 
   if (phase === "ended") {
     return (
-      <div className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.09] bg-white/[0.04] px-4 py-2.5">
-        <CheckCircle2 size={14} className="text-white/40" />
-        <span className="text-[12.5px] font-bold text-white/60 tracking-wide">Trip ended</span>
+      <div className="inline-flex items-center gap-2 rounded-2xl border border-line bg-surface-alt px-4 py-2.5">
+        <CheckCircle2 size={14} className="text-ink-mute" />
+        <span className="text-[12.5px] font-bold text-ink-soft tracking-wide">Trip ended</span>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export default function Countdown({ targetMs, phase = "starting" }) {
   const Icon    = ending ? Flag : Plane;
   // Orange while the group is still waiting to leave, green once under way —
   // the accent carries the stage, so the caption isn't the only thing to read.
-  const accent  = ending ? "#4ade80" : "#FF6B35";
+  const accent  = ending ? "#4ade80" : "var(--tt-accent)";
 
   const remaining = targetMs ? Math.max(0, targetMs - now) : null;
   const { days, hours, minutes } = remaining == null
@@ -70,28 +70,28 @@ export default function Countdown({ targetMs, phase = "starting" }) {
 
   return (
     <div
-      className="relative inline-flex flex-col gap-2 rounded-2xl border border-white/[0.09] px-4 py-3 overflow-hidden"
-      style={{ background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.03) 60%)` }}
+      className="relative inline-flex flex-col gap-2 rounded-2xl border border-line px-4 py-3 overflow-hidden"
+      style={{ background: "var(--tt-surface)" }}
     >
       {/* Accent rail — ties the panel to the stage without another border. */}
       <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: accent }} />
 
       <div className="flex items-center gap-1.5">
         <Icon size={11} style={{ color: accent }} />
-        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/35">{caption}</span>
+        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-ink-mute">{caption}</span>
       </div>
 
       <div className="flex items-end gap-2.5">
         {units.map(({ val, label }, i) => (
           <div key={label} className="flex items-end gap-2.5">
             {i > 0 && (
-              <span className="text-[22px] font-light leading-none text-white/15 pb-1.5 select-none">:</span>
+              <span className="text-[22px] font-light leading-none text-ink-mute pb-1.5 select-none">:</span>
             )}
             <div className="flex flex-col items-center min-w-[34px]">
-              <span className="text-[26px] font-black leading-none text-white font-serif tabular-nums">
+              <span className="text-[26px] font-black leading-none text-ink font-serif tabular-nums">
                 {typeof val === "number" ? String(val).padStart(2, "0") : val}
               </span>
-              <span className="mt-1 text-[8.5px] font-bold uppercase tracking-[0.12em] text-white/30">
+              <span className="mt-1 text-[8.5px] font-bold uppercase tracking-[0.12em] text-ink-mute">
                 {label}
               </span>
             </div>

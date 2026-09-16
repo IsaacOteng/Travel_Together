@@ -42,14 +42,14 @@ export default function OrganizerReportCard({ tripId }) {
         <AlertTriangle size={15} className="text-amber-400 shrink-0" />
         <p className="text-[13px] font-bold text-amber-200">A concern was raised about this trip</p>
       </div>
-      <p className="text-[11px] text-white/45 mb-3 leading-snug">
+      <p className="text-[11px] text-ink-soft mb-3 leading-snug">
         Add your side and any evidence. Your payout is on hold until the team reviews it.
       </p>
 
       {reports.map(r => (
-        <div key={r.id} className="bg-black/20 border border-white/[0.07] rounded-xl p-3 mb-2 last:mb-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-white/30 mb-1">The concern</p>
-          <p className="text-[12px] text-white/70 leading-relaxed mb-3 whitespace-pre-wrap">{r.description}</p>
+        <div key={r.id} className="bg-black/20 border border-line rounded-xl p-3 mb-2 last:mb-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-mute mb-1">The concern</p>
+          <p className="text-[12px] text-ink leading-relaxed mb-3 whitespace-pre-wrap">{r.description}</p>
 
           {r.response ? (
             <div className="flex items-start gap-2 text-[11.5px] text-green-300/80">
@@ -60,9 +60,9 @@ export default function OrganizerReportCard({ tripId }) {
             <div className="flex flex-col gap-2">
               <textarea value={text[r.id] || ""} onChange={e => setText(t => ({ ...t, [r.id]: e.target.value }))} rows={3}
                 placeholder="Explain what happened include receipts, photos, or the real itinerary if you can."
-                className="w-full rounded-lg px-3 py-2 text-[12px] text-white bg-white/[0.06] border border-white/10 outline-none placeholder:text-white/25 focus:border-amber-400/60 resize-none" />
+                className="w-full rounded-lg px-3 py-2 text-[12px] text-ink bg-surface-alt border border-line outline-none placeholder:text-ink-mute focus:border-amber-400/60 resize-none" />
               <button onClick={() => respond(r.id)} disabled={busy === r.id}
-                className="self-end px-4 py-2 rounded-lg text-[12px] font-bold text-[#071422] bg-amber-400 cursor-pointer disabled:opacity-50">
+                className="self-end cursor-pointer rounded-full border-none bg-accent px-5 py-2.5 text-[13px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50">
                 {busy === r.id ? "Submitting…" : "Submit my response"}
               </button>
             </div>

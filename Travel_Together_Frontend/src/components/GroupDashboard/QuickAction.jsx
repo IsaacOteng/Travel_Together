@@ -1,20 +1,26 @@
-export default function QuickAction({ icon: Icon, label, color, onClick, badge }) {
+export default function QuickAction({ icon: Icon, label, tone = "plain", onClick, badge }) {
   const disabled = !onClick;
+  const tones = {
+    plain:  "text-ink-soft",
+    accent: "text-accent",
+    danger: "text-danger",
+  };
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl border border-white/[0.07] bg-white/[0.04] relative transition-all duration-150 group
-        ${disabled ? "cursor-not-allowed" : "cursor-pointer hover:-translate-y-0.5"}`}
+      className={`group relative flex w-full flex-col items-center gap-2 rounded-2xl border border-line bg-surface px-1 py-3.5 transition-colors ${
+        disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:border-accent hover:bg-accent-soft"
+      }`}
     >
-      <Icon size={20} color={disabled ? "rgba(255,255,255,0.2)" : color} />
-      <span className={`text-[10px] font-bold tracking-wide transition-colors ${disabled ? "text-white/20" : "text-white/50 group-hover:text-white/80"}`}>
+      <Icon size={20} className={disabled ? "text-ink-mute" : tones[tone]} />
+      <span className={`text-[11.5px] font-medium ${disabled ? "text-ink-mute" : "text-ink-soft"}`}>
         {label}
       </span>
       {badge > 0 && (
-        <div className="absolute top-1.5 right-2 min-w-[16px] h-4 bg-red-500 rounded-full text-[9px] font-black text-white flex items-center justify-center px-1">
+        <span className="absolute right-2 top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-ink">
           {badge}
-        </div>
+        </span>
       )}
     </button>
   );

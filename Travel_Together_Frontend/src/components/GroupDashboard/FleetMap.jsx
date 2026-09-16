@@ -83,11 +83,11 @@ export default function FleetMap({ height = 280, members = [], myLocation = null
   const defaultZoom = allPoints.length === 0 ? 6 : allPoints.length === 1 ? 14 : 12;
 
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-white/[0.07]" style={{ height }}>
+    <div className="relative rounded-2xl overflow-hidden border border-line" style={{ height }}>
       <MapContainer
         center={center}
         zoom={defaultZoom}
-        style={{ width: "100%", height: "100%", background: "#071422" }}
+        style={{ width: "100%", height: "100%", background: "var(--tt-surface-alt)" }}
         zoomControl={true}
         attributionControl={false}
       >
@@ -123,14 +123,14 @@ export default function FleetMap({ height = 280, members = [], myLocation = null
         })}
       </MapContainer>
 
-      <div className="absolute top-2.5 right-2.5 z-[500] flex items-center gap-1.5 bg-black/60 backdrop-blur-sm border border-white/[0.15] rounded-full px-2.5 py-1 pointer-events-none">
+      <div className="absolute top-2.5 right-2.5 z-[500] flex items-center gap-1.5 bg-ground/90 backdrop-blur-sm border border-line rounded-full px-2.5 py-1 pointer-events-none">
         <Radio size={10} className="text-blue-400 animate-pulse" />
-        <span className="text-[10px] font-semibold text-white/70">LIVE</span>
+        <span className="text-[10px] font-semibold text-ink">LIVE</span>
       </div>
 
       {members.filter(m => m.lat == null).length > 0 && (
-        <div className="absolute bottom-2.5 left-2.5 z-[500] bg-black/60 backdrop-blur-sm border border-white/[0.12] rounded-xl px-2.5 py-1.5">
-          <span className="text-[10px] text-white/50">
+        <div className="absolute bottom-2.5 left-2.5 z-[500] bg-ground/90 backdrop-blur-sm border border-line rounded-xl px-2.5 py-1.5">
+          <span className="text-[10px] text-ink-soft">
             {members.filter(m => m.lat == null).length} member{members.filter(m => m.lat == null).length !== 1 ? "s" : ""} not sharing location
           </span>
         </div>
