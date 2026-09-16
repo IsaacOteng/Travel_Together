@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import toast from 'react-hot-toast';
 import {
   MapPin, Settings, Edit3, Star,
-  CheckCircle, Award, Map, Calendar,
+  CheckCircle, Map, Calendar,
   ArrowLeft, Flag, UserCheck, Clock,
   MessageCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppNav from "../shared/AppNav.jsx";
 import MobileBottomNav from "../shared/MobileBottomNav.jsx";
+import ThemeToggle from "../shared/ThemeToggle.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { usersApi } from "../../services/api.js";
 import api from "../../services/api.js";
@@ -22,19 +23,11 @@ import EditModal from "./EditModal.jsx";
 import { normaliseTrip } from "./helpers.js";
 import { displayName } from "../../utils/name.js";
 
-const globalStyles = `
-  @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
-  @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-  ::-webkit-scrollbar{width:4px}
-  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
-`;
-
-const COVER_FALLBACK = {
-  backgroundImage:
-    "radial-gradient(circle at 18% 40%, rgba(255,107,53,0.55) 0%, transparent 55%)," +
-    "radial-gradient(circle at 70% 60%, rgba(74,222,128,0.35) 0%, transparent 55%)," +
-    "radial-gradient(circle at 92% 20%, rgba(96,165,250,0.35) 0%, transparent 50%)",
-};
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "badges",   label: "Badges"   },
+  { id: "trips",    label: "Trips"    },
+];
 
 export default function ProfilePage({ isOwner = true, userId = null }) {
   const navigate             = useNavigate();
@@ -42,7 +35,7 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
 
   const [winW,       setWinW]       = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   const [editing,    setEditing]    = useState(false);
-  const [mobileTab,  setMobileTab]  = useState("profile");
+  const [tab,        setTab]        = useState("overview");
   const [publicUser, setPublicUser] = useState(null);
   const [loading,    setLoading]    = useState(false);
   const [notFound,   setNotFound]   = useState(false);
@@ -196,33 +189,67 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
   const completedTrips = myTrips.filter(t => t.status === "completed");
 
   const checkinDisplay = checkinRate === null ? "—" : dataLoaded ? `${checkinRate}%` : "—";
-  const checkinSub     = checkinRate === null ? "no check-ins recorded" : "on-time arrivals";
   const ratingDisplay  = avgRating  === null ? "—" : dataLoaded ? (avgRating || "—") : "—";
-  const ratingSub      = ratingsCount ? `${ratingsCount} rating${ratingsCount !== 1 ? "s" : ""}` : "no ratings yet";
 
-  const reliabilityColor =
-    checkinRate === null || checkinRate === 0 ? "rgba(255,255,255,0.3)"
-    : checkinRate >= 80 ? "#4ade80"
-    : checkinRate >= 50 ? "#fbbf24" : "#fb923c";
+  /* ── panels ─────────────────────────────────────────────── */
 
-  const reliabilityGradient =
-    (checkinRate ?? 0) >= 80 ? "linear-gradient(90deg,#4ade80,#22c55e)"
-    : (checkinRate ?? 0) >= 50 ? "linear-gradient(90deg,#fbbf24,#f59e0b)"
-    : "linear-gradient(90deg,#fb923c,#f97316)";
+  const OverviewPanel = (
+    <Section title="Reliability">
+      {/* The headline figures live once, in the profile card. This panel adds
+          what they mean, rather than printing the same three numbers again. */}
+      <div className="max-w-[620px]">
+        <div className="mb-2.5 flex items-baseline justify-between">
+          <span className="text-[13px] text-ink-soft">On-time check-in rate</span>
+          <span className="font-display text-[17px] font-semibold text-ink">
+            {checkinRate === null ? "—" : `${checkinRate}%`}
+          </span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-line">
+          <div
+            className={`h-full rounded-full transition-[width] duration-1000 ${
+              (checkinRate ?? 0) >= 80 ? "bg-moss" : (checkinRate ?? 0) >= 50 ? "bg-sun" : "bg-accent"
+            }`}
+            style={{ width: checkinRate ? `${checkinRate}%` : "0%" }}
+          />
+        </div>
+        <div className="mt-2.5 flex flex-wrap justify-between gap-2 text-[12.5px] text-ink-mute">
+          <span>
+            {checkinRate === null ? "Check-in data not available" : "Based on itinerary check-ins"}
+          </span>
+          {!!checkinRate && checkinRate > 0 && (
+            <span className="font-medium text-ink-soft">
+              {checkinRate >= 80 ? "Above average" : checkinRate >= 50 ? "On par" : "Below average"}
+            </span>
+          )}
+        </div>
+      </div>
 
-  const BadgesSection = (
-    <Section title="Achievement Badges" icon={Award} iconColor="#fbbf24"
+      <dl className="mt-9 grid gap-6 border-t border-line pt-7 sm:grid-cols-3">
+        <StatCard icon={Map}         label="Trips"      value={d(tripsTotal)}
+          sub={dataLoaded ? `${tripsCompleted} completed` : "—"} />
+        <StatCard icon={CheckCircle} label="Check-ins"  value={checkinDisplay}
+          sub={checkinRate === null ? "none recorded" : "on-time arrivals"} />
+        <StatCard icon={Star}        label="Avg rating" value={ratingDisplay}
+          sub={ratingsCount ? `${ratingsCount} rating${ratingsCount !== 1 ? "s" : ""}` : "no ratings yet"} />
+      </dl>
+    </Section>
+  );
+
+  const BadgesPanel = (
+    <Section
+      title="Badges"
       action={earnedBadges.length > 0
-        ? <span className="text-[10px] uppercase tracking-widest text-white/25 whitespace-nowrap">{earnedBadges.length} earned</span>
-        : null}>
+        ? <span className="text-[13px] text-ink-mute">{earnedBadges.length} earned</span>
+        : null}
+    >
       {!dataLoaded ? (
-        <p className="text-[13px] text-white/25 py-6">Loading…</p>
+        <p className="py-6 text-[14px] text-ink-mute">Loading…</p>
       ) : badges.length === 0 ? (
-        <p className="text-[13px] text-white/25 py-6">
+        <p className="py-6 text-[14px] text-ink-mute">
           {effectiveIsOwner ? "Complete trips to earn badges." : "No badges earned yet."}
         </p>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-2 gap-y-3">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {badges.filter(b => b.slug !== "social-butterfly" && b.slug !== "scout-master").map(b => (
             <BadgeCard key={b.slug} badge={{ ...b, id: b.slug, desc: b.description }} />
           ))}
@@ -231,281 +258,246 @@ export default function ProfilePage({ isOwner = true, userId = null }) {
     </Section>
   );
 
-  const StatsSection = (
-    <Section title="Reliability" icon={CheckCircle} iconColor="#4ade80">
-      <div className="flex flex-wrap items-start divide-x divide-white/[0.07] mb-8">
-        <StatCard icon={Map}         label="Trips"         value={d(tripsTotal)}  sub={dataLoaded ? `${tripsCompleted} completed` : "—"} color="#FF6B35" />
-        <StatCard icon={CheckCircle} label="Check-in Rate" value={checkinDisplay} sub={checkinSub} color="#4ade80" />
-        <StatCard icon={Star}        label="Avg Rating"    value={ratingDisplay}  sub={ratingSub}  color="#fbbf24" />
-      </div>
-
-      <div className="max-w-[560px]">
-        <div className="flex items-baseline justify-between mb-2.5">
-          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/35">Overall</span>
-          <span className="text-[15px] font-black font-serif" style={{ color: reliabilityColor }}>
-            {checkinRate === null ? "—" : `${checkinRate}%`}
-          </span>
-        </div>
-        <div className="h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-1000"
-            style={{ width: checkinRate ? `${checkinRate}%` : "0%", background: reliabilityGradient }} />
-        </div>
-        <div className="flex justify-between mt-2 text-[10.5px] text-white/20">
-          <span>{checkinRate === null ? "Check-in data not available" : "Based on itinerary check-ins"}</span>
-          {!!checkinRate && checkinRate > 0 && (
-            <span className="font-semibold" style={{ color: checkinRate >= 80 ? "rgba(74,222,128,0.7)" : "rgba(251,191,36,0.7)" }}>
-              {checkinRate >= 80 ? "Above average ↑" : checkinRate >= 50 ? "On par" : "Below average"}
-            </span>
-          )}
-        </div>
-      </div>
-    </Section>
-  );
-
-  const TripHistorySection = (
-    <Section title="Trip History" icon={Calendar} iconColor="#a855f7"
+  const TripsPanel = (
+    <Section
+      title="Trips"
       action={myTrips.length > 0
-        ? <span className="text-[10px] uppercase tracking-widest text-white/25 whitespace-nowrap">{myTrips.length} total</span>
-        : null}>
+        ? <span className="text-[13px] text-ink-mute">{myTrips.length} total</span>
+        : null}
+    >
       {!dataLoaded ? (
-        <p className="text-[13px] text-white/25 py-6">Loading…</p>
+        <p className="py-6 text-[14px] text-ink-mute">Loading…</p>
       ) : myTrips.length === 0 ? (
-        <p className="text-[13px] text-white/25 py-6">No trips yet.</p>
+        <p className="py-6 text-[14px] text-ink-mute">No trips yet.</p>
       ) : (
-        <>
+        <div className="flex flex-col gap-10">
           {activeTrips.length > 0 && (
-            <div className="mb-8">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Active / Upcoming</div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div>
+              <h3 className="mb-4 text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-mute">
+                Active &amp; upcoming
+              </h3>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {activeTrips.map(t => <TripCard key={t.id} trip={t} onClick={() => navigate(`/trip/${t.id}`)} />)}
               </div>
             </div>
           )}
           {completedTrips.length > 0 && (
-            <>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">Completed</div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div>
+              <h3 className="mb-4 text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-mute">
+                Completed
+              </h3>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {completedTrips.map(t => <TripCard key={t.id} trip={t} onClick={() => navigate(`/trip/${t.id}`)} />)}
               </div>
-            </>
+            </div>
           )}
-        </>
+        </div>
       )}
     </Section>
   );
 
+  /* ── not found / loading ────────────────────────────────── */
+
   if (!effectiveIsOwner && (loading || notFound)) {
     return (
-      <div className="min-h-screen bg-[#071422] font-sans">
-        <style>{globalStyles}</style>
-        <AppNav />
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+      <div className="min-h-screen bg-ground font-sans">
+        {!mobile && <AppNav />}
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
           {loading
-            ? <p className="text-[14px] text-white/30">Loading profile…</p>
+            ? <p className="text-[15px] text-ink-mute">Loading profile…</p>
             : <>
-                <p className="text-[16px] font-bold text-white/50">User not found</p>
-                <button onClick={() => navigate(-1)} className="text-[13px] text-[#FF6B35] cursor-pointer bg-transparent border-none flex items-center gap-1.5">
-                  <ArrowLeft size={14} /> Go back
+                <p className="m-0 font-display text-[22px] font-semibold text-ink">User not found</p>
+                <button onClick={() => navigate(-1)}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-5 py-2.5 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent">
+                  <ArrowLeft size={15} /> Go back
                 </button>
               </>
           }
         </div>
-        <MobileBottomNav />
+        {mobile && <MobileBottomNav />}
       </div>
     );
   }
 
-  const Avatar = ({ size }) => (
+  /* ── pieces ─────────────────────────────────────────────── */
+
+  const avatarSize = mobile ? 88 : 116;
+
+  const Avatar = (
     <div className="relative shrink-0">
       {profileUser?.avatar_url
-        ? <img src={profileUser.avatar_url} alt={name}
-            className="rounded-full object-cover ring-4 ring-[#071422]"
-            style={{ width: size, height: size }} />
-        : <div className="bg-linear-to-br from-[#4ade80] to-[#22c55e] rounded-full flex items-center justify-center font-black text-white font-serif ring-4 ring-[#071422]"
-            style={{ width: size, height: size, fontSize: size * 0.34 }}>
+        ? <img src={profileUser.avatar_url} alt=""
+            className="rounded-full object-cover ring-4 ring-surface"
+            style={{ width: avatarSize, height: avatarSize }} />
+        : <div className="flex items-center justify-center rounded-full bg-accent-soft font-display font-semibold text-accent ring-4 ring-surface"
+            style={{ width: avatarSize, height: avatarSize, fontSize: avatarSize * 0.32 }}>
             {initials}
           </div>
       }
       {verified && (
-        <div className="absolute bottom-0.5 right-0.5 bg-[#FF6B35] rounded-full flex items-center justify-center border-2 border-[#071422]"
-          style={{ width: size * 0.28, height: size * 0.28 }}>
-          <UserCheck size={size * 0.15} className="text-white" />
-        </div>
-      )}
-    </div>
-  );
-
-  const MetaLine = ({ compact = false }) => (
-    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-white/40 ${compact ? "text-[12px]" : "text-[12.5px]"}`}>
-      <span className="text-white/30">@{profileUser?.username}</span>
-      {(profileUser?.city || profileUser?.country) && (
-        <span className="flex items-center gap-1.5">
-          <MapPin size={11} className="text-[#FF6B35]/70" />
-          {profileUser?.city}{profileUser?.country ? `, ${profileUser.country}` : ""}
+        <span className="absolute bottom-1 right-1 flex items-center justify-center rounded-full border-2 border-surface bg-accent text-accent-ink"
+          style={{ width: avatarSize * 0.28, height: avatarSize * 0.28 }}>
+          <UserCheck size={avatarSize * 0.15} />
         </span>
       )}
-      {nationality && (
-        <span className="flex items-center gap-1.5"><Flag size={11} className="text-white/25" />{nationality}</span>
-      )}
-      <span className="flex items-center gap-1.5 text-white/25"><Clock size={11} />Joined {joinDate}</span>
     </div>
   );
 
-  const ActionButton = ({ compact = false }) =>
-    effectiveIsOwner ? (
-      <button onClick={() => setEditing(true)}
-        className={`flex items-center gap-1.5 rounded-full bg-white/[0.06] text-white/60 font-semibold cursor-pointer hover:bg-white/[0.12] hover:text-white transition-colors
-          ${compact ? "px-3.5 py-2 text-[12px]" : "px-5 py-2.5 text-[12.5px]"}`}>
-        <Edit3 size={13} /> Edit Profile
-      </button>
-    ) : (
-      <button onClick={handleMessage} disabled={dmLoading}
-        className={`flex items-center gap-1.5 rounded-full bg-[#FF6B35] text-white font-semibold cursor-pointer hover:bg-[#ff7d4d] transition-colors disabled:opacity-50
-          ${compact ? "px-3.5 py-2 text-[12px]" : "px-5 py-2.5 text-[12.5px]"}`}>
-        <MessageCircle size={13} /> {dmLoading ? "Opening…" : "Message"}
-      </button>
-    );
-
-  const Cover = ({ height }) => (
-    <div className="absolute inset-x-0 top-0 overflow-hidden" style={{ height }}>
-      {profileUser?.cover_url
-        ? <img src={profileUser.cover_url} alt="" className="w-full h-full object-cover"
-            style={{ objectPosition: profileUser.cover_position || "50% 50%" }} />
-        : <div className="w-full h-full opacity-70" style={COVER_FALLBACK} />
-      }
-      <div className="absolute inset-0 bg-linear-to-b from-[#071422]/30 via-[#071422]/70 to-[#071422]" />
-    </div>
+  const actionButton = effectiveIsOwner ? (
+    <button onClick={() => setEditing(true)}
+      className="flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent">
+      <Edit3 size={14} /> Edit profile
+    </button>
+  ) : (
+    <button onClick={handleMessage} disabled={dmLoading}
+      className="flex shrink-0 cursor-pointer items-center gap-2 rounded-full border-none bg-accent px-5 py-2.5 text-[14px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50">
+      <MessageCircle size={14} /> {dmLoading ? "Opening…" : "Message"}
+    </button>
   );
 
-  const HeroStats = ({ compact = false }) => (
-    <div className={`flex flex-wrap items-center gap-y-4 ${compact ? "gap-x-7" : "gap-x-10"}`}>
-      {[
-        { val: d(tripsTotal),     label: "Trips"       },
-        { val: karma,             label: "Karma"       },
-        { val: checkinDisplay,    label: "Reliability" },
-        { val: d(avgRating ?? 0), label: "Rating"      },
-      ].map(s => (
-        <div key={s.label} className="flex flex-col">
-          <span className={`font-black text-white font-serif leading-none tracking-tight ${compact ? "text-[22px]" : "text-[26px]"}`}>{s.val}</span>
-          <span className="text-[9.5px] text-white/30 font-bold uppercase tracking-[0.16em] mt-1.5">{s.label}</span>
+  const headlineStats = [
+    { val: d(tripsTotal),  label: "Trips"     },
+    { val: d(karma),       label: "Karma"     },
+    { val: checkinDisplay, label: "Check-ins" },
+    { val: ratingDisplay,  label: "Rating"    },
+  ];
+
+  /* Identity and figures sit on one card that overlaps the cover, instead of
+     floating as light text on a darkened photo. */
+  const ProfileCard = (
+    <div className="rounded-3xl border border-line bg-surface p-6 sm:p-8">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
+        {Avatar}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="m-0 font-display text-[clamp(24px,3vw,32px)] font-semibold leading-tight text-ink">
+              {name}
+            </h1>
+            <LevelBadge level={level} />
+          </div>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-ink-mute">
+            <span>@{profileUser?.username}</span>
+            {(profileUser?.city || profileUser?.country) && (
+              <span className="flex items-center gap-1.5">
+                <MapPin size={12} className="text-accent" />
+                {profileUser?.city}{profileUser?.country ? `, ${profileUser.country}` : ""}
+              </span>
+            )}
+            {nationality && (
+              <span className="flex items-center gap-1.5"><Flag size={12} />{nationality}</span>
+            )}
+            <span className="flex items-center gap-1.5"><Clock size={12} />Joined {joinDate}</span>
+          </div>
+
+          {profileUser?.bio && (
+            <p className="mt-4 max-w-[62ch] text-[14.5px] leading-relaxed text-ink-soft">
+              {profileUser.bio}
+            </p>
+          )}
         </div>
+
+        <div className="flex gap-2 sm:flex-col sm:items-end">
+          {actionButton}
+          {effectiveIsOwner && !mobile && (
+            <button onClick={() => navigate("/settings")}
+              className="flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-[14px] font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent">
+              <Settings size={14} /> Settings
+            </button>
+          )}
+        </div>
+      </div>
+
+      <dl className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line sm:grid-cols-4">
+        {headlineStats.map(s => (
+          <div key={s.label} className="flex flex-col items-center gap-1 bg-surface px-3 py-4">
+            <dd className="m-0 font-display text-[24px] font-semibold leading-none text-ink">{s.val}</dd>
+            <dt className="text-[11px] uppercase tracking-[0.12em] text-ink-mute">{s.label}</dt>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+
+  const tabs = (
+    <div className="scrollbar-none flex gap-2 overflow-x-auto" role="tablist">
+      {TABS.map(t => (
+        <button
+          key={t.id}
+          role="tab"
+          aria-selected={tab === t.id}
+          onClick={() => setTab(t.id)}
+          className={`shrink-0 cursor-pointer rounded-full border px-4 py-2.5 text-[14px] transition-colors ${
+            tab === t.id
+              ? "border-accent bg-accent font-semibold text-accent-ink"
+              : "border-line bg-surface font-medium text-ink-soft hover:border-accent hover:text-accent"
+          }`}
+        >
+          {t.label}
+        </button>
       ))}
     </div>
   );
 
-  if (mobile) {
-    return (
-      <div className="min-h-screen bg-[#071422] font-sans pb-[78px]">
-        <style>{globalStyles}</style>
-        {editing && effectiveIsOwner && (
-          <EditModal onClose={() => setEditing(false)} onSave={handleSaveProfile} initialData={editProfile} />
-        )}
-
-        <header className="sticky top-0 z-40 h-14 bg-[#071422]/85 backdrop-blur-xl flex items-center px-4 justify-between">
-          <button onClick={() => navigate(-1)} className="bg-transparent border-none cursor-pointer text-white/40 flex"><ArrowLeft size={20} /></button>
-          <span className="text-[13px] font-bold uppercase tracking-widest text-white/60">Profile</span>
-          {effectiveIsOwner
-            ? <button onClick={() => navigate("/settings")} className="bg-transparent border-none cursor-pointer text-white/40 flex"><Settings size={18} /></button>
-            : <div className="w-[18px]" />
-          }
-        </header>
-
-        <div className="relative -mt-14">
-          <Cover height={200} />
-          <div className="relative px-5 pt-[132px]">
-            <div className="flex items-end justify-between mb-4">
-              <Avatar size={82} />
-              <ActionButton compact />
-            </div>
-
-            <div className="flex items-center gap-2.5 mb-2 flex-wrap">
-              <h1 className="text-[24px] font-bold text-white font-serif tracking-tight leading-none">{name}</h1>
-              <LevelBadge level={level} />
-            </div>
-            <MetaLine compact />
-            {profileUser?.bio && <p className="text-[13.5px] text-white/55 leading-relaxed mt-3">{profileUser.bio}</p>}
-
-            <div className="mt-6 pt-5 border-t border-white/[0.07]">
-              <HeroStats compact />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-6 px-5 mt-7 border-b border-white/[0.07]">
-          {[
-            { id: "profile", label: "Overview" },
-            { id: "badges",  label: "Badges"   },
-            { id: "trips",   label: "Trips"    },
-          ].map(t => (
-            <button key={t.id} onClick={() => setMobileTab(t.id)}
-              className={`relative pb-3 bg-transparent border-none text-[12px] font-bold uppercase tracking-widest cursor-pointer transition-colors
-                ${mobileTab === t.id ? "text-white" : "text-white/30"}`}>
-              {t.label}
-              {mobileTab === t.id && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[#FF6B35] rounded-full" />}
-            </button>
-          ))}
-        </div>
-
-        <div className="px-5 pt-7">
-          {mobileTab === "profile" && StatsSection}
-          {mobileTab === "badges"  && BadgesSection}
-          {mobileTab === "trips"   && TripHistorySection}
-        </div>
-
-        <MobileBottomNav />
-      </div>
-    );
-  }
+  const panel =
+    tab === "badges" ? BadgesPanel :
+    tab === "trips"  ? TripsPanel  :
+    OverviewPanel;
 
   return (
-    <div className="min-h-screen bg-[#071422] font-sans">
-      <style>{globalStyles}</style>
+    <div className="min-h-screen bg-ground font-sans">
       {editing && effectiveIsOwner && (
         <EditModal onClose={() => setEditing(false)} onSave={handleSaveProfile} initialData={editProfile} />
       )}
 
-      <AppNav rightExtra={
-        effectiveIsOwner ? (
-          <button onClick={() => navigate("/settings")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] text-white/50 text-[12px] font-semibold cursor-pointer hover:bg-white/[0.12] hover:text-white/80 transition-colors">
-            <Settings size={13} /> Settings
+      {mobile ? (
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-ground/95 px-4 backdrop-blur-md">
+          <button onClick={() => navigate(-1)} aria-label="Go back"
+            className="flex cursor-pointer border-none bg-transparent text-ink-soft">
+            <ArrowLeft size={20} />
           </button>
-        ) : null
-      } />
-
-      <div className="relative">
-        <Cover height={340} />
-
-        <div className="tt-shell relative pt-[196px] pb-20">
-          <div className="flex items-end gap-6">
-            <Avatar size={128} />
-            <div className="flex-1 min-w-0 pb-1">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h1 className="text-[34px] font-bold text-white font-serif tracking-tight leading-none">{name}</h1>
-                <LevelBadge level={level} />
-              </div>
-              <MetaLine />
-            </div>
-            <div className="pb-2">
-              <ActionButton />
-            </div>
+          <span className="font-display text-[16px] font-semibold text-ink">Profile</span>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {effectiveIsOwner && (
+              <button onClick={() => navigate("/settings")} aria-label="Settings"
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-mute">
+                <Settings size={16} />
+              </button>
+            )}
           </div>
+        </header>
+      ) : (
+        <AppNav />
+      )}
 
-          {profileUser?.bio && (
-            <p className="mt-5 max-w-[620px] text-[14px] text-white/55 leading-relaxed">{profileUser.bio}</p>
-          )}
+      {/* cover */}
+      <div className="relative overflow-hidden bg-surface-alt" style={{ height: mobile ? 210 : 340 }}>
+        {profileUser?.cover_url
+          ? <img src={profileUser.cover_url} alt=""
+              className="h-full w-full object-cover"
+              style={{ objectPosition: profileUser.cover_position || "50% 50%" }} />
+          : <div className="h-full w-full bg-gradient-to-br from-accent-soft via-surface-alt to-ground" />
+        }
+      </div>
 
-          <div className="mt-8 py-6 border-y border-white/[0.07]">
-            <HeroStats />
-          </div>
+      {/* relative + z-10: the cover above is positioned, so without its own
+          stacking order this column paints underneath it and the negative
+          margin hides the card's top edge — name and level badge included. */}
+      <div className={`relative z-10 ${mobile ? "px-4 pb-28" : "tt-shell block pb-24"}`}>
+        <div className={mobile ? "-mt-10" : "-mt-14"}>
+          {ProfileCard}
+        </div>
 
-          <div className="mt-12 flex flex-col gap-14">
-            {StatsSection}
-            {BadgesSection}
-            {TripHistorySection}
-          </div>
+        <div className="mt-8">{tabs}</div>
+
+        <div className="mt-7" style={{ animation: "ttFadeUp .3s ease both" }} key={tab}>
+          {panel}
         </div>
       </div>
+
+      {mobile && <MobileBottomNav />}
     </div>
   );
 }

@@ -1,5 +1,10 @@
-const map = { common: "bg-white/30", rare: "bg-blue-400", epic: "bg-purple-400", legendary: "bg-yellow-400" };
+const map = {
+  common:    "bg-ink-mute",
+  rare:      "bg-moss",
+  epic:      "bg-accent",
+  legendary: "bg-sun",
+};
 
 export default function RarityDot({ rarity }) {
-  return <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${map[rarity]}`} />;
+  return <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${map[rarity] ?? map.common}`} />;
 }

@@ -1,10 +1,8 @@
-export default function Section({ title, icon: Icon, iconColor, children, action }) {
+export default function Section({ title, children, action }) {
   return (
     <section>
-      <div className="flex items-center gap-2.5 mb-5">
-        {Icon && <Icon size={14} color={iconColor} className="shrink-0" />}
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45 whitespace-nowrap">{title}</h2>
-        <div className="flex-1 h-px bg-linear-to-r from-white/9 to-transparent" />
+      <div className="mb-5 flex items-baseline justify-between gap-4">
+        <h2 className="m-0 font-display text-[19px] font-semibold text-ink">{title}</h2>
         {action}
       </div>
       {children}
