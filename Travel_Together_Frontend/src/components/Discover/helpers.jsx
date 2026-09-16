@@ -285,43 +285,36 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
   };
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Users size={13} color="#FF6B35" />
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#FF6B35", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            Who's going
-          </span>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+    <div className="mb-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <h3 className="m-0 font-display text-[17px] font-semibold text-ink">Who's going</h3>
+          <span className="text-[12.5px] text-ink-mute">
             {spotsFilled} of {spotsTotal} ·{" "}
-            <span style={{ color: spotsLeft <= 2 ? "#fb923c" : "#4ade80" }}>
+            <span className={spotsLeft <= 2 ? "font-semibold text-accent" : "text-ink-soft"}>
               {spotsLeft} spot{spotsLeft !== 1 ? "s" : ""} left
             </span>
           </span>
         </div>
         {!viewerIsMember && members.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
-            <Lock size={10} />
+          <span className="flex items-center gap-1.5 text-[11.5px] text-ink-mute">
+            <Lock size={11} />
             Full profiles after joining
-          </div>
+          </span>
         )}
       </div>
 
-      {/* Spots progress bar */}
-      <div style={{ height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 99, marginBottom: 14, overflow: "hidden" }}>
-        <div style={{
-          height: "100%", borderRadius: 99,
-          background: spotsLeft <= 2 ? "#fb923c" : "#FF6B35",
-          width: `${Math.min((spotsFilled / spotsTotal) * 100, 100)}%`,
-          transition: "width 0.7s ease",
-        }} />
+      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-line">
+        <div
+          className={`h-full rounded-full transition-[width] duration-700 ${spotsLeft <= 2 ? "bg-accent" : "bg-moss"}`}
+          style={{ width: `${Math.min((spotsFilled / spotsTotal) * 100, 100)}%` }}
+        />
       </div>
 
       {/* Member cards horizontal scroll */}
       {members.length === 0 ? (
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", padding: "8px 0" }}>
-          No members yet be the first to join.
+        <div className="py-2 text-[13px] text-ink-mute">
+          No members yet — be the first to join.
         </div>
       ) : (
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}
@@ -330,7 +323,6 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
             const memberName = viewerIsMember
               ? displayName(m, "?")
               : m.first_name || "?";
-            const color    = AV_COLORS[(memberName.charCodeAt(0) || i) % AV_COLORS.length];
             const initials = memberName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
             const isChief  = m.role === "chief";
 
@@ -338,23 +330,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
               <button
                 key={m.user_id || i}
                 onClick={() => handleMemberClick(m)}
-                style={{
-                  flexShrink: 0, width: 72,
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 14, padding: "12px 6px 10px",
-                  cursor: "pointer", textAlign: "center",
-                  transition: "all 0.15s ease",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.border = "1px solid rgba(255,107,53,0.35)";
-                  e.currentTarget.style.background = "rgba(255,107,53,0.06)";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.border = "1px solid rgba(255,255,255,0.08)";
-                  e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-                }}
+                className="flex w-[76px] shrink-0 cursor-pointer flex-col items-center gap-2 rounded-2xl border border-line bg-surface px-1.5 pb-2.5 pt-3 text-center transition-colors hover:border-accent hover:bg-accent-soft"
               >
                 {/* Avatar wrapper crown sits on top-right as a hat */}
                 <div style={{ position: "relative", flexShrink: 0 }}>
@@ -363,15 +339,15 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
                         style={{
                           width: 42, height: 42, borderRadius: "50%", objectFit: "cover",
                           display: "block",
-                          border: `2px solid ${isChief ? "#FF6B35" : "rgba(255,255,255,0.15)"}`,
+                          border: `2px solid ${isChief ? "var(--tt-accent)" : "var(--tt-line)"}`,
                         }}
                       />
                     : <div style={{
                         width: 42, height: 42, borderRadius: "50%",
-                        background: `linear-gradient(135deg,${color},${color}88)`,
+                        background: "var(--tt-accent-soft)",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 14, fontWeight: 800, color: "#fff", fontFamily: "serif",
-                        border: `2px solid ${isChief ? "#FF6B35" : "rgba(255,255,255,0.15)"}`,
+                        fontSize: 14, fontWeight: 700, color: "var(--tt-accent)",
+                        border: `2px solid ${isChief ? "var(--tt-accent)" : "var(--tt-line)"}`,
                       }}>{initials}</div>
                   }
                   {/* Crown hat top-right corner, slightly overlapping */}
@@ -387,7 +363,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
                     <div style={{
                       position: "absolute", bottom: -2, right: -2,
                       width: 14, height: 14, borderRadius: "50%",
-                      background: "rgba(96,165,250,0.9)", border: "2px solid #0d1b2a",
+                      background: "var(--tt-moss)", border: "2px solid var(--tt-surface)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
                       <Shield size={7} color="#fff" />
@@ -396,11 +372,7 @@ export function WhoIsGoing({ members = [], spotsFilled = 0, spotsTotal = 0, view
                 </div>
 
                 {/* First name only */}
-                <div style={{
-                  fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.85)",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  width: "100%", textAlign: "center",
-                }}>
+                <div className="w-full truncate text-center text-[11px] font-semibold text-ink">
                   {memberName.split(" ")[0]}
                 </div>
               </button>

@@ -1,141 +1,151 @@
 import { fmtDate, fmtTime } from "../../utils/date.js";
-import SectionHeader from "./SectionHeader.jsx";
 import DashEmptyState from "./DashEmptyState.jsx";
 import { JoinedRow, SavedRow, CreatedRow } from "./TripRows.jsx";
 
-const PREVIEW_COUNT = 2;
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-export function JoinedSection({ loading, trips, full, onExpand, onCollapse, onNavigate, onViewGroup, onLeave }) {
-  const items = full ? trips : trips.slice(0, PREVIEW_COUNT);
-  const rows = items.map(t => ({
-    id:         t.id,
-    title:      t.title || t.destination,
-    date:       fmtDate(t.date_start) + (t.start_time ? ` · ${fmtTime(t.start_time)}` : ""),
-    joinStatus: t.my_status || "pending",
-    tripStatus: t.status    || "published",
-    entryPrice: t.entry_price,
-    members:    t.member_count ?? 0,
-    daysLeft:   t.date_start
-                  ? Math.max(0, Math.ceil((new Date(t.date_start) - Date.now()) / 86400000))
-                  : null,
-    chief:      t.chief_username || "Organiser",
-  }));
+/* Cover photos come back either absolute or root-relative depending on
+   whether media is served from R2 or from Django. */
+function coverOf(t) {
+  const raw = t.cover_image || t.images?.[0]?.image_url || t.images?.[0]?.url || "";
+  if (!raw) return "";
+  return raw.startsWith("/") ? `${API_BASE}${raw}` : raw;
+}
+
+const when = t => fmtDate(t.date_start) + (t.start_time ? ` · ${fmtTime(t.start_time)}` : "");
+
+function Skeletons({ n = 3 }) {
   return (
-    <div>
-      <SectionHeader
-        title="Trips I've Joined"
-        count={trips.length}
-        hasMore={trips.length > PREVIEW_COUNT}
-        onViewAll={onExpand}
-        onBack={onCollapse}
-        expanded={full}
-      />
-      {loading ? (
-        <DashEmptyState msg="Loading…"/>
-      ) : rows.length === 0 ? (
-        <DashEmptyState msg="No joined trips yet"/>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {rows.map(t => (
-            <JoinedRow key={t.id} trip={t} onNavigate={onNavigate} onViewGroup={onViewGroup} onLeave={onLeave}/>
-          ))}
+    <div className="flex flex-col gap-3">
+      {Array.from({ length: n }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-3xl border border-line bg-surface p-5"
+          style={{ animation: "ttShimmer 1.4s ease-in-out infinite" }}
+          aria-hidden="true"
+        >
+          <div className="flex gap-4">
+            <div className="h-20 w-20 shrink-0 rounded-2xl bg-line-soft" />
+            <div className="flex-1">
+              <div className="h-4 w-1/3 rounded-full bg-line-soft" />
+              <div className="mt-3 h-3 w-2/3 rounded-full bg-line-soft" />
+            </div>
+          </div>
         </div>
-      )}
-      {!full && trips.length > PREVIEW_COUNT && (
-        <div className="mt-2 text-center">
-          <span className="text-[11px] text-white/20">+{trips.length - PREVIEW_COUNT} more</span>
-        </div>
-      )}
+      ))}
     </div>
   );
 }
 
-export function SavedSection({ loading, trips, full, onExpand, onCollapse, onNavigate, onUnsave }) {
-  const items = full ? trips : trips.slice(0, PREVIEW_COUNT);
-  const rows = items.map(t => ({
-    id:      t.id,
-    title:   t.title || t.destination,
-    date:    fmtDate(t.date_start) + (t.start_time ? ` · ${fmtTime(t.start_time)}` : ""),
-    members: t.member_count ?? 0,
-    spots:   t.spots_left   ?? 0,
-    status:  t.status       || "published",
-  }));
-  return (
-    <div>
-      <SectionHeader
-        title="Saved Trips"
-        count={trips.length}
-        hasMore={trips.length > PREVIEW_COUNT}
-        onViewAll={onExpand}
-        onBack={onCollapse}
-        expanded={full}
+export function JoinedSection({ loading, trips, onNavigate, onViewGroup, onLeave, onBrowse }) {
+  if (loading) return <Skeletons />;
+  if (!trips.length) {
+    return (
+      <DashEmptyState
+        title="You haven't joined a trip yet"
+        body="Find a group heading somewhere you want to go, and send a join request."
+        actionLabel="Browse trips"
+        onAction={onBrowse}
       />
-      {loading ? (
-        <DashEmptyState msg="Loading…"/>
-      ) : rows.length === 0 ? (
-        <DashEmptyState msg="No saved trips yet"/>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {rows.map(t => (
-            <SavedRow key={t.id} trip={t} onNavigate={onNavigate} onUnsave={onUnsave}/>
-          ))}
-        </div>
-      )}
-      {!full && trips.length > PREVIEW_COUNT && (
-        <div className="mt-2 text-center">
-          <span className="text-[11px] text-white/20">+{trips.length - PREVIEW_COUNT} more</span>
-        </div>
-      )}
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {trips.map(t => (
+        <JoinedRow
+          key={t.id}
+          trip={{
+            id:         t.id,
+            title:      t.title || t.destination,
+            img:        coverOf(t),
+            date:       when(t),
+            joinStatus: t.my_status || "pending",
+            tripStatus: t.status    || "published",
+            entryPrice: t.entry_price,
+            members:    t.member_count ?? 0,
+            daysLeft:   t.date_start
+                          ? Math.max(0, Math.ceil((new Date(t.date_start) - Date.now()) / 86400000))
+                          : null,
+            chief:      t.chief_username || "Organiser",
+          }}
+          onNavigate={onNavigate}
+          onViewGroup={onViewGroup}
+          onLeave={onLeave}
+        />
+      ))}
     </div>
   );
 }
 
-export function CreatedSection({ loading, trips, full, onExpand, onCollapse, onViewTrip, onManage, onDelete, onCancel, onEndTrip }) {
-  const items = full ? trips : trips.slice(0, PREVIEW_COUNT);
-  const rows = items.map(t => ({
-    id:         t.id,
-    title:      t.title || t.destination,
-    date:       fmtDate(t.date_start) + (t.start_time ? ` · ${fmtTime(t.start_time)}` : ""),
-    status:     t.status,
-    members:    t.member_count     ?? 0,
-    maxMembers: t.spots_total      ?? 0,
-    requests:   t.pending_requests ?? 0,
-    actions:    t.my_actions ?? null,
-  }));
-  return (
-    <div>
-      <SectionHeader
-        title="Trips I've Created"
-        count={trips.length}
-        hasMore={trips.length > PREVIEW_COUNT}
-        onViewAll={onExpand}
-        onBack={onCollapse}
-        expanded={full}
+export function SavedSection({ loading, trips, onNavigate, onUnsave, onBrowse }) {
+  if (loading) return <Skeletons n={2} />;
+  if (!trips.length) {
+    return (
+      <DashEmptyState
+        title="Nothing saved yet"
+        body="Tap the heart on any trip and it'll wait for you here while you decide."
+        actionLabel="Browse trips"
+        onAction={onBrowse}
       />
-      {loading ? (
-        <DashEmptyState msg="Loading…"/>
-      ) : rows.length === 0 ? (
-        <DashEmptyState msg="No trips created yet"/>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {rows.map(t => (
-            <CreatedRow
-              key={t.id}
-              trip={t}
-              onViewTrip={onViewTrip}
-              onManage={onManage}
-              onDelete={onDelete}
-              onCancel={onCancel}
-              onEndTrip={onEndTrip}
-            />
-          ))}
-        </div>
-      )}
-      {!full && trips.length > PREVIEW_COUNT && (
-        <div className="mt-2 text-center">
-          <span className="text-[11px] text-white/20">+{trips.length - PREVIEW_COUNT} more</span>
-        </div>
-      )}
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {trips.map(t => (
+        <SavedRow
+          key={t.id}
+          trip={{
+            id:      t.id,
+            title:   t.title || t.destination,
+            img:     coverOf(t),
+            date:    when(t),
+            members: t.member_count ?? 0,
+            spots:   t.spots_left   ?? 0,
+            status:  t.status       || "published",
+          }}
+          onNavigate={onNavigate}
+          onUnsave={onUnsave}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function CreatedSection({ loading, trips, onViewTrip, onManage, onDelete, onCancel, onEndTrip, onCreate }) {
+  if (loading) return <Skeletons n={2} />;
+  if (!trips.length) {
+    return (
+      <DashEmptyState
+        title="You haven't organised a trip yet"
+        body="Set the route, the dates and the price. People request to join, and you approve who comes."
+        actionLabel="Create a trip"
+        onAction={onCreate}
+      />
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {trips.map(t => (
+        <CreatedRow
+          key={t.id}
+          trip={{
+            id:         t.id,
+            title:      t.title || t.destination,
+            img:        coverOf(t),
+            date:       when(t),
+            status:     t.status,
+            members:    t.member_count     ?? 0,
+            maxMembers: t.spots_total      ?? 0,
+            requests:   t.pending_requests ?? 0,
+            actions:    t.my_actions ?? null,
+          }}
+          onViewTrip={onViewTrip}
+          onManage={onManage}
+          onDelete={onDelete}
+          onCancel={onCancel}
+          onEndTrip={onEndTrip}
+        />
+      ))}
     </div>
   );
 }
