@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Calendar, Clock, Users, Check, AlertCircle } from "lucide-react";
 import { TAGS, COVERS_OPTIONS } from './constants.js';
-import { ProgressBar, SectionHead, Label, TTInput, TTSelect, PrimaryBtn, GhostBtn, Err } from './uiComponents.jsx';
+import { SectionHead, Label, TTInput, TTSelect, PrimaryBtn, GhostBtn, Err } from './uiComponents.jsx';
 import { DRIVE_TIME_OPTIONS } from "../../utils/driveTime.js";
 
 /* ══════════════════════════════════════════
@@ -11,11 +11,13 @@ export default function Step2({ form, patch, onNext, onBack }) {
   const [touched, setTouched]   = useState({});
   const touch = (...keys) => setTouched(t => keys.reduce((a, k) => ({ ...a, [k]: true }), t));
 
+  const today = new Date().toISOString().slice(0, 10);
   const errs = {
-    dateStart:  !form.dateStart  ? "Start date required" : "",
+    dateStart:  !form.dateStart  ? "Start date required"
+                : form.dateStart < today ? "Start date is in the past" : "",
     dateEnd:    !form.dateEnd    ? "End date required"   :
                 form.dateStart && form.dateEnd < form.dateStart ? "Must be after start" : "",
-    spots_total:  !form.spots_total  ? "Set a max size"  : +form.spots_total < 2 ? "At least 2" : +form.spots_total > 50 ? "Max 50" : "",
+    spots_total:  !form.spots_total  ? "Set a max size"  : +form.spots_total < 2 ? "At least 2" : +form.spots_total > 100 ? "Max 100" : "",
     entryPrice: !form.entryPrice ? "Set an entry price" : +form.entryPrice < 0 ? "Must be positive" : "",
   };
   const allOk = Object.values(errs).every(e => !e) && (form.tags || []).length > 0;
@@ -32,8 +34,7 @@ export default function Step2({ form, patch, onNext, onBack }) {
 
   return (
     <div className="animate-[fadeUp_.22s_ease_both]">
-      <ProgressBar step={2} total={4} />
-      <SectionHead icon="📋" title="Logistics & pricing"
+      <SectionHead title="Logistics & pricing"
         sub="Dates, group size, trip type, and what your entry price covers." />
 
       {/* Dates */}
@@ -41,7 +42,7 @@ export default function Step2({ form, patch, onNext, onBack }) {
         <div>
           <Label required>Start date</Label>
           <div className="relative">
-            <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <TTInput type="date" value={form.dateStart || ""} onChange={e => { patch({ dateStart: e.target.value }); touch("dateStart"); }} className="pl-8 [color-scheme:dark]" />
           </div>
           <Err msg={touched.dateStart ? errs.dateStart : ""} />
@@ -49,7 +50,7 @@ export default function Step2({ form, patch, onNext, onBack }) {
         <div>
           <Label required>End date</Label>
           <div className="relative">
-            <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <TTInput type="date" value={form.dateEnd || ""} onChange={e => { patch({ dateEnd: e.target.value }); touch("dateEnd"); }} className="pl-8 [color-scheme:dark]" />
           </div>
           <Err msg={touched.dateEnd ? errs.dateEnd : ""} />
@@ -61,14 +62,14 @@ export default function Step2({ form, patch, onNext, onBack }) {
         <div>
           <Label>Start time</Label>
           <div className="relative">
-            <Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <TTInput type="time" value={form.startTime || ""} onChange={e => patch({ startTime: e.target.value })} className="pl-8 [color-scheme:dark]" />
           </div>
         </div>
         <div>
           <Label>End time</Label>
           <div className="relative">
-            <Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <TTInput type="time" value={form.endTime || ""} onChange={e => patch({ endTime: e.target.value })} className="pl-8 [color-scheme:dark]" />
           </div>
         </div>
@@ -79,7 +80,7 @@ export default function Step2({ form, patch, onNext, onBack }) {
         <div>
           <Label required>Max group size</Label>
           <div className="relative">
-            <Users size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <Users size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute pointer-events-none" />
             <TTInput type="number" value={form.spots_total || ""} onChange={e => { patch({ spots_total: e.target.value }); touch("spots_total"); }} placeholder="10" className="pl-8" />
           </div>
           <Err msg={touched.spots_total ? errs.spots_total : ""} />
@@ -107,22 +108,22 @@ export default function Step2({ form, patch, onNext, onBack }) {
               placeholder="e.g. 120"
               className="flex-1"
             />
-            <span className="flex items-center px-3 rounded-xl bg-white/[0.06] border border-white/10 text-[12px] text-white/50 font-semibold flex-shrink-0">km</span>
+            <span className="flex items-center px-3 rounded-xl bg-surface-alt border border-line text-[12px] text-ink-soft font-semibold flex-shrink-0">km</span>
           </div>
         </div>
       </div>
 
       {/* ── ENTRY PRICE BLOCK ── */}
-      <div className="bg-white/[0.03] border-[1.5px] border-white/[0.08] rounded-2xl p-4 mb-5">
+      <div className="bg-surface-alt border-[1.5px] border-line rounded-2xl p-4 mb-5">
         {/* Price amount */}
         <div className="mb-4">
           <Label required>Entry price per person</Label>
-          <p className="text-[11px] text-white/35 mb-2.5 -mt-1 leading-snug">
+          <p className="text-[11px] text-ink-mute mb-2.5 -mt-1 leading-snug">
             This is a booking fee that covers all or most trip expenses. Members pay this to secure their spot.
           </p>
           <div className="flex items-stretch gap-3">
             <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-white/40 pointer-events-none">GH₵</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-ink-mute pointer-events-none">GH₵</span>
               <TTInput
                 type="number"
                 value={form.entryPrice || ""}
@@ -137,7 +138,7 @@ export default function Step2({ form, patch, onNext, onBack }) {
               className={`px-4 rounded-xl text-[12px] font-bold border cursor-pointer transition-all duration-150 flex-shrink-0
                 ${form.entryPrice === "0"
                   ? "bg-green-400/15 border-green-400/30 text-green-400"
-                  : "bg-white/[0.04] border-white/10 text-white/40 hover:border-white/20"
+                  : "bg-surface-alt border-line text-ink-mute hover:border-line"
                 }`}
             >
               Free
@@ -150,7 +151,7 @@ export default function Step2({ form, patch, onNext, onBack }) {
         {form.entryPrice && form.entryPrice !== "0" && (
           <div>
             <Label>What does this price cover?</Label>
-            <p className="text-[11px] text-white/35 mb-2.5 -mt-1">Tick everything the entry price includes</p>
+            <p className="text-[11px] text-ink-mute mb-2.5 -mt-1">Tick everything the entry price includes</p>
             <div className="flex flex-wrap gap-2">
               {COVERS_OPTIONS.map(item => {
                 const active = (form.priceCovers || []).includes(item);
@@ -161,8 +162,8 @@ export default function Step2({ form, patch, onNext, onBack }) {
                     className={`flex items-center gap-1.5 px-3 py-[6px] rounded-full text-[11px] font-semibold
                       border cursor-pointer transition-all duration-150
                       ${active
-                        ? "bg-[rgba(255,107,53,0.15)] border-[#FF6B35] text-[#FF6B35]"
-                        : "bg-white/[0.04] border-white/10 text-white/45 hover:border-white/20"
+                        ? "bg-[rgba(255,107,53,0.15)] border-accent text-accent"
+                        : "bg-surface-alt border-line text-ink-soft hover:border-line"
                       }`}
                   >
                     {active && <Check size={10} />}
@@ -187,7 +188,7 @@ export default function Step2({ form, patch, onNext, onBack }) {
       {/* Tags */}
       <div className="mb-6">
         <Label required>Trip type</Label>
-        <p className="text-[11px] text-white/30 mb-2.5 -mt-1">Pick all that apply</p>
+        <p className="text-[11px] text-ink-mute mb-2.5 -mt-1">Pick all that apply</p>
         <div className="flex flex-wrap gap-2">
           {TAGS.map(({ label, Icon }) => {
             const active = (form.tags || []).includes(label);
@@ -198,8 +199,8 @@ export default function Step2({ form, patch, onNext, onBack }) {
                 className={`flex items-center gap-1.5 px-3.5 py-[7px] rounded-full text-[12px] font-bold
                   border cursor-pointer transition-all duration-150
                   ${active
-                    ? "bg-[rgba(255,107,53,0.15)] border-[#FF6B35] text-[#FF6B35]"
-                    : "bg-white/[0.04] border-white/10 text-white/50 hover:border-white/20"
+                    ? "bg-[rgba(255,107,53,0.15)] border-accent text-accent"
+                    : "bg-surface-alt border-line text-ink-soft hover:border-line"
                   }`}
               >
                 <Icon size={12} /> {label}

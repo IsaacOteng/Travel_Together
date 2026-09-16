@@ -1,32 +1,38 @@
-/* ══════════════════════════════════════════════════
-   SHARED ATOMS mirrors tt-label / tt-hint / tt-err / tt-ok
-══════════════════════════════════════════════════ */
-export const Label = ({ children }) => (
-  <label className="block text-[10px] font-bold tracking-widest uppercase text-gray-500 mb-1.5">
-    {children}
+import { AlertCircle, Check } from "lucide-react";
+
+/* These were 10px bold uppercase letterspaced labels in gray-500 with 10px
+   gray-400 hints under them — legible on a designer's monitor, not on a phone
+   in daylight. Everything here is sized to be read and coloured from tokens so
+   the flow follows the theme. */
+
+export const Label = ({ children, htmlFor, optional }) => (
+  <label
+    htmlFor={htmlFor}
+    className="mb-2 flex items-baseline gap-2 text-[13.5px] font-semibold text-ink"
+  >
+    <span>{children}</span>
+    {optional && (
+      <span className="text-[12px] font-normal text-ink-mute">Optional</span>
+    )}
   </label>
 );
 
 export const Hint = ({ children }) => (
-  <p className="text-[10px] text-gray-400 leading-snug -mt-0.5 mb-1.5">{children}</p>
+  <p className="-mt-1 mb-2.5 text-[12.5px] leading-relaxed text-ink-mute">{children}</p>
 );
 
-export const Err = ({ msg }) => !msg ? null : (
-  <div className="flex items-center gap-1 text-[11px] text-red-400 mt-1">
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="shrink-0">
-      <circle cx="5.5" cy="5.5" r="5" stroke="#f87171" />
-      <path d="M5.5 3.2v2.2M5.5 7.4v.4" stroke="#f87171" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-    {msg}
-  </div>
-);
+export const Err = ({ msg }) =>
+  !msg ? null : (
+    <p role="alert" className="mt-2 flex items-start gap-1.5 text-[12.5px] text-danger">
+      <AlertCircle size={13} className="mt-px shrink-0" />
+      <span>{msg}</span>
+    </p>
+  );
 
-export const Ok = ({ msg }) => !msg ? null : (
-  <div className="flex items-center gap-1 text-[11px] text-green-500 mt-1">
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="shrink-0">
-      <circle cx="5.5" cy="5.5" r="5" stroke="#22c55e" />
-      <path d="M3 5.5l2 2 3-3" stroke="#22c55e" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-    {msg}
-  </div>
-);
+export const Ok = ({ msg }) =>
+  !msg ? null : (
+    <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-moss">
+      <Check size={13} className="mt-px shrink-0" />
+      <span>{msg}</span>
+    </p>
+  );

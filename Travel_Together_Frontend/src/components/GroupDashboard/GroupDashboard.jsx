@@ -573,7 +573,7 @@ export default function GroupDashboard() {
 
   const MapPanel = (
     <div id="fleet-map-anchor">
-      <Section title="Live Fleet Map" icon={Map} iconColor="#6B8BAA">
+      <Section title={phase === "ended" ? "Where everyone went" : "Live fleet map"} icon={Map} iconColor="#6B8BAA">
         <FleetMap height={300} members={members} myLocation={myLocation} flyTo={mapFlyTo} resetKey={mapResetKey} />
         <div className="flex gap-2 mt-3">
           <button onClick={handleLocate}
@@ -909,7 +909,7 @@ export default function GroupDashboard() {
     <div key={tab} style={{ animation: "ttFadeUp .3s ease both" }} className="flex flex-col gap-4">
       {tab === "overview" && (
         <>
-          {phase !== "ended" && MapPanel}
+          {MapPanel}
           {StatusPanel}
           {QuickActionsPanel}
         </>
@@ -1181,12 +1181,9 @@ export default function GroupDashboard() {
               other tabs get the full measure. */}
           {tab === "overview" ? (
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-              <div className="min-w-0 flex-1">
-                {phase !== "ended" && MapPanel}
-                {phase === "ended" && StatusPanel}
-              </div>
+              <div className="min-w-0 flex-1">{MapPanel}</div>
               <div className="flex w-full flex-col gap-4 lg:w-[320px] lg:shrink-0">
-                {phase !== "ended" && StatusPanel}
+                {StatusPanel}
                 {QuickActionsPanel}
               </div>
             </div>

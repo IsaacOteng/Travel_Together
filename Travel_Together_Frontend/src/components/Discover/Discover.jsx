@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Search, Shield, Compass, Plus, X, Loader2, SlidersHorizontal,
+  Search, Shield, Compass, Plus, X, Loader2,
 } from "lucide-react";
 import { FILTERS } from './constants.js';
 import AppNav from '../shared/AppNav.jsx';
@@ -18,6 +18,7 @@ import MobileBottomNav from '../shared/MobileBottomNav.jsx';
 import TripFeedCard from './TripFeedCard.jsx';
 import MobileTripCard from './MobileTripCard.jsx';
 import TripCardSkeleton from './TripCardSkeleton.jsx';
+import SortMenu from './SortMenu.jsx';
 import FeaturedTrip from './FeaturedTrip.jsx';
 import SafetyGuideModal from './SafetyGuideModal.jsx';
 import { officialLogo } from "../../assets/logos";
@@ -73,6 +74,13 @@ function normalise(t) {
                     : null,
   };
 }
+
+const SORTS = [
+  { id: "soonest",  label: "Leaving soonest" },
+  { id: "price",    label: "Lowest price"    },
+  { id: "spots",    label: "Most spots left" },
+  { id: "rated",    label: "Top organisers"  },
+];
 
 export default function Discover() {
   const navigate = useNavigate();
@@ -147,13 +155,6 @@ export default function Discover() {
   };
 
   const handleView = trip => navigate(`/trip/${trip.id}`);
-
-  const SORTS = [
-    { id: "soonest",  label: "Leaving soonest" },
-    { id: "price",    label: "Lowest price"    },
-    { id: "spots",    label: "Most spots left" },
-    { id: "rated",    label: "Top organisers"  },
-  ];
 
   const ts = (d) => { const n = new Date(d).getTime(); return Number.isNaN(n) ? Infinity : n; };
 
@@ -305,17 +306,7 @@ export default function Discover() {
           <span className="text-[12.5px] text-ink-mute">
             {searching ? "Searching…" : `${filtered.length} trip${filtered.length !== 1 ? "s" : ""}`}
           </span>
-          <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-ink-soft">
-            <SlidersHorizontal size={13} className="shrink-0" />
-            <span className="sr-only">Sort trips by</span>
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value)}
-              className="cursor-pointer border-none bg-transparent text-[12.5px] font-medium text-ink outline-none"
-            >
-              {SORTS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-          </label>
+          <SortMenu options={SORTS} value={sortBy} onChange={setSortBy} compact />
         </div>
 
         <div className="flex-1 overflow-y-auto pb-[88px] pt-1">
@@ -420,19 +411,7 @@ export default function Discover() {
             <span className="hidden text-[13px] text-ink-mute sm:inline">
               {searching ? "Searching…" : `${filtered.length} trip${filtered.length !== 1 ? "s" : ""}`}
             </span>
-            <label className="flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface py-2 pl-3.5 pr-2.5 text-[13px] text-ink-soft transition-colors hover:border-accent">
-              <SlidersHorizontal size={14} className="shrink-0" />
-              <span className="sr-only">Sort trips by</span>
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
-                className="cursor-pointer border-none bg-transparent pr-1 text-[13px] font-medium text-ink outline-none"
-              >
-                {SORTS.map(s => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
-            </label>
+            <SortMenu options={SORTS} value={sortBy} onChange={setSortBy} />
           </div>
         </div>
       </div>

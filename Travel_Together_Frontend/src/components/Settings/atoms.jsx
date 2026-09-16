@@ -1,34 +1,43 @@
 import { ChevronRight } from "lucide-react";
 
-export function SettingRow({ icon: Icon, iconColor = "#FF6B35", label, sub, children, onClick, danger = false }) {
-  const base = `flex items-center gap-3 px-4 py-3.5 transition-colors duration-100
-    ${onClick ? "cursor-pointer hover:bg-white/[0.04]" : ""}
-    ${danger ? "hover:bg-red-500/[0.06]" : ""}`;
+export function SettingRow({ icon: Icon, label, sub, children, onClick, danger = false }) {
+  const Tag = onClick ? "button" : "div";
   return (
-    <div className={base} onClick={onClick}>
-      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: `${iconColor}15`, border: `1px solid ${iconColor}25` }}>
-        <Icon size={15} color={danger ? "#f43f5e" : iconColor} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className={`text-[13px] font-semibold ${danger ? "text-red-400" : "text-white/85"}`}>{label}</div>
-        {sub && <div className="text-[11px] text-white/35 mt-0.5 leading-snug">{sub}</div>}
-      </div>
+    <Tag
+      onClick={onClick}
+      className={`flex w-full items-center gap-3.5 border-none bg-transparent px-5 py-4 text-left transition-colors ${
+        onClick ? "cursor-pointer hover:bg-surface-alt" : ""
+      }`}
+    >
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+        danger ? "bg-danger-soft text-danger" : "bg-accent-soft text-accent"
+      }`}>
+        <Icon size={16} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`block text-[14px] font-semibold ${danger ? "text-danger" : "text-ink"}`}>
+          {label}
+        </span>
+        {sub && <span className="mt-0.5 block text-[12.5px] leading-snug text-ink-mute">{sub}</span>}
+      </span>
       {children}
-      {onClick && !children && <ChevronRight size={15} className="text-white/25 flex-shrink-0" />}
-    </div>
+      {onClick && !children && <ChevronRight size={16} className="shrink-0 text-ink-mute" />}
+    </Tag>
   );
 }
 
-export function SectionCard({ title, children }) {
+export function SectionCard({ title, description, children }) {
   return (
-    <div className="bg-[#0d1b2a] rounded-2xl border border-white/[0.07] overflow-hidden">
+    <section className="overflow-hidden rounded-3xl border border-line bg-surface">
       {title && (
-        <div className="px-4 pt-4 pb-2">
-          <p className="text-[10px] font-bold tracking-[.12em] uppercase text-white/30">{title}</p>
-        </div>
+        <header className="border-b border-line px-5 py-4">
+          <h2 className="m-0 font-display text-[16px] font-semibold text-ink">{title}</h2>
+          {description && (
+            <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-ink-soft">{description}</p>
+          )}
+        </header>
       )}
-      <div className="divide-y divide-white/[0.05]">{children}</div>
-    </div>
+      <div className="divide-y divide-line-soft">{children}</div>
+    </section>
   );
 }

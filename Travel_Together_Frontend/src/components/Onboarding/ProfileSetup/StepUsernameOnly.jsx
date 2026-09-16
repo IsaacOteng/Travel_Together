@@ -1,71 +1,76 @@
+import { useEffect } from "react";
+import { Loader2, Check, X } from "lucide-react";
 import { SectionHead } from "./SectionHead";
 import { Label, Hint, Err, Ok } from "./atoms";
-import { inputBase } from "./buttons";
+import { inputBase, inputError } from "./buttons";
 import { useUsername } from "../OnboardingDetails/useUsername";
-
-const UN_RE = /^[a-z0-9._]{3,20}$/;
+import { UN_RE } from "./validators";
 
 export const StepUsernameOnly = ({ form, patch }) => {
   const val = form.username || "";
   const status = useUsername(val);
 
-  const hint = !val
-    ? ""
-    : !UN_RE.test(val)
-    ? "3–20 chars · letters, numbers, dots and underscores only"
-    : null;
+  /* The gate below used to test the regex only, so a handle the server had
+     already rejected as taken still lit up Continue — you'd get a generic
+     "Something went wrong" from the save instead of being told the real
+     problem while you were still looking at the field. Mirroring the lookup
+     into form state lets the gate see it. */
+  useEffect(() => {
+    patch({ usernameStatus: status });
+  }, [status, patch]);
+
+  const formatErr = val && !UN_RE.test(val)
+    ? "3–20 characters. Letters, numbers, dots and underscores only."
+    : "";
 
   return (
     <div>
       <SectionHead
-        icon="🔖"
-        title="Choose a username"
-        sub="Your unique handle on Travel Together. You can change it later."
+        title="Pick your handle"
+        sub="This is how you're tagged in group chats and join requests. You can change it later."
       />
 
-      <div className="mb-4">
-        <Label>Username <span className="text-[#FF6B35]">*</span></Label>
-        <Hint>3–20 characters · letters, numbers, . and _ only · no spaces</Hint>
+      <div className="mb-5">
+        <Label htmlFor="ob-username">Username</Label>
+        <Hint>Letters, numbers, dots and underscores. No spaces.</Hint>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none pointer-events-none">
+          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 select-none text-[15px] text-ink-mute">
             @
           </span>
           <input
+            id="ob-username"
             type="text"
             autoComplete="username"
             placeholder="your_handle"
             value={val}
             onChange={(e) => patch({ username: e.target.value.toLowerCase().replace(/\s/g, "") })}
             maxLength={20}
-            className={`${inputBase} pl-7`}
+            aria-invalid={!!formatErr || status === "taken" || undefined}
+            className={`${inputBase} pl-8 pr-10 ${formatErr || status === "taken" ? inputError : ""}`}
           />
           {val && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] pointer-events-none select-none">
-              {status === "checking"   && <span className="text-gray-400">checking…</span>}
-              {status === "available" && <span className="text-green-500">✓</span>}
-              {status === "taken"     && <span className="text-red-400">✗</span>}
+            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2">
+              {status === "checking"  && <Loader2 size={15} className="animate-spin text-ink-mute" />}
+              {status === "available" && <Check   size={15} className="text-moss" />}
+              {status === "taken"     && <X       size={15} className="text-danger" />}
             </span>
           )}
         </div>
 
-        {hint
-          ? <Err msg={hint} />
-          : status === "available" && val
-          ? <Ok msg={`@${val} is available`} />
+        {formatErr
+          ? <Err msg={formatErr} />
           : status === "taken"
-          ? <Err msg="That username is already taken try another" />
-          : null
-        }
+          ? <Err msg="That handle is already taken. Try another." />
+          : status === "available" && val
+          ? <Ok msg={`@${val} is yours.`} />
+          : null}
       </div>
 
-      <p className="text-[11px] text-gray-400 leading-relaxed">
-        Other travelers will see <strong>@{val || "your_handle"}</strong> on your profile and group requests.
+      <p className="m-0 rounded-xl border border-line bg-surface-alt px-4 py-3 text-[13px] leading-relaxed text-ink-soft">
+        You&apos;ll show up as{" "}
+        <strong className="font-semibold text-ink">@{val || "your_handle"}</strong>{" "}
+        on your profile and anywhere you post in a group.
       </p>
     </div>
   );
-};
-
-export const stepUsernameRequired = (f) => {
-  const v = f.username || "";
-  return UN_RE.test(v);
 };

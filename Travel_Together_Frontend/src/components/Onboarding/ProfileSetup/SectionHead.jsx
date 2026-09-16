@@ -1,22 +1,18 @@
-/* ══════════════════════════════════════════════════
-   SECTION HEADING matches tt-heading exactly
-   gradient icon badge (28×28, radius-lg) + Georgia serif title
-══════════════════════════════════════════════════ */
-export const SectionHead = ({ icon, title, sub }) => (
-  <div className="mb-5">
-    <div className="flex items-center gap-2 mb-1">
-      <div
-        className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
-        style={{ background: "linear-gradient(135deg,#FF6B35,#ff8c5a)" }}
-      >
-        {icon}
-      </div>
-      <h1 className="text-xl font-light text-[#1E3A5F] tracking-tight" style={{ fontFamily: "Georgia,serif" }}>
-        {title}
-      </h1>
-    </div>
+/* This used to be a 28px gradient square holding an emoji, with a Georgia
+   serif title beside it and the explanation indented underneath — the exact
+   "little icon on top, words below" pattern that says nothing the words
+   don't. The emoji is gone. What's left is an editorial heading matching the
+   sign-in screens, so the step reads as a question being asked rather than a
+   form section being announced. */
+export const SectionHead = ({ title, sub }) => (
+  <header className="mb-6">
+    <h1 className="m-0 font-display text-[clamp(24px,3vw,30px)] font-semibold leading-[1.15] text-ink">
+      {title}
+    </h1>
     {sub && (
-      <p className="text-[11px] text-gray-400 leading-snug ml-9">{sub}</p>
+      <p className="m-0 mt-2.5 max-w-[46ch] text-[14.5px] leading-[1.6] text-ink-soft">
+        {sub}
+      </p>
     )}
-  </div>
+  </header>
 );

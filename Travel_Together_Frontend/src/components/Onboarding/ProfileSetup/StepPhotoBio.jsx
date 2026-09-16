@@ -2,11 +2,8 @@ import { useState, useRef } from "react";
 import { Camera, ImagePlus, Move } from "lucide-react";
 import { SectionHead } from "./SectionHead";
 import { Label, Hint, Err, Ok } from "./atoms";
-import { inputBase } from "./buttons";
+import { inputBase, inputError } from "./buttons";
 
-/* ══════════════════════════════════════════════════
-   STEP 1 Photo & Bio
-══════════════════════════════════════════════════ */
 export const StepPhotoBio = ({ form, patch }) => {
   const fileRef            = useRef();
   const coverRef           = useRef();
@@ -20,6 +17,7 @@ export const StepPhotoBio = ({ form, patch }) => {
   const [coverPosition, setCoverPosition] = useState(form.coverPosition || { x: 50, y: 50 });
   const [dragOver,      setDragOver]      = useState(false);
   const [touched,       setTouched]       = useState(false);
+  const [bioTouched,    setBioTouched]    = useState(false);
 
   const handleFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -70,17 +68,20 @@ export const StepPhotoBio = ({ form, patch }) => {
     if (!pointerMoved.current) coverRef.current?.click();
   };
 
-  const [bioTouched, setBioTouched] = useState(false);
-  const nameErr = touched && !form.displayName?.trim() ? "Required" : "";
-  const bioErr  = bioTouched && !form.bio?.trim() ? "Required" : "";
+  const bioLen  = (form.bio || "").length;
+  const nameErr = touched    && !form.displayName?.trim() ? "Please enter a name."    : "";
+  const bioErr  = bioTouched && !form.bio?.trim()         ? "Please write a short bio." : "";
 
   return (
     <div>
-      <SectionHead icon="📸" title="Photo & display name" sub="Your photo and name are shown to other travelers on all group pages." />
+      <SectionHead
+        title="How should people know you?"
+        sub="Your photo, name and bio are the first things an organiser sees when you ask to join a trip."
+      />
 
-      {/* Cover + Avatar stacked preview */}
-      <div className="mb-6 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-        {/* Cover banner */}
+      {/* Live preview of the profile card other travellers will actually see,
+          rather than two disconnected file pickers. */}
+      <div className="mb-6 overflow-hidden rounded-2xl border border-line bg-surface">
         <div
           ref={coverContainerRef}
           onPointerDown={coverPreview ? onCoverPointerDown : undefined}
@@ -88,8 +89,9 @@ export const StepPhotoBio = ({ form, patch }) => {
           onPointerUp={coverPreview ? onCoverPointerUp : undefined}
           onPointerCancel={() => { isDraggingCover.current = false; }}
           onClick={!coverPreview ? () => coverRef.current?.click() : undefined}
-          className={`relative h-24 bg-linear-to-r from-orange-100 via-green-50 to-blue-100 overflow-hidden select-none
-            ${coverPreview ? "cursor-grab active:cursor-grabbing" : "cursor-pointer group"}`}
+          className={`relative h-28 select-none overflow-hidden bg-surface-alt ${
+            coverPreview ? "cursor-grab active:cursor-grabbing" : "group cursor-pointer"
+          }`}
         >
           {coverPreview ? (
             <>
@@ -97,107 +99,111 @@ export const StepPhotoBio = ({ form, patch }) => {
                 src={coverPreview}
                 alt="Cover"
                 draggable={false}
-                className="w-full h-full object-cover pointer-events-none"
+                className="pointer-events-none h-full w-full object-cover"
                 style={{ objectPosition: `${coverPosition.x}% ${coverPosition.y}%` }}
               />
               <button
+                type="button"
                 onPointerDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); coverRef.current?.click(); }}
-                className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/50 backdrop-blur-sm text-white/90 text-[10px] font-semibold hover:bg-black/70 transition z-10"
+                className="absolute right-2.5 top-2.5 z-10 flex cursor-pointer items-center gap-1.5 rounded-full border-none bg-black/55 px-2.5 py-1.5 text-[11.5px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/75"
               >
-                <Camera size={10} /> Change
+                <Camera size={11} /> Change
               </button>
-              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1 text-white/70 text-[9px] pointer-events-none whitespace-nowrap">
-                <Move size={8} /> Drag to reposition
-              </div>
+              <span className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white/80 backdrop-blur-sm">
+                <Move size={9} /> Drag to reposition
+              </span>
             </>
           ) : (
-            <>
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 opacity-60">
-                <ImagePlus size={20} className="text-gray-400" />
-                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Add cover photo</span>
-              </div>
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition bg-black/50 rounded-full p-1.5">
-                  <Camera size={14} className="text-white" />
-                </div>
-              </div>
-            </>
+            <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-ink-mute transition-colors group-hover:text-accent">
+              <ImagePlus size={20} />
+              <span className="text-[12.5px] font-medium">Add a cover photo</span>
+            </span>
           )}
         </div>
         <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleCover(e.target.files[0])} />
 
-        {/* Avatar overlapping the cover bottom edge */}
-        <div className="bg-white px-4 pb-3 flex items-end gap-3" style={{ paddingTop: 0 }}>
+        <div className="flex items-end gap-3.5 px-4 pb-4">
           <div
             onClick={() => fileRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]); }}
-            className={`relative -mt-8 w-16 h-16 rounded-full cursor-pointer flex-shrink-0 transition-all duration-200 ${dragOver ? "scale-105" : ""}`}
+            className={`relative -mt-9 h-[72px] w-[72px] shrink-0 cursor-pointer transition-transform duration-200 ${dragOver ? "scale-105" : ""}`}
           >
-            {preview
-              ? <img src={preview} alt="Profile preview" className="w-16 h-16 rounded-full object-cover border-[3px] border-white shadow" />
-              : (
-                <div className="w-16 h-16 rounded-full bg-orange-50 border-[3px] border-dashed border-[#FF6B35] shadow flex flex-col items-center justify-center gap-1">
-                  <Camera size={16} className="text-[#FF6B35]" />
-                  <span className="text-[8px] text-[#FF6B35] font-bold uppercase tracking-wider">Photo</span>
-                </div>
-              )
-            }
-            {preview && (
-              <div className="absolute inset-0 rounded-full bg-black/25 opacity-0 hover:opacity-100 transition flex items-center justify-center">
-                <Camera size={14} className="text-white" />
-              </div>
+            {preview ? (
+              <img
+                src={preview}
+                alt="Profile preview"
+                className="h-[72px] w-[72px] rounded-full border-[3px] border-surface object-cover"
+              />
+            ) : (
+              <span className="flex h-[72px] w-[72px] flex-col items-center justify-center gap-0.5 rounded-full border-[3px] border-surface bg-accent-soft text-accent">
+                <Camera size={18} />
+                <span className="text-[10px] font-semibold">Photo</span>
+              </span>
             )}
-            <div className="absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center shadow" style={{ background: "#FF6B35" }}>
-              <Camera size={9} className="text-white" />
-            </div>
+            {preview && (
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30 opacity-0 transition-opacity hover:opacity-100">
+                <Camera size={15} className="text-white" />
+              </span>
+            )}
           </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
-          <p className="text-[10px] text-gray-400 pb-1">JPG, PNG or WEBP · Max 5 MB</p>
+
+          <div className="min-w-0 flex-1 pb-0.5">
+            <p className="m-0 truncate text-[15px] font-semibold text-ink">
+              {form.displayName?.trim() || "Your name"}
+            </p>
+            <p className="m-0 mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-ink-mute">
+              {form.bio?.trim() || "Your bio appears here."}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Display name */}
-      <div className="mb-4">
-        <Label>Display name <span className="text-[#FF6B35]">*</span></Label>
+      <div className="mb-5">
+        <Label htmlFor="ob-name">Display name</Label>
         <input
+          id="ob-name"
           type="text"
           placeholder="How you'd like to be called"
           value={form.displayName || ""}
           onChange={(e) => patch({ displayName: e.target.value })}
           onBlur={() => setTouched(true)}
           maxLength={40}
-          className={inputBase}
+          aria-invalid={!!nameErr || undefined}
+          className={`${inputBase} ${nameErr ? inputError : ""}`}
         />
         {nameErr
           ? <Err msg={nameErr} />
-          : form.displayName && <Ok msg={`You'll appear as "${form.displayName}" to other travelers`} />
-        }
+          : form.displayName?.trim() && <Ok msg={`You'll appear as "${form.displayName.trim()}"`} />}
       </div>
 
-      {/* Bio */}
-      <div className="mb-2">
-        <Label>Short bio <span className="text-[#FF6B35]">*</span></Label>
-        <Hint>Shown on your profile and join-request previews.</Hint>
+      <div>
+        <Label htmlFor="ob-bio">Short bio</Label>
+        <Hint>A line or two on how you travel. Organisers read this before approving a request.</Hint>
         <div className="relative">
           <textarea
+            id="ob-bio"
             rows={4}
             maxLength={200}
             placeholder="Your travel style, interests, dream destinations…"
             value={form.bio || ""}
             onChange={(e) => patch({ bio: e.target.value })}
             onBlur={() => setBioTouched(true)}
-            className={`${inputBase} resize-none`}
+            aria-invalid={!!bioErr || undefined}
+            className={`${inputBase} resize-none pb-7 ${bioErr ? inputError : ""}`}
           />
-          <span className={`absolute bottom-2.5 right-2.5 text-[10px] pointer-events-none ${
-            (form.bio || "").length >= 180 ? "text-orange-400" : "text-gray-300"
-          }`}>
-            {(form.bio || "").length}/200
+          <span
+            className={`pointer-events-none absolute bottom-2.5 right-3 text-[11.5px] tabular-nums ${
+              bioLen >= 180 ? "text-accent" : "text-ink-mute"
+            }`}
+          >
+            {bioLen}/200
           </span>
         </div>
-        {bioErr && <Err msg={bioErr} />}
+        <Err msg={bioErr} />
       </div>
     </div>
   );

@@ -1,77 +1,101 @@
 import { useState } from "react";
 import { SectionHead } from "./SectionHead";
 import { Label, Hint, Err } from "./atoms";
-import { inputBase } from "./buttons";
+import { inputBase, inputError } from "./buttons";
 import { NationalitySelect } from "../OnboardingDetails/NationalitySelect";
 import { CountrySelect } from "../OnboardingDetails/CountrySelect";
 import { PhoneInput } from "../OnboardingDetails/PhoneInput";
 import { GpsBtn } from "../OnboardingDetails/GpsBtn";
 import { useCountries } from "../OnboardingDetails/useCountries";
+import { ageFrom, isPhoneValid } from "./validators";
+
+const GENDERS = ["Male", "Female", "Non-binary", "Prefer not to say"];
+
+/* The latest date of birth that still clears the 13+ floor. Computed once on
+   load rather than on every render — it was a new Date(Date.now()) inline in
+   the input's max, which makes the render impure for a value that only moves
+   once a day. */
+const MAX_DOB = new Date(Date.now() - 13 * 365.25 * 24 * 3600e3)
+  .toISOString()
+  .slice(0, 10);
 
 export const StepPersonalDetails = ({ form, patch }) => {
   const [touched, setTouched] = useState({});
   const { countries, loading: loadingC } = useCountries();
 
   const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
-  const touchAll = () => setTouched({ dob: true, gender: true, nationality: true, city: true, phone: true });
 
-  const age = form.dob ? Math.floor((Date.now() - new Date(form.dob)) / (365.25 * 24 * 3600e3)) : null;
-  const rawPhone = (form.phoneNumber || "").replace(/\D/g, "");
+  const age = ageFrom(form.dob);
 
   const errs = {
-    dob:         !form.dob          ? "Required" : age < 13 ? "Must be 13 or older" : age > 120 ? "Invalid date" : "",
+    dob:         !form.dob          ? "Required" : age < 13 ? "You need to be 13 or older." : age > 120 ? "That date doesn't look right." : "",
     gender:      !form.gender       ? "Required" : "",
     nationality: !form.nationality  ? "Required" : "",
     city:        !form.city?.trim() ? "Required" : "",
-    phone:       !form.phoneNumber?.trim() ? "Required" : rawPhone.length < 7 ? "Enter a valid phone number (min 7 digits)" : rawPhone.length > 15 ? "Phone number too long" : "",
+    phone:       !form.phoneNumber?.trim() ? "Required" : !isPhoneValid(form.phoneNumber) ? "Enter a valid phone number (7–15 digits)." : "",
   };
 
   return (
     <div>
-      <SectionHead icon="👤" title="Personal details" sub="Used to verify identity and personalise your experience. Never shared publicly." />
+      <SectionHead
+        title="A few details about you"
+        sub="Your age and nationality help organisers run a safe group. Only your city and country are ever shown publicly."
+      />
 
-      {/* DOB + Gender */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <Label>Date of birth <span className="text-[#FF6B35]">*</span></Label>
-          <div className="relative">
-            <input
-              type="date"
-              value={form.dob || ""}
-              max={new Date(Date.now() - 13 * 365.25 * 24 * 3600e3).toISOString().slice(0, 10)}
-              onChange={(e) => { patch({ dob: e.target.value }); touch("dob"); }}
-              onBlur={() => touch("dob")}
-              className={`${inputBase} [color-scheme:light]`}
-            />
-            {age && !errs.dob && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] bg-orange-50 text-[#FF6B35] font-bold px-1.5 py-0.5 rounded-full pointer-events-none">
-                {age} yrs
-              </span>
-            )}
-          </div>
-          {touched.dob && <Err msg={errs.dob} />}
+      {/* Date of birth */}
+      <div className="mb-5">
+        <Label htmlFor="ob-dob">Date of birth</Label>
+        <div className="relative">
+          <input
+            id="ob-dob"
+            type="date"
+            value={form.dob || ""}
+            max={MAX_DOB}
+            onChange={(e) => { patch({ dob: e.target.value }); touch("dob"); }}
+            onBlur={() => touch("dob")}
+            aria-invalid={!!(touched.dob && errs.dob) || undefined}
+            className={`${inputBase} ${touched.dob && errs.dob ? inputError : ""}`}
+          />
+          {age > 0 && !errs.dob && (
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-accent-soft px-2 py-0.5 text-[11.5px] font-semibold text-accent">
+              {age}
+            </span>
+          )}
         </div>
-        <div>
-          <Label>Gender <span className="text-[#FF6B35]">*</span></Label>
-          <select
-            value={form.gender || ""}
-            onChange={(e) => { patch({ gender: e.target.value }); touch("gender"); }}
-            onBlur={() => touch("gender")}
-            className={inputBase}
-          >
-            <option value="">Select…</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>Non-binary</option>
-            <option>Prefer not to say</option>
-          </select>
-          {touched.gender && <Err msg={errs.gender} />}
+        {touched.dob && <Err msg={errs.dob} />}
+      </div>
+
+      {/* Gender — was a native <select>, which on Windows opens an unstyleable
+          OS list. Four options fit as chips, so the choice is visible without
+          opening anything. */}
+      <div className="mb-5">
+        <Label>Gender</Label>
+        <div className="flex flex-wrap gap-2">
+          {GENDERS.map((g) => {
+            const on = form.gender === g;
+            return (
+              <button
+                key={g}
+                type="button"
+                aria-pressed={on}
+                onClick={() => { patch({ gender: g }); touch("gender"); }}
+                className={`cursor-pointer rounded-full border px-4 py-2 text-[13.5px] font-medium transition-colors ${
+                  on
+                    ? "border-accent bg-accent text-accent-ink"
+                    : "border-line bg-surface text-ink-soft hover:border-accent hover:text-accent"
+                }`}
+              >
+                {g}
+              </button>
+            );
+          })}
         </div>
+        {touched.gender && <Err msg={errs.gender} />}
       </div>
 
       {/* Nationality */}
-      <div className="mb-4">
-        <Label>Nationality <span className="text-[#FF6B35]">*</span></Label>
+      <div className="mb-5">
+        <Label>Nationality</Label>
         <NationalitySelect
           value={form.nationality || ""}
           onChange={(v) => { patch({ nationality: v }); touch("nationality"); }}
@@ -82,27 +106,27 @@ export const StepPersonalDetails = ({ form, patch }) => {
         {touched.nationality && <Err msg={errs.nationality} />}
       </div>
 
-      {/* City + Country */}
-      <div className="mb-1">
-        <Label>Where do you live? <span className="text-[#FF6B35]">*</span></Label>
-        <Hint>Only city and country are visible to other travelers.</Hint>
-        <div className="mb-2">
-          <GpsBtn onDetect={(city, country) => { patch({ city, country }); setTouched((p) => ({ ...p, city: true })); }} />
+      {/* Location */}
+      <div className="mb-5">
+        <Label>Where do you live?</Label>
+        <Hint>Only your city and country are visible to other travellers.</Hint>
+        <div className="mb-2.5">
+          <GpsBtn onDetect={(city, country) => { patch({ city, country }); touch("city"); }} />
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <input
-            type="text"
-            placeholder="City / Town"
-            value={form.city || ""}
-            onChange={(e) => { patch({ city: e.target.value }); touch("city"); }}
-            onBlur={() => touch("city")}
-            className={inputBase}
-          />
-          {touched.city && <Err msg={errs.city} />}
-        </div>
-        <div>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div>
+            <input
+              type="text"
+              placeholder="City or town"
+              value={form.city || ""}
+              onChange={(e) => { patch({ city: e.target.value }); touch("city"); }}
+              onBlur={() => touch("city")}
+              aria-label="City or town"
+              aria-invalid={!!(touched.city && errs.city) || undefined}
+              className={`${inputBase} ${touched.city && errs.city ? inputError : ""}`}
+            />
+            {touched.city && <Err msg={errs.city} />}
+          </div>
           <CountrySelect
             value={form.country || ""}
             onChange={(v) => patch({ country: v })}
@@ -114,9 +138,9 @@ export const StepPersonalDetails = ({ form, patch }) => {
       </div>
 
       {/* Phone */}
-      <div className="mb-2">
-        <Label>Phone number <span className="text-[#FF6B35]">*</span></Label>
-        <Hint>For SOS emergency alerts only never shown publicly.</Hint>
+      <div>
+        <Label>Phone number</Label>
+        <Hint>Used for SOS alerts only. It is never shown on your profile.</Hint>
         <PhoneInput
           phoneNumber={form.phoneNumber || ""}
           dialCode={form.dialCode || "+233"}
@@ -129,10 +153,4 @@ export const StepPersonalDetails = ({ form, patch }) => {
       </div>
     </div>
   );
-};
-
-export const stepPersonalRequired = (f) => {
-  const raw = (f.phoneNumber || "").replace(/\D/g, "");
-  const age = f.dob ? Math.floor((Date.now() - new Date(f.dob)) / (365.25 * 24 * 3600e3)) : null;
-  return !!(f.dob && age >= 13 && f.gender && f.nationality && f.city?.trim() && raw.length >= 7 && raw.length <= 15);
 };

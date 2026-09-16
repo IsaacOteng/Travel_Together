@@ -1,81 +1,82 @@
 import { useState } from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, ShieldAlert } from "lucide-react";
 import { SectionHead } from "./SectionHead";
 import { Label, Hint, Err } from "./atoms";
-import { inputBase } from "./buttons";
+import { inputBase, inputError } from "./buttons";
 import { RELATIONSHIPS } from "./constants";
+import { PhoneInput } from "../OnboardingDetails/PhoneInput";
+import { useCountries } from "../OnboardingDetails/useCountries";
+import { isPhoneValid } from "./validators";
 
-/* ══════════════════════════════════════════════════
-   STEP 4 Emergency Contact
-══════════════════════════════════════════════════ */
 export const StepEmergency = ({ form, patch }) => {
   const [touched, setTouched] = useState({});
+  const { countries } = useCountries();
+
   const ec = form.emergencyContact || {};
   const patchEC = (u) => patch({ emergencyContact: { ...ec, ...u } });
   const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
 
-  const nameErr  = touched.name  && !ec.name?.trim()  ? "Required" : "";
-  const phoneErr = touched.phone && !ec.phone?.trim() ? "Required" : "";
+  const nameErr  = touched.name  && !ec.name?.trim() ? "Required" : "";
+  const phoneErr = touched.phone
+    ? !ec.phone?.trim()          ? "Required"
+      : !isPhoneValid(ec.phone)  ? "Enter a valid phone number (7–15 digits)."
+      : ""
+    : "";
 
   return (
     <div>
       <SectionHead
-        icon="🛡️"
-        title="Emergency contact"
-        sub="Used only for SOS alerts. Never shown publicly or to other travelers."
+        title="Who should we call?"
+        sub="One person we can reach if something goes wrong on a trip. They're never shown to other travellers."
       />
 
-      {/* Safety notice matches the info cards in GlobalDetails style */}
-      <div className="flex gap-3 bg-orange-50 border-[1.5px] border-orange-100 rounded-xl px-4 py-3 mb-5">
-        <span className="text-base mt-0.5 shrink-0">🛡️</span>
+      <div className="mb-6 flex gap-3.5 rounded-2xl border border-line bg-surface-alt px-4 py-3.5">
+        <ShieldAlert size={17} className="mt-0.5 shrink-0 text-accent" />
         <div>
-          <p className="text-[11px] font-semibold text-[#1E3A5F] mb-0.5">Why we need this</p>
-          <p className="text-[11px] text-[#5576a0] leading-relaxed">
-            If our system detects you've gone off-route or been stationary too long,
-            your emergency contact receives an alert with your last known location.
+          <p className="m-0 text-[13.5px] font-semibold text-ink">Why we ask</p>
+          <p className="m-0 mt-1 text-[13px] leading-relaxed text-ink-soft">
+            If you trigger an SOS — or the app notices you&apos;ve been off-route or
+            stationary far too long — this person gets an alert with your last
+            known location.
           </p>
         </div>
       </div>
 
-      {/* Name */}
-      <div className="mb-4">
-        <Label>Full name <span className="text-[#FF6B35]">*</span></Label>
+      <div className="mb-5">
+        <Label htmlFor="ob-ec-name">Full name</Label>
         <input
+          id="ob-ec-name"
           type="text"
           placeholder="e.g. Abena Mensah"
           value={ec.name || ""}
           onChange={(e) => patchEC({ name: e.target.value })}
           onBlur={() => touch("name")}
-          className={inputBase}
+          aria-invalid={!!nameErr || undefined}
+          className={`${inputBase} ${nameErr ? inputError : ""}`}
         />
         <Err msg={nameErr} />
       </div>
 
-      {/* Phone */}
-      <div className="mb-4">
-        <Label>Phone number <span className="text-[#FF6B35]">*</span></Label>
-        <Hint>For SOS emergency alerts only never shown publicly.</Hint>
-        <div className="flex gap-2">
-          {/* dial code matches tt-dial-btn style */}
-          <div className="flex items-center gap-1.5 rounded-[10px] border-[1.5px] border-gray-200 bg-white px-3 py-2.5 shrink-0">
-            <span className="text-base">🇬🇭</span>
-            <span className="text-[13px] text-gray-600 font-medium">+233</span>
-          </div>
-          <input
-            type="tel"
-            placeholder="24 123 4567"
-            value={ec.phone || ""}
-            onChange={(e) => patchEC({ phone: e.target.value.replace(/[^0-9\s\-]/g, "") })}
-            onBlur={() => touch("phone")}
-            className={inputBase}
-          />
-        </div>
+      {/* This step used to show a fixed 🇬🇭 +233 block with no way to change
+          it, while the step three screens earlier had a full country picker.
+          A contact on a foreign number simply couldn't be entered, and the
+          dial code sent to the server was "+233" no matter who you added. */}
+      <div className="mb-5">
+        <Label>Phone number</Label>
+        <Hint>Include the country code if they&apos;re outside Ghana.</Hint>
+        <PhoneInput
+          phoneNumber={ec.phone || ""}
+          dialCode={ec.dial_code || "+233"}
+          onNumberChange={(v) => { patchEC({ phone: v }); touch("phone"); }}
+          onDialChange={(v) => patchEC({ dial_code: v })}
+          countries={countries}
+          hasError={!!phoneErr}
+        />
         <Err msg={phoneErr} />
       </div>
 
-      {/* Relationship */}
-      <div className="mb-5">
-        <Label>Relationship</Label>
+      <div className="mb-6">
+        <Label optional>Relationship</Label>
         <div className="flex flex-wrap gap-2">
           {RELATIONSHIPS.map((r) => {
             const on = ec.relationship === r;
@@ -83,11 +84,12 @@ export const StepEmergency = ({ form, patch }) => {
               <button
                 key={r}
                 type="button"
+                aria-pressed={on}
                 onClick={() => patchEC({ relationship: r })}
-                className={`px-4 py-1.5 rounded-full border-[1.5px] text-[12px] font-semibold transition-all duration-150 cursor-pointer ${
+                className={`cursor-pointer rounded-full border px-4 py-2 text-[13.5px] font-medium transition-colors ${
                   on
-                    ? "border-[#FF6B35] bg-[#FF6B35] text-white shadow-sm"
-                    : "border-[#fed7aa] bg-[#fff7ed] text-[#FF6B35] hover:bg-[#FF6B35] hover:text-white"
+                    ? "border-accent bg-accent text-accent-ink"
+                    : "border-line bg-surface text-ink-soft hover:border-accent hover:text-accent"
                 }`}
               >
                 {r}
@@ -97,13 +99,12 @@ export const StepEmergency = ({ form, patch }) => {
         </div>
       </div>
 
-      {/* Location sharing note */}
-      <div className="flex items-start gap-3 bg-blue-50 border-[1.5px] border-blue-100 rounded-xl px-4 py-3">
-        <MapPin size={14} className="text-[#1E3A5F] mt-0.5 shrink-0" />
-        <p className="text-[11px] text-[#5576a0] leading-relaxed">
-          <span className="font-semibold text-[#1E3A5F]">Location sharing: </span>
-          We'll request GPS permission before your first trip. You can switch between
-          precise (100m) or approximate (1km) anytime in Settings.
+      <div className="flex items-start gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5">
+        <MapPin size={15} className="mt-0.5 shrink-0 text-moss" />
+        <p className="m-0 text-[13px] leading-relaxed text-ink-soft">
+          <span className="font-semibold text-ink">Location sharing. </span>
+          We ask for GPS permission before your first trip, not now. You can
+          choose precise or approximate sharing any time in Settings.
         </p>
       </div>
     </div>

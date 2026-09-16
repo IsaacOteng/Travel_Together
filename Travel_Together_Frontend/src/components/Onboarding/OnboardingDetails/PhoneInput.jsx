@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { ChevronDown, Search } from "lucide-react";
 import { searchCountries } from "../../../data/countries.js";
 
-/* ─────────────────────────────────────────────
-  PHONE INPUT
-───────────────────────────────────────────── */
+/* Dial-code picker plus number field. Moved off the legacy .tt-phone-row /
+   .tt-dial-* rules onto tokens; behaviour unchanged. */
 export function PhoneInput({ phoneNumber, dialCode, onNumberChange, onDialChange, countries, hasError }) {
   const [open,  setOpen]  = useState(false);
   const [query, setQuery] = useState("");
@@ -15,7 +15,7 @@ export function PhoneInput({ phoneNumber, dialCode, onNumberChange, onDialChange
       if (!c.dial) return;
       if (!seen.has(c.dial)) seen.set(c.dial, c);
     });
-    return [...seen.values()].sort((a,b) => a.name.localeCompare(b.name));
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
   })();
 
   // Shared matcher, so "ghana", "ghanaian" and "233" all find Ghana here too.
@@ -28,57 +28,83 @@ export function PhoneInput({ phoneNumber, dialCode, onNumberChange, onDialChange
   }, []);
 
   const sel = dialList.find(d => d.dial === dialCode);
-  const numBorder = hasError
-    ? { border:"1.5px solid #f87171", boxShadow:"0 0 0 3px rgba(248,113,113,.10)" }
-    : {};
 
   return (
-    <div className="tt-phone-row" ref={wrapRef}>
-      {/* dial picker */}
-      <div style={{ position:"relative", flexShrink:0 }}>
-        <button type="button" className="tt-dial-btn" onClick={() => setOpen(o => !o)}>
+    <div className="flex gap-2.5" ref={wrapRef}>
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={`Country dialling code, currently ${dialCode || "none"}`}
+          className={`flex h-full cursor-pointer items-center gap-1.5 rounded-xl border bg-surface px-3 text-[15px] text-ink transition-colors hover:border-accent ${
+            open ? "border-accent" : "border-line"
+          }`}
+        >
           {sel?.flag
-            ? <span className="tt-flag" style={{ fontSize:16, lineHeight:1 }}>{sel.flag}</span>
-            : <div style={{ width:20, height:14, background:"#e5e7eb", borderRadius:2, flexShrink:0 }}/>
-          }
-          <span>{dialCode || "+?"}</span>
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
-            style={{ marginLeft:2, transform:open?"rotate(180deg)":"none", transition:"transform .15s" }}>
-            <path d="M2 3.5l3 3 3-3" stroke="#9ca3af" strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
+            ? <span className="text-[17px] leading-none">{sel.flag}</span>
+            : <span className="h-3.5 w-5 shrink-0 rounded-sm bg-line" />}
+          <span className="whitespace-nowrap tabular-nums">{dialCode || "+?"}</span>
+          <ChevronDown
+            size={14}
+            className={`shrink-0 text-ink-mute transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
         </button>
 
         {open && (
-          <div className="tt-dial-dd">
-            <div className="tt-dial-dd-inner">
-              <div className="tt-dial-search">
-                <input autoFocus type="text" placeholder="Search country…"
-                  value={query} onChange={e => setQuery(e.target.value)}/>
-              </div>
-              <div className="tt-dial-list tt-scroll">
-                {filtered.length === 0 && (
-                  <div className="tt-dropdown-empty">No country matching "{query}"</div>
-                )}
-                {filtered.map(d => (
-                  <button key={d.cca2} type="button"
-                    className={`tt-dial-item ${d.dial === dialCode ? "selected" : ""}`}
-                    onMouseDown={() => { onDialChange(d.dial); setOpen(false); setQuery(""); }}>
-                    <span className="tt-flag" style={{ fontSize:16, lineHeight:1 }}>{d.flag}</span>
-                    <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.name}</span>
-                    <span className="tt-dial-code">{d.dial}</span>
+          <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-67.5 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_40px_-14px_rgba(28,25,22,0.28)]">
+            <div className="relative border-b border-line-soft p-2">
+              <Search size={14} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-mute" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search country"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                className="w-full rounded-lg border border-line bg-surface py-2 pl-8 pr-2.5 text-[13.5px] text-ink outline-none transition-colors placeholder:text-ink-mute focus:border-accent"
+              />
+            </div>
+            <div className="max-h-47.5 overflow-y-auto p-1.5">
+              {filtered.length === 0 && (
+                <p className="m-0 px-3 py-3 text-[13.5px] text-ink-mute">
+                  Nothing matches “{query}”.
+                </p>
+              )}
+              {filtered.map(d => {
+                const on = d.dial === dialCode;
+                return (
+                  <button
+                    key={d.cca2}
+                    type="button"
+                    onMouseDown={() => { onDialChange(d.dial); setOpen(false); setQuery(""); }}
+                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border-none bg-transparent px-2.5 py-2 text-left text-[13.5px] transition-colors hover:bg-surface-alt ${
+                      on ? "font-semibold text-accent" : "text-ink-soft"
+                    }`}
+                  >
+                    <span className="shrink-0 text-[16px] leading-none">{d.flag}</span>
+                    <span className="min-w-0 flex-1 truncate">{d.name}</span>
+                    <span className="shrink-0 tabular-nums text-ink-mute">{d.dial}</span>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
-      {/* number */}
-      <input type="tel" placeholder="24 123 4567" value={phoneNumber}
-        onChange={e => onNumberChange(e.target.value.replace(/[^0-9\s\-+]/g,""))}
-        className="tt-input"
-        style={{ flex:1, ...numBorder }}
+      <input
+        type="tel"
+        placeholder="24 123 4567"
+        value={phoneNumber}
+        aria-label="Phone number"
+        aria-invalid={hasError || undefined}
+        onChange={e => onNumberChange(e.target.value.replace(/[^0-9\s\-+]/g, ""))}
+        className={`min-w-0 flex-1 rounded-xl border bg-surface px-3.5 py-3 text-[15px] text-ink outline-none transition-colors placeholder:text-ink-mute focus:ring-2 ${
+          hasError
+            ? "border-danger focus:border-danger focus:ring-danger/25"
+            : "border-line hover:border-ink-mute focus:border-accent focus:ring-accent/25"
+        }`}
       />
     </div>
   );

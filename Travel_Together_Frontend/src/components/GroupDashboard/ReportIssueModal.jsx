@@ -54,20 +54,20 @@ export default function ReportIssueModal({ tripId, onClose, onFiled }) {
   return (
     <div
       onClick={e => { if (e.target === e.currentTarget && !busy) onClose(); }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[2000] flex items-center justify-center p-4"
-      style={{ animation: "fadeIn .2s ease" }}
+      className="fixed inset-0 z-2000 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", animation: "ttFadeIn .2s ease" }}
     >
       <div
         className="bg-surface border border-line rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
-        style={{ animation: "slideUp .25s ease" }}
+        style={{ animation: "ttDialogIn .25s cubic-bezier(0.34,1.4,0.64,1)", boxShadow: "0 24px 64px var(--tt-shadow-lg)" }}
       >
         <div className="flex items-center gap-3 p-5 pb-3">
-          <div className="w-10 h-10 rounded-full bg-amber-400/15 border border-amber-400/30 flex items-center justify-center flex-shrink-0">
-            <Flag size={16} className="text-amber-400" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
+            <Flag size={17} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[15px] font-bold text-ink">Report an issue</h2>
-            <p className="text-[10.5px] text-ink-mute">Your name is never shown to the organizer</p>
+            <h2 className="m-0 font-display text-[19px] font-semibold text-ink">Report an issue</h2>
+            <p className="m-0 mt-0.5 text-[12.5px] text-ink-mute">Your name is never shown to the organiser</p>
           </div>
           <button onClick={onClose} disabled={busy}
             className="w-8 h-8 rounded-full bg-surface-alt border border-line flex items-center justify-center cursor-pointer hover:border-accent hover:text-accent transition-colors disabled:opacity-40">
@@ -76,7 +76,7 @@ export default function ReportIssueModal({ tripId, onClose, onFiled }) {
         </div>
 
         <div className="px-5 pb-5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-mute mb-2">What kind of problem?</p>
+          <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-mute">What kind of problem?</p>
           <div className="grid grid-cols-2 gap-2 mb-4">
             {TYPES.map(({ value, label, icon: Icon, hint }) => {
               const active = type === value;
@@ -84,43 +84,43 @@ export default function ReportIssueModal({ tripId, onClose, onFiled }) {
                 <button key={value} onClick={() => setType(value)} disabled={busy} title={hint}
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer disabled:cursor-not-allowed
                     ${active
-                      ? "border-amber-400/50 bg-amber-400/[0.12]"
-                      : "border-line bg-surface-alt hover:bg-surface-alt"}
+                      ? "border-danger bg-danger-soft"
+                      : "border-line bg-surface hover:border-danger/50"}
                     ${value === "other" ? "col-span-2" : ""}`}>
-                  <Icon size={14} className={active ? "text-amber-400" : "text-ink-mute"} />
-                  <span className={`text-[12px] font-semibold ${active ? "text-ink" : "text-ink-soft"}`}>{label}</span>
+                  <Icon size={15} className={active ? "text-danger" : "text-ink-mute"} />
+                  <span className={`text-[13px] font-medium ${active ? "text-danger" : "text-ink-soft"}`}>{label}</span>
                 </button>
               );
             })}
           </div>
 
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-mute mb-2">What happened?</p>
+          <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-mute">What happened?</p>
           <textarea
             value={text} onChange={e => setText(e.target.value)} rows={5} disabled={busy}
             placeholder="Be specific — where you were, when, and who was involved. The more detail, the faster the team can act."
-            className="w-full rounded-xl px-3 py-2.5 text-[12.5px] text-ink bg-surface-alt border border-line outline-none placeholder:text-ink-mute focus:border-amber-400/60 resize-none"
+            className="w-full resize-none rounded-xl border border-line bg-surface px-3.5 py-3 text-[14px] leading-relaxed text-ink outline-none placeholder:text-ink-mute focus:border-danger"
           />
           <div className="flex items-center justify-between mt-1.5 mb-4">
-            <span className={`text-[10.5px] ${short ? "text-ink-mute" : "text-green-400/70"}`}>
+            <span className={`text-[12.5px] ${short ? "text-ink-mute" : "text-moss"}`}>
               {short ? `${MIN_CHARS - trimmed.length} more characters needed` : "Enough detail to file"}
             </span>
-            <span className="text-[10.5px] text-ink-mute tabular-nums">{trimmed.length}/{MIN_CHARS}</span>
+            <span className="text-[12.5px] tabular-nums text-ink-mute">{trimmed.length}/{MIN_CHARS}</span>
           </div>
 
-          <div className="rounded-xl border border-line bg-surface-alt px-3 py-2.5 mb-4">
-            <p className="text-[11px] text-ink-mute leading-snug">
+          <div className="mb-5 rounded-2xl border border-line bg-surface-alt px-4 py-3.5">
+            <p className="m-0 text-[12.5px] leading-relaxed text-ink-soft">
               Filing a report puts the organizer's payout on hold until the team reviews it.
-              If someone is in immediate danger, use <span className="text-red-400/80 font-semibold">SOS</span> instead — it alerts the group straight away.
+              If someone is in immediate danger, use <span className="font-semibold text-danger">SOS</span> instead — it alerts the group straight away.
             </p>
           </div>
 
           <div className="flex gap-2">
             <button onClick={submit} disabled={!canSubmit}
-              className="flex-1 cursor-pointer rounded-full border-none bg-accent py-2.5 text-[13px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40">
+              className="flex-1 cursor-pointer rounded-full border-none bg-danger py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
               {busy ? "Filing…" : "File report"}
             </button>
             <button onClick={onClose} disabled={busy}
-              className="px-4 py-2.5 rounded-xl text-[12px] font-semibold text-ink-soft border border-line bg-transparent cursor-pointer hover:text-ink transition-colors">
+              className="cursor-pointer rounded-full border border-line bg-surface px-5 py-3 text-[14px] font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent">
               Cancel
             </button>
           </div>

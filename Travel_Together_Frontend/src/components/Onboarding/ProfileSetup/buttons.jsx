@@ -1,39 +1,39 @@
-/* ══════════════════════════════════════════════════
-   INPUT / TEXTAREA matches tt-input / tt-textarea
-   1.5px border, radius-[10px], focus orange ring
-══════════════════════════════════════════════════ */
-export const inputBase =
-  "w-full rounded-[10px] border-[1.5px] border-gray-200 px-3 py-2.5 text-[13.5px] text-gray-800 " +
-  "bg-white outline-none transition-all duration-150 font-[inherit] " +
-  "hover:border-gray-300 focus:border-[#FF6B35] focus:shadow-[0_0_0_3px_rgba(255,107,53,.10)] placeholder:text-gray-300";
+/* Field and button skins for the onboarding flow.
 
-/* ══════════════════════════════════════════════════
-   BUTTONS matches tt-btn-primary / tt-btn-ghost / tt-btn-row
-══════════════════════════════════════════════════ */
-export const BtnPrimary = ({ children, onClick, disabled }) => (
+   The old versions were hardcoded: a 1.5px gray-200 border with a #FF6B35
+   focus ring, and a primary button painted with an orange gradient and a
+   coloured drop shadow. None of it followed the theme, so the whole flow
+   stayed light even in dark mode. These read from tokens instead. */
+
+export const inputBase =
+  "w-full rounded-xl border border-line bg-surface px-3.5 py-3 text-[15px] text-ink " +
+  "outline-none transition-colors placeholder:text-ink-mute " +
+  "hover:border-ink-mute focus:border-accent focus:ring-2 focus:ring-accent/25 " +
+  "disabled:cursor-not-allowed disabled:opacity-60";
+
+/* Applied alongside inputBase when a field has been touched and is invalid. */
+export const inputError = "border-danger focus:border-danger focus:ring-danger/25";
+
+export const BtnPrimary = ({ children, onClick, disabled, type = "button" }) => (
   <button
-    type="button"
+    type={type}
     onClick={onClick}
     disabled={disabled}
-    className={`flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[13.5px] font-semibold tracking-[.02em] transition-all duration-150 cursor-pointer
-      ${disabled
-        ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
-        : "text-white hover:-translate-y-px"
-      }`}
-    style={!disabled ? {
-      background: "linear-gradient(135deg,#FF6B35,#ff7c42)",
-      boxShadow: "0 4px 14px rgba(255,107,53,.30)",
-    } : {}}
+    className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-none bg-accent px-6 py-3.5 text-[15px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-mute"
   >
     {children}
   </button>
 );
 
-export const BtnGhost = ({ children, onClick }) => (
+/* `disabled` used not to be destructured here, so the prop the call site was
+   already passing went nowhere and Back stayed clickable while a step was
+   still saving. */
+export const BtnGhost = ({ children, onClick, disabled }) => (
   <button
     type="button"
     onClick={onClick}
-    className="shrink-0 px-5 py-3 rounded-xl border-[1.5px] border-gray-200 bg-white text-[13.5px] font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-all duration-150 cursor-pointer"
+    disabled={disabled}
+    className="flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 py-3.5 text-[15px] font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
   >
     {children}
   </button>

@@ -1,39 +1,45 @@
 import { StepPhotoBio } from "./StepPhotoBio";
-import { StepPersonalDetails, stepPersonalRequired } from "./StepPersonalDetails";
-import { StepUsernameOnly, stepUsernameRequired } from "./StepUsernameOnly";
+import { StepPersonalDetails } from "./StepPersonalDetails";
+import { StepUsernameOnly } from "./StepUsernameOnly";
 import { StepTripTypes } from "./StepTripTypes";
 import { StepEmergency } from "./StepEmergency";
+import {
+  stepPhotoRequired,
+  stepPersonalRequired,
+  stepUsernameRequired,
+  stepEmergencyRequired,
+} from "./validators";
 
 export const STEPS = [
   {
     id: "photo",
-    label: "Profile",
+    label: "Your profile",
     component: StepPhotoBio,
-    required: (f) => !!(f.displayName?.trim() && f.bio?.trim()),
+    required: stepPhotoRequired,
   },
   {
     id: "personal",
-    label: "Details",
+    label: "Your details",
     component: StepPersonalDetails,
     required: stepPersonalRequired,
   },
   {
     id: "username",
-    label: "Username",
+    label: "Your handle",
     component: StepUsernameOnly,
     required: stepUsernameRequired,
   },
   {
     id: "interests",
-    label: "Interests",
+    label: "What you like",
     component: StepTripTypes,
     required: (f) => (f.tripTypes || []).length > 0,
     skippable: true,
   },
   {
     id: "emergency",
-    label: "Emergency",
+    label: "Emergency contact",
     component: StepEmergency,
-    required: (f) => { const ec = f.emergencyContact || {}; return !!(ec.name?.trim() && ec.phone?.trim()); },
+    required: stepEmergencyRequired,
   },
 ];

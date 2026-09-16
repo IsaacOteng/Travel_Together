@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import { EMPTY_STOP } from './constants.js';
-import { ProgressBar, SectionHead, PrimaryBtn, GhostBtn } from './uiComponents.jsx';
+import { SectionHead, PrimaryBtn, GhostBtn } from './uiComponents.jsx';
 import StopCard from './StopCard.jsx';
 
 /* ══════════════════════════════════════════
@@ -23,8 +23,7 @@ export default function Step3({ form, patch, onNext, onBack }) {
 
   return (
     <div className="animate-[fadeUp_.22s_ease_both]">
-      <ProgressBar step={3} total={4} />
-      <SectionHead icon="🗺️" title="Plan your itinerary"
+      <SectionHead title="Plan your itinerary"
         sub="Optional — your meeting point is already the first check-in. Add any stops along the route so travellers know where you're headed." />
 
       {stops.map((stop, i) => (
@@ -42,7 +41,7 @@ export default function Step3({ form, patch, onNext, onBack }) {
           className="w-full py-[11px] rounded-xl border-[1.5px] border-dashed border-[rgba(255,107,53,0.3)]
             bg-[rgba(255,107,53,0.05)] text-[rgba(255,107,53,0.7)] text-[13px] font-semibold
             cursor-pointer flex items-center justify-center gap-2 mb-6
-            hover:bg-[rgba(255,107,53,0.1)] hover:text-[#FF6B35] transition-all duration-150"
+            hover:bg-[rgba(255,107,53,0.1)] hover:text-accent transition-all duration-150"
         >
           <Plus size={15} /> Add another stop
         </button>

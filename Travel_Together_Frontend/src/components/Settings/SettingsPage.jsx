@@ -4,26 +4,30 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { authApi, usersApi } from "../../services/api.js";
 import AppNav from "../shared/AppNav.jsx";
 import MobileBottomNav from "../shared/MobileBottomNav.jsx";
-import { ArrowLeft, LogOut, Phone, Shield, User, UserCheck } from "lucide-react";
-import SettingsContent from "./SettingsContent.jsx";
+import ThemeToggle from "../shared/ThemeToggle.jsx";
+import { ArrowLeft, ShieldAlert, Wallet, User, UserCheck } from "lucide-react";
+import { SafetySection, PayoutsSection, AccountSection } from "./SettingsContent.jsx";
 import AddContactModal from "./AddContactModal.jsx";
 import DeleteModal from "./DeleteModal.jsx";
 import SignOutModal from "./SignOutModal.jsx";
 import { displayName } from "../../utils/name.js";
 
-const globalStyles = `
-  @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
-  @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-  ::-webkit-scrollbar{width:4px}
-  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
-`;
+/* The old left column listed Emergency Contacts / Security / Account as three
+   plain <div>s with no handler — it looked like navigation and did nothing,
+   while the content sat in one long scroll. These now actually switch. */
+const SECTIONS = [
+  { id: "safety",  icon: ShieldAlert, label: "Safety",  sub: "Emergency contacts" },
+  { id: "payouts", icon: Wallet,      label: "Payouts", sub: "Where you get paid" },
+  { id: "account", icon: User,        label: "Account", sub: "Email and sign-out" },
+];
 
 export default function SettingsPage() {
   const navigate  = useNavigate();
   const { user, logout } = useAuth();
-  const [winW,     setWinW]    = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+  const [winW,     setWinW]     = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   const [contacts, setContacts] = useState([]);
-  const [modal,    setModal]   = useState(null);
+  const [modal,    setModal]    = useState(null);
+  const [section,  setSection]  = useState("safety");
   const mobile = winW < 1024;
 
   useEffect(() => {
@@ -80,131 +84,118 @@ export default function SettingsPage() {
 
   const handleSignOut = async () => {
     closeModal();
-    try { await authApi.logout(); } catch {}
+    try { await authApi.logout(); } catch { /* the local session is cleared regardless */ }
     logout();
   };
 
   const handleDeleted = () => {
     closeModal();
-    try { authApi.logout(); } catch {}
+    try { authApi.logout(); } catch { /* same */ }
     logout();
   };
 
-  const name = displayName(user);
-  const initials    = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-  const userEmail   = user?.email || "";
+  const name      = displayName(user);
+  const initials  = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const userEmail = user?.email || "";
 
   const Modals = (
     <>
       {modal === "add_contact" && <AddContactModal onClose={closeModal} onAdd={handleAddContact} />}
       {modal === "delete"      && <DeleteModal     onClose={closeModal} onDeleted={handleDeleted} />}
-      {modal === "signout"     && <SignOutModal     onClose={closeModal} onConfirm={handleSignOut} />}
+      {modal === "signout"     && <SignOutModal    onClose={closeModal} onConfirm={handleSignOut} />}
     </>
   );
 
-  const contentProps = { contacts, openModal, onRemoveContact: handleRemoveContact, userEmail };
+  const panel =
+    section === "payouts" ? <PayoutsSection />
+    : section === "account" ? <AccountSection userEmail={userEmail} openModal={openModal} />
+    : <SafetySection contacts={contacts} openModal={openModal} onRemoveContact={handleRemoveContact} />;
 
-  if (mobile) {
-    return (
-      <div className="min-h-screen bg-[#071422] font-sans pb-[90px]">
-        <style>{globalStyles}</style>
-        {Modals}
-        <header className="sticky top-0 z-40 h-14 bg-[#071422]/95 backdrop-blur-xl border-b border-white/[0.06] flex items-center px-4 justify-between">
-          <button onClick={() => navigate(-1)} className="bg-transparent border-none cursor-pointer text-white/40 flex p-0">
-            <ArrowLeft size={20} />
+  const nav = (
+    <nav className="scrollbar-none flex gap-2 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible" role="tablist">
+      {SECTIONS.map(s => {
+        const active = section === s.id;
+        return (
+          <button
+            key={s.id}
+            role="tab"
+            aria-selected={active}
+            onClick={() => setSection(s.id)}
+            className={`flex shrink-0 cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors lg:w-full lg:border-transparent lg:bg-transparent ${
+              active
+                ? "border-accent bg-accent text-accent-ink lg:bg-accent-soft lg:text-accent"
+                : "border-line bg-surface text-ink-soft hover:border-accent hover:text-accent lg:hover:bg-surface-alt"
+            }`}
+          >
+            <s.icon size={17} className="shrink-0" />
+            <span className="min-w-0">
+              <span className="block whitespace-nowrap text-[14px] font-semibold">{s.label}</span>
+              <span className={`hidden text-[12.5px] lg:block ${active ? "text-accent/70" : "text-ink-mute"}`}>
+                {s.sub}
+              </span>
+            </span>
           </button>
-          <span className="text-[15px] font-bold text-white">Settings</span>
-          <div className="w-5" />
-        </header>
-        <div className="px-5 pt-7 pb-6 flex flex-col items-center gap-3 border-b border-white/[0.06]">
-          {user?.avatar_url
-            ? <img src={user.avatar_url} alt={name} className="w-16 h-16 rounded-full object-cover shadow-[0_0_24px_rgba(74,222,128,0.2)]" />
-            : <div className="w-16 h-16 bg-[#4ade80] rounded-full flex items-center justify-center font-bold text-white text-xl font-serif shadow-[0_0_24px_rgba(74,222,128,0.2)]">{initials}</div>
-          }
-          <div className="text-center">
-            <div className="text-[17px] font-bold text-white leading-tight">{name}</div>
-            <div className="text-[12px] text-white/40 mt-0.5">@{user?.username}</div>
-            {userEmail && <div className="text-[11px] text-white/30 mt-1 font-mono">{userEmail}</div>}
-          </div>
-          {user?.is_verified && (
-            <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-full px-3 py-1">
-              <UserCheck size={11} className="text-green-400" />
-              <span className="text-[11px] text-green-400/90 font-semibold">Verified traveler</span>
-            </div>
-          )}
-        </div>
-        <div className="px-4 pt-6 pb-4 flex flex-col gap-5">
-          <SettingsContent {...contentProps} />
-        </div>
-        <MobileBottomNav />
-      </div>
-    );
-  }
+        );
+      })}
+    </nav>
+  );
 
-  const navItems = [
-    { id: "contacts", icon: Phone,  label: "Emergency Contacts" },
-    { id: "security", icon: Shield, label: "Security"           },
-    { id: "account",  icon: User,   label: "Account"            },
-  ];
+  const identity = (
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4">
+      {user?.avatar_url
+        ? <img src={user.avatar_url} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
+        : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[14px] font-semibold text-accent">{initials}</span>
+      }
+      <div className="min-w-0 flex-1">
+        <p className="m-0 truncate text-[14px] font-semibold text-ink">{name}</p>
+        <p className="m-0 truncate text-[12.5px] text-ink-mute">@{user?.username}</p>
+      </div>
+      {user?.is_verified && (
+        <span title="Verified traveller" className="shrink-0 text-moss"><UserCheck size={16} /></span>
+      )}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#071422] font-sans">
-      <style>{globalStyles}</style>
+    <div className="min-h-screen bg-ground font-sans">
       {Modals}
-      <AppNav />
-      <div className="tt-shell flex gap-6 py-6">
-        <div className="w-[220px] flex-shrink-0 self-start sticky top-[84px]">
-          <div className="bg-[#0d1b2a] border border-white/[0.07] rounded-2xl overflow-hidden">
-            <div className="px-4 pt-4 pb-2">
-              <p className="text-[10px] font-bold tracking-[.12em] uppercase text-white/30">Settings</p>
-            </div>
-            <div className="pb-2">
-              {navItems.map(item => (
-                <div key={item.id}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-white/50">
-                  <item.icon size={15} />
-                  <span className="text-[12px] font-semibold">{item.label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="border-t border-white/[0.06] py-2">
-              <button onClick={() => openModal("signout")}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left border-none cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/[0.05] transition-all">
-                <LogOut size={15} />
-                <span className="text-[12px] font-semibold">Sign Out</span>
-              </button>
-            </div>
-          </div>
-          <div className="mt-4 bg-[#0d1b2a] border border-white/[0.07] rounded-2xl p-4">
-            <div className="flex items-center gap-2.5 mb-3">
-              {user?.avatar_url
-                ? <img src={user.avatar_url} alt={name} className="w-10 h-10 rounded-full object-cover shrink-0" />
-                : <div className="w-10 h-10 bg-[#4ade80] rounded-full flex items-center justify-center font-bold text-white text-sm font-serif shrink-0">{initials}</div>
-              }
-              <div className="min-w-0">
-                <div className="text-[13px] font-bold text-white truncate">{name}</div>
-                <div className="text-[10px] text-white/35 truncate">@{user?.username}</div>
-              </div>
-            </div>
-            {user?.is_verified && (
-              <div className="flex items-center gap-1.5 text-[10px] text-white/30">
-                <UserCheck size={11} className="text-green-400" />
-                <span className="text-green-400/80 font-semibold">Verified traveler</span>
-              </div>
-            )}
-          </div>
-        </div>
-        {/* Capped, unlike the list pages: the page sits on the same measure as
-            the nav, but settings rows are read left-to-right and stretching a
-            toggle label 1100px away from its switch helps nobody. */}
-        <div className="flex-1 min-w-0 max-w-[880px]">
-          <div className="mb-5">
-            <h1 className="text-[24px] font-light text-white font-serif tracking-tight">Settings & Privacy</h1>
-            <p className="text-[13px] text-white/35 mt-1">Manage your privacy, safety contacts, and account.</p>
-          </div>
-          <SettingsContent {...contentProps} />
+
+      {mobile ? (
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-ground/95 px-4 backdrop-blur-md">
+          <button onClick={() => navigate(-1)} aria-label="Go back"
+            className="flex cursor-pointer border-none bg-transparent p-0 text-ink-soft">
+            <ArrowLeft size={20} />
+          </button>
+          <span className="font-display text-[16px] font-semibold text-ink">Settings</span>
+          <ThemeToggle />
+        </header>
+      ) : (
+        <AppNav />
+      )}
+
+      <div className={mobile ? "px-4 pb-28 pt-5" : "tt-shell block py-9"}>
+        <header className="mb-7">
+          <h1 className="m-0 font-display text-[clamp(26px,3.2vw,36px)] font-semibold leading-tight text-ink">
+            Settings
+          </h1>
+          <p className="m-0 mt-2 text-[15px] text-ink-soft">
+            Safety contacts, payouts and your account.
+          </p>
+        </header>
+
+        <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:gap-10">
+          <aside className="flex w-full shrink-0 flex-col gap-4 lg:sticky lg:top-24 lg:w-62.5">
+            {nav}
+            <div className="hidden lg:block">{identity}</div>
+          </aside>
+
+          <main className="min-w-0 flex-1" key={section} style={{ animation: "ttFadeUp .3s ease both" }}>
+            {panel}
+          </main>
         </div>
       </div>
+
+      {mobile && <MobileBottomNav />}
     </div>
   );
 }

@@ -1,14 +1,18 @@
 import { useState } from "react";
+import { Loader2, Check, LocateFixed } from "lucide-react";
 
-/* ─────────────────────────────────────────────
-  GPS BUTTON
-───────────────────────────────────────────── */
+/* "Use my current location" — off the legacy .tt-gps-btn rule onto tokens.
+   Behaviour unchanged. */
 export function GpsBtn({ onDetect }) {
   const [st, setSt]   = useState("idle");
   const [err, setErr] = useState("");
 
   const go = () => {
-    if (!navigator.geolocation) { setErr("Geolocation not supported."); setSt("error"); return; }
+    if (!navigator.geolocation) {
+      setErr("Your browser doesn't support location lookup.");
+      setSt("error");
+      return;
+    }
     setSt("detecting");
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
@@ -22,38 +26,45 @@ export function GpsBtn({ onDetect }) {
             d.address?.country || ""
           );
           setSt("done");
-        } catch { setErr("Could not resolve enter manually."); setSt("error"); }
+        } catch {
+          setErr("Couldn't work out where that is — type it in below.");
+          setSt("error");
+        }
       },
-      () => { setErr("Access denied enter manually."); setSt("error"); }
+      () => { setErr("Location access was declined — type it in below."); setSt("error"); }
     );
   };
 
+  const done = st === "done";
+
   return (
     <div>
-      <button type="button"
-        className={`tt-gps-btn ${st === "done" ? "done" : ""}`}
-        onClick={go} disabled={st === "detecting"}>
+      <button
+        type="button"
+        onClick={go}
+        disabled={st === "detecting"}
+        className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-[13.5px] font-medium transition-colors disabled:cursor-not-allowed ${
+          done
+            ? "border-moss/40 bg-moss/10 text-moss"
+            : "border-line bg-surface text-ink-soft hover:border-accent hover:text-accent"
+        }`}
+      >
         {st === "detecting" ? (
-          <svg className="tt-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <circle cx="6" cy="6" r="4.5" stroke="#FF6B35" strokeWidth="1.5" strokeDasharray="16 9"/>
-          </svg>
-        ) : st === "done" ? (
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <circle cx="6" cy="6" r="4.5" stroke="#16a34a" strokeWidth="1.5"/>
-            <path d="M3.5 6l2 2 3-3" stroke="#16a34a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <Loader2 size={14} className="animate-spin" />
+        ) : done ? (
+          <Check size={14} />
         ) : (
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <circle cx="6" cy="6" r="4.5" stroke="#FF6B35" strokeWidth="1.5"/>
-            <circle cx="6" cy="6" r="1.5" fill="#FF6B35"/>
-            <path d="M6 1v1.5M6 9.5V11M1 6h1.5M9.5 6H11" stroke="#FF6B35" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
+          <LocateFixed size={14} />
         )}
-        {st === "done" ? "Location detected edit if needed"
-          : st === "detecting" ? "Detecting…"
+        {done
+          ? "Location filled in — edit if needed"
+          : st === "detecting"
+          ? "Finding you…"
           : "Use my current location"}
       </button>
-      {st === "error" && <div className="tt-err" style={{ marginTop:6 }}>{err}</div>}
+      {st === "error" && (
+        <p role="alert" className="mt-2 text-[12.5px] text-danger">{err}</p>
+      )}
     </div>
   );
 }

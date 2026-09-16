@@ -1,6 +1,11 @@
 import os
+from datetime import date
+
 from rest_framework import serializers
 from django.conf import settings
+from .completeness import (
+    MIN_TITLE_LEN, MIN_DESCRIPTION_LEN, MIN_SPOTS, MAX_SPOTS,
+)
 from .models import (
     Trip, TripImage, TripTag, TripPriceCover,
     ItineraryStop, TripMember, SavedTrip, TripRating, IncidentReport, CheckIn,
@@ -542,8 +547,14 @@ class TripDetailSerializer(serializers.ModelSerializer):
 # ─── Trip: create / update ────────────────────────────────────────────────────
 
 class TripCreateSerializer(serializers.ModelSerializer):
+    # The model lets these be blank so a draft can be saved half-finished.
+    # A trip created through this endpoint is going straight to publish, so
+    # they're required here — see apps/trips/completeness.py.
+    description   = serializers.CharField(required=True, allow_blank=False)
+    meeting_point = serializers.CharField(required=True, allow_blank=False)
+    spots_total   = serializers.IntegerField(required=True)
     tags         = serializers.ListField(
-        child=serializers.CharField(max_length=50), required=False, default=list
+        child=serializers.CharField(max_length=50), required=True, allow_empty=False
     )
     price_covers = serializers.ListField(
         child=serializers.CharField(max_length=100), required=False, default=list
@@ -567,10 +578,63 @@ class TripCreateSerializer(serializers.ModelSerializer):
             "visibility", "tags", "price_covers",
         ]
 
+    def validate_title(self, value):
+        value = (value or "").strip()
+        if len(value) < MIN_TITLE_LEN:
+            raise serializers.ValidationError(
+                f"Title must be at least {MIN_TITLE_LEN} characters."
+            )
+        return value
+
+    def validate_description(self, value):
+        value = (value or "").strip()
+        if len(value) < MIN_DESCRIPTION_LEN:
+            raise serializers.ValidationError(
+                f"Description must be at least {MIN_DESCRIPTION_LEN} characters."
+            )
+        return value
+
+    def validate_meeting_point(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError(
+                "Set a meeting point — it becomes the departure check-in."
+            )
+        return value
+
+    def validate_spots_total(self, value):
+        if value is None or value < MIN_SPOTS:
+            raise serializers.ValidationError(
+                f"A group trip needs at least {MIN_SPOTS} spots."
+            )
+        if value > MAX_SPOTS:
+            raise serializers.ValidationError(f"Maximum {MAX_SPOTS} spots.")
+        return value
+
+    def validate_entry_price(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError(
+                "Price can't be negative. Use 0 for a free trip."
+            )
+        return value
+
+    def validate_tags(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                "Pick at least one tag so the trip can be found."
+            )
+        return value
+
     def validate(self, data):
         if data.get("date_end") and data.get("date_start"):
             if data["date_end"] < data["date_start"]:
-                raise serializers.ValidationError("date_end must be on or after date_start.")
+                raise serializers.ValidationError(
+                    {"date_end": "The end date can't be before the start date."}
+                )
+        if data.get("date_start") and data["date_start"] < date.today():
+            raise serializers.ValidationError(
+                {"date_start": "The start date is in the past."}
+            )
         return data
 
     def create(self, validated_data):

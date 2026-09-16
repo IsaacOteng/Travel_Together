@@ -37,32 +37,32 @@ export default function OrganizerReportCard({ tripId }) {
   if (!reports.length) return null;
 
   return (
-    <div className="rounded-2xl border border-amber-400/25 bg-amber-400/[0.06] p-4 mb-1">
-      <div className="flex items-center gap-2 mb-2">
-        <AlertTriangle size={15} className="text-amber-400 shrink-0" />
-        <p className="text-[13px] font-bold text-amber-200">A concern was raised about this trip</p>
+    <div className="rounded-3xl border border-danger/35 bg-danger-soft p-5">
+      <div className="mb-2 flex items-center gap-2.5">
+        <AlertTriangle size={17} className="shrink-0 text-danger" />
+        <p className="m-0 font-display text-[16px] font-semibold text-danger">A concern was raised about this trip</p>
       </div>
-      <p className="text-[11px] text-ink-soft mb-3 leading-snug">
+      <p className="m-0 mb-4 text-[13px] leading-relaxed text-ink-soft">
         Add your side and any evidence. Your payout is on hold until the team reviews it.
       </p>
 
       {reports.map(r => (
-        <div key={r.id} className="bg-black/20 border border-line rounded-xl p-3 mb-2 last:mb-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-mute mb-1">The concern</p>
-          <p className="text-[12px] text-ink leading-relaxed mb-3 whitespace-pre-wrap">{r.description}</p>
+        <div key={r.id} className="mb-3 rounded-2xl border border-line bg-surface p-4 last:mb-0">
+          <p className="m-0 mb-2 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-ink-mute">The concern</p>
+          <p className="m-0 mb-4 whitespace-pre-wrap text-[14px] leading-relaxed text-ink">{r.description}</p>
 
           {r.response ? (
-            <div className="flex items-start gap-2 text-[11.5px] text-green-300/80">
-              <Check size={13} className="mt-0.5 shrink-0" />
+            <div className="flex items-start gap-2.5 rounded-xl border border-moss/25 bg-moss/10 px-3.5 py-3 text-[13px] text-moss">
+              <Check size={14} className="mt-0.5 shrink-0" />
               <span>You responded: “{r.response}”</span>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               <textarea value={text[r.id] || ""} onChange={e => setText(t => ({ ...t, [r.id]: e.target.value }))} rows={3}
                 placeholder="Explain what happened include receipts, photos, or the real itinerary if you can."
-                className="w-full rounded-lg px-3 py-2 text-[12px] text-ink bg-surface-alt border border-line outline-none placeholder:text-ink-mute focus:border-amber-400/60 resize-none" />
+                className="w-full resize-none rounded-xl border border-line bg-surface-alt px-3.5 py-3 text-[14px] leading-relaxed text-ink outline-none placeholder:text-ink-mute focus:border-danger" />
               <button onClick={() => respond(r.id)} disabled={busy === r.id}
-                className="self-end cursor-pointer rounded-full border-none bg-accent px-5 py-2.5 text-[13px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50">
+                className="self-end cursor-pointer rounded-full border-none bg-danger px-5 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
                 {busy === r.id ? "Submitting…" : "Submit my response"}
               </button>
             </div>

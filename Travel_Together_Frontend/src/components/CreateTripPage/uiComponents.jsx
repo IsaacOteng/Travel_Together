@@ -1,62 +1,80 @@
-import { useState } from "react";
-import {
-  AlertCircle, Image, MapPin, Navigation, Calendar, Clock,
-  Users, Plus, X, Check, ChevronRight, Send, Ticket, Info,
-} from "lucide-react";
+import { AlertCircle, Check } from "lucide-react";
 
-/* ─── PROGRESS BAR ───────────────────────── */
-export function ProgressBar({ step, total }) {
-  const pct = Math.round((step / total) * 100);
+/* ─── STEP RAIL ──────────────────────────────────────────────────
+   Replaces the old ProgressBar. A percentage told you how far along
+   you were but never what was coming, and each step re-rendered its
+   own bar. The rail names all four, marks what's done, and lets you
+   jump back to anything you've already completed. */
+export function StepRail({ steps, current, furthest, onJump }) {
   return (
-    <div className="mb-7">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-[10px] font-bold tracking-[.12em] uppercase text-[#FF6B35]">
-          Step {step} of {total}
-        </span>
-        <span className="text-[10px] text-white/30">{pct}%</span>
-      </div>
-      <div className="h-[3px] bg-white/[0.08] rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#ff9a5c] transition-all duration-500 ease-out"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
+    <ol className="m-0 flex list-none gap-2 overflow-x-auto p-0 lg:flex-col lg:gap-1 lg:overflow-visible">
+      {steps.map((s, i) => {
+        const n = i + 1;
+        const done    = n < furthest;
+        const active  = n === current;
+        const visited = n <= furthest;
+        return (
+          <li key={s.title} className="shrink-0 lg:shrink">
+            <button
+              type="button"
+              onClick={visited ? () => onJump(n) : undefined}
+              aria-current={active ? "step" : undefined}
+              className={`flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors ${
+                active ? "bg-accent-soft" : visited ? "hover:bg-surface-alt" : ""
+              } ${visited ? "cursor-pointer" : "cursor-default"}`}
+            >
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold ${
+                done   ? "bg-moss text-white"
+                : active ? "bg-accent text-accent-ink"
+                : "border border-line text-ink-mute"
+              }`}>
+                {done ? <Check size={13} /> : n}
+              </span>
+              <span className="min-w-0">
+                <span className={`block whitespace-nowrap text-[14px] font-semibold lg:whitespace-normal ${
+                  active ? "text-accent" : visited ? "text-ink" : "text-ink-mute"
+                }`}>
+                  {s.title}
+                </span>
+                <span className="hidden text-[12.5px] leading-snug text-ink-mute lg:block">
+                  {s.sub}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
-/* ─── SECTION HEADING ────────────────────── */
-export function SectionHead({ icon, title, sub }) {
+/* ─── SECTION HEADING ────────────────────────────────────────── */
+export function SectionHead({ title, sub }) {
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2.5 mb-1">
-        <div className="w-[30px] h-[30px] rounded-[8px] bg-gradient-to-br from-[#FF6B35] to-[#ff8c5a] flex items-center justify-center text-[15px] flex-shrink-0">
-          {icon}
-        </div>
-        <h2 className="font-serif text-xl font-light text-white tracking-[-0.3px] m-0">
-          {title}
-        </h2>
-      </div>
-      {sub && (
-        <p className="text-[11px] text-white/35 leading-snug ml-[38px] mt-1">{sub}</p>
-      )}
-    </div>
+    <header className="mb-7">
+      <h2 className="m-0 font-display text-[clamp(22px,2.6vw,28px)] font-semibold leading-tight text-ink">
+        {title}
+      </h2>
+      {sub && <p className="m-0 mt-2 max-w-[60ch] text-[14.5px] leading-relaxed text-ink-soft">{sub}</p>}
+    </header>
   );
 }
 
-/* ─── LABEL ──────────────────────────────── */
+/* ─── LABEL ──────────────────────────────────────────────────── */
 export function Label({ children, required }) {
   return (
-    <label className="block text-[10px] font-bold tracking-[.1em] uppercase text-white/35 mb-[7px]">
+    <label className="mb-2 block text-[13px] font-medium text-ink">
       {children}
-      {required && <span className="text-[#FF6B35] ml-0.5">*</span>}
+      {required && <span className="ml-0.5 text-accent">*</span>}
     </label>
   );
 }
 
-/* ─── INPUT ──────────────────────────────── */
+const FIELD =
+  "w-full rounded-xl border bg-surface px-3.5 py-3 text-[14.5px] text-ink outline-none transition-colors placeholder:text-ink-mute";
+
+/* ─── INPUT ──────────────────────────────────────────────────── */
 export function TTInput({ value, onChange, placeholder, type = "text", className = "", onKeyDown }) {
-  const [focused, setFocused] = useState(false);
   return (
     <input
       type={type}
@@ -64,22 +82,14 @@ export function TTInput({ value, onChange, placeholder, type = "text", className
       onChange={onChange}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      className={`w-full rounded-[10px] px-3 py-[10px] text-[13.5px] text-white
-        bg-white/[0.06] font-sans outline-none transition-all duration-150
-        placeholder:text-white/25
-        ${focused
-          ? "border-[1.5px] border-[#FF6B35] shadow-[0_0_0_3px_rgba(255,107,53,0.12)]"
-          : "border-[1.5px] border-white/10"
-        } ${className}`}
+      className={`${FIELD} border-line focus:border-accent focus:ring-2 focus:ring-accent/20 ${className}`}
     />
   );
 }
 
-/* ─── TEXTAREA ───────────────────────────── */
-export function TTTextarea({ value, onChange, placeholder, rows = 3, maxLength = 300 }) {
-  const [focused, setFocused] = useState(false);
+/* ─── TEXTAREA ───────────────────────────────────────────────── */
+export function TTTextarea({ value, onChange, placeholder, rows = 4, maxLength = 300 }) {
+  const len = (value || "").length;
   return (
     <div className="relative">
       <textarea
@@ -88,43 +98,30 @@ export function TTTextarea({ value, onChange, placeholder, rows = 3, maxLength =
         placeholder={placeholder}
         rows={rows}
         maxLength={maxLength}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        className={`w-full rounded-[10px] px-3 py-[10px] text-[13.5px] text-white
-          bg-white/[0.06] font-sans outline-none resize-none leading-[1.55]
-          placeholder:text-white/25 transition-all duration-150
-          ${focused
-            ? "border-[1.5px] border-[#FF6B35] shadow-[0_0_0_3px_rgba(255,107,53,0.12)]"
-            : "border-[1.5px] border-white/10"
-          }`}
+        className={`${FIELD} resize-none border-line pb-7 leading-[1.6] focus:border-accent focus:ring-2 focus:ring-accent/20`}
       />
-      <span className={`absolute bottom-2 right-2.5 text-[10px] pointer-events-none
-        ${value.length >= maxLength * 0.9 ? "text-orange-400" : "text-white/20"}`}>
-        {value.length}/{maxLength}
+      <span className={`pointer-events-none absolute bottom-2.5 right-3 text-[11.5px] ${
+        len >= maxLength * 0.9 ? "text-accent" : "text-ink-mute"
+      }`}>
+        {len}/{maxLength}
       </span>
     </div>
   );
 }
 
-/* ─── SELECT ─────────────────────────────── */
+/* ─── SELECT ─────────────────────────────────────────────────── */
 export function TTSelect({ value, onChange, children }) {
-  const [focused, setFocused] = useState(false);
   return (
     <select
       value={value}
       onChange={onChange}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      className={`w-full rounded-[10px] px-3 py-[10px] text-[13.5px] font-sans
-        bg-white/[0.06] outline-none cursor-pointer appearance-none
-        transition-all duration-150
-        ${value ? "text-white" : "text-white/35"}
-        ${focused ? "border-[1.5px] border-[#FF6B35]" : "border-[1.5px] border-white/10"}`}
+      className={`${FIELD} cursor-pointer appearance-none border-line pr-9 focus:border-accent focus:ring-2 focus:ring-accent/20 ${
+        value ? "text-ink" : "text-ink-mute"
+      }`}
       style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='rgba(255,255,255,0.4)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")`,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238B8275' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")`,
         backgroundRepeat: "no-repeat",
-        backgroundPosition: "right 12px center",
-        paddingRight: 32,
+        backgroundPosition: "right 14px center",
       }}
     >
       {children}
@@ -132,32 +129,27 @@ export function TTSelect({ value, onChange, children }) {
   );
 }
 
-/* ─── ERR ────────────────────────────────── */
+/* ─── ERROR ──────────────────────────────────────────────────── */
 export function Err({ msg }) {
   if (!msg) return null;
   return (
-    <div className="flex items-center gap-1.5 mt-[5px] text-[11px] text-red-400">
-      <AlertCircle size={11} /> {msg}
-    </div>
+    <p role="alert" className="mt-2 flex items-center gap-1.5 text-[12.5px] text-accent">
+      <AlertCircle size={13} className="shrink-0" /> {msg}
+    </p>
   );
 }
 
-/* ─── PRIMARY BTN ────────────────────────── */
+/* ─── BUTTONS ────────────────────────────────────────────────── */
 export function PrimaryBtn({ onClick, disabled, children, loading }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled || loading}
-      className={`w-full py-3 rounded-xl text-[13.5px] font-bold transition-all duration-150
-        flex items-center justify-center gap-2
-        ${disabled || loading
-          ? "bg-white/[0.07] text-white/30 cursor-not-allowed"
-          : "bg-gradient-to-br from-[#FF6B35] to-[#ff7c42] text-white cursor-pointer shadow-[0_4px_14px_rgba(255,107,53,0.30)] hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(255,107,53,0.36)]"
-        }`}
+      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border-none bg-accent px-6 py-3.5 text-[15px] font-semibold text-accent-ink transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-mute sm:w-auto"
     >
       {loading ? (
         <>
-          <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" />
           Publishing…
         </>
       ) : children}
@@ -165,16 +157,18 @@ export function PrimaryBtn({ onClick, disabled, children, loading }) {
   );
 }
 
-/* ─── GHOST BTN ──────────────────────────── */
 export function GhostBtn({ onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className="px-5 py-3 rounded-xl border-[1.5px] border-white/10 bg-transparent
-        text-white/50 text-[13.5px] font-medium cursor-pointer
-        hover:border-white/20 hover:text-white/70 transition-all duration-150"
+      className="cursor-pointer rounded-full border border-line bg-surface px-6 py-3.5 text-[15px] font-medium text-ink transition-colors hover:border-accent hover:text-accent"
     >
       {children}
     </button>
   );
+}
+
+/* Kept so the steps keep compiling while the rail owns progress. */
+export function ProgressBar() {
+  return null;
 }

@@ -1,24 +1,20 @@
 import { useState, useEffect, useRef } from "react";
+import { ChevronDown, Check } from "lucide-react";
 import { searchCountries } from "../../../data/countries.js";
 
-/* ─────────────────────────────────────────────
-  COUNTRY SELECT  (with flags, for "country of residence")
-───────────────────────────────────────────── */
+/* Country of residence, with flags. Same move off the legacy .tt-* rules as
+   NationalitySelect; behaviour unchanged. */
 export function CountrySelect({ value, onChange, countries, loading, hasError }) {
-  const [query,   setQuery]   = useState(value || "");
-  const [open,    setOpen]    = useState(false);
-  const [focused, setFocused] = useState(false);
+  const [query, setQuery] = useState(value || "");
+  const [open,  setOpen]  = useState(false);
   const wrapRef = useRef(null);
 
   useEffect(() => { if (!value) setQuery(""); }, [value]);
-  useEffect(() => { if (value && !query) setQuery(value); }, [value]);
+  useEffect(() => { if (value && !query) setQuery(value); }, [value, query]);
 
   // Shared matcher: tolerant of accents and punctuation, so "cote divoire"
   // still finds Côte d'Ivoire.
-  const filtered = (query.trim()
-    ? searchCountries(query, countries)
-    : countries
-  ).slice(0, 8);
+  const filtered = (query.trim() ? searchCountries(query, countries) : countries).slice(0, 8);
 
   useEffect(() => {
     const h = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
@@ -29,63 +25,63 @@ export function CountrySelect({ value, onChange, countries, loading, hasError })
   const select = c => { onChange(c.name); setQuery(c.name); setOpen(false); };
   const flag = value ? countries.find(c => c.name === value)?.flag : null;
 
-  const borderStyle = hasError
-    ? { border:"1.5px solid #f87171", boxShadow:"0 0 0 3px rgba(248,113,113,.10)" }
-    : focused
-    ? { border:"1.5px solid #FF6B35", boxShadow:"0 0 0 3px rgba(255,107,53,.10)" }
-    : {};
-
   return (
-    <div ref={wrapRef} style={{ position:"relative" }}>
-      <div className="tt-input-icon-wrap">
+    <div ref={wrapRef} className="relative">
+      <div className="relative">
         {flag && (
-          <span className="tt-icon-left tt-flag"
-            style={{ transform:"translateY(-50%)", top:"50%", left:11, fontSize:16, lineHeight:1 }}>
+          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[17px] leading-none">
             {flag}
           </span>
         )}
         <input
           type="text"
-          placeholder={loading ? "Loading…" : "Type to search…"}
-          value={query} autoComplete="off"
+          placeholder={loading ? "Loading…" : "Country"}
+          value={query}
+          autoComplete="off"
+          aria-label="Country"
           onChange={e => { setQuery(e.target.value); onChange(""); setOpen(true); }}
-          onFocus={() => { setFocused(true); setOpen(true); }}
-          onBlur={() => setFocused(false)}
-          className="tt-input"
-          style={{ paddingLeft: flag ? 36 : 12, paddingRight:28, ...borderStyle }}
+          onFocus={() => setOpen(true)}
+          aria-invalid={hasError || undefined}
+          className={`w-full rounded-xl border bg-surface py-3 pr-9 text-[15px] text-ink outline-none transition-colors placeholder:text-ink-mute focus:ring-2 ${
+            flag ? "pl-10" : "pl-3.5"
+          } ${
+            hasError
+              ? "border-danger focus:border-danger focus:ring-danger/25"
+              : "border-line hover:border-ink-mute focus:border-accent focus:ring-accent/25"
+          }`}
         />
-        <div className="tt-icon-right" style={{ pointerEvents:"none" }}>
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"
-            style={{ transform: open ? "rotate(180deg)" : "none", transition:"transform .2s" }}>
-            <path d="M2 3.5l3.5 3.5 3.5-3.5" stroke="#9ca3af" strokeWidth="1.4"
-              strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
+        <ChevronDown
+          size={15}
+          className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-mute transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+        />
       </div>
 
       {open && (
-        <div className="tt-dropdown">
+        <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-[0_18px_40px_-14px_rgba(28,25,22,0.28)]">
           {loading ? (
-            <div style={{ padding:"12px 14px", fontSize:13, color:"#9ca3af" }}>Loading…</div>
+            <p className="m-0 px-3 py-3 text-[13.5px] text-ink-mute">Loading…</p>
           ) : filtered.length === 0 ? (
-            <div className="tt-dropdown-empty">No match for "{query}"</div>
+            <p className="m-0 px-3 py-3 text-[13.5px] text-ink-mute">Nothing matches “{query}”.</p>
           ) : (
-            filtered.map(c => (
-              <button key={c.cca2} type="button"
-                className={`tt-dropdown-item ${c.name === value ? "selected" : ""}`}
-                onMouseDown={() => select(c)}>
-                <div className="tt-country-row">
-                  {c.flag && <span className="tt-flag" style={{ fontSize:16, lineHeight:1 }}>{c.flag}</span>}
-                  <span className="tt-country-name">{c.name}</span>
-                </div>
-                {c.name === value && (
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{flexShrink:0}}>
-                    <path d="M2 6l3 3 5-5" stroke="#FF6B35" strokeWidth="1.5"
-                      strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </button>
-            ))
+            filtered.map(c => {
+              const on = c.name === value;
+              return (
+                <button
+                  key={c.cca2}
+                  type="button"
+                  onMouseDown={() => select(c)}
+                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border-none bg-transparent px-3 py-2.5 text-left text-[14px] transition-colors hover:bg-surface-alt ${
+                    on ? "font-semibold text-accent" : "text-ink-soft"
+                  }`}
+                >
+                  {c.flag && <span className="shrink-0 text-[17px] leading-none">{c.flag}</span>}
+                  <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                  {on && <Check size={14} className="shrink-0" />}
+                </button>
+              );
+            })
           )}
         </div>
       )}

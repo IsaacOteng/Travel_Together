@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
+from .completeness import missing_for_publish
 from .models import (
     Trip, TripImage, TripMember, ItineraryStop, SavedTrip, TripRating, IncidentReport, CheckIn,
 )
@@ -276,6 +277,21 @@ class TripPublishView(APIView):
             return err
         if trip.status != Trip.Status.DRAFT:
             return Response({"detail": "Only draft trips can be published."}, status=400)
+
+        # A draft is allowed to be half-finished; a published trip is not.
+        # This is the authoritative check — the create serializer validates the
+        # normal path, but a draft can also be built up through PATCHes, so the
+        # completeness rules are re-run here against the saved row.
+        problems = missing_for_publish(trip)
+        if problems:
+            return Response(
+                {
+                    "detail": "This trip isn't ready to publish yet.",
+                    "missing": problems,
+                },
+                status=400,
+            )
+
         trip.status = Trip.Status.PUBLISHED
         trip.save(update_fields=["status", "updated_at"])
         _ensure_meeting_point_stop(trip)

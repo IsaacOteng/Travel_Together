@@ -1,12 +1,14 @@
 export { default } from "./ProfileSetup";
-export { ProgressBar } from "./ProgressBar";
+export { default as OnboardingShell } from "./OnboardingShell";
 export { SectionHead } from "./SectionHead";
 export { Label, Hint, Err, Ok } from "./atoms";
-export { inputBase, BtnPrimary, BtnGhost } from "./buttons";
+export { inputBase, inputError, BtnPrimary, BtnGhost } from "./buttons";
 export { StepPhotoBio } from "./StepPhotoBio";
+export { StepPersonalDetails } from "./StepPersonalDetails";
+export { StepUsernameOnly } from "./StepUsernameOnly";
 export { StepTripTypes } from "./StepTripTypes";
-export { StepBudgetPace } from "./StepBudgetPace";
 export { StepEmergency } from "./StepEmergency";
 export { SuccessScreen } from "./SuccessScreen";
 export { STEPS } from "./steps";
+export * from "./validators";
 export * from "./constants";
