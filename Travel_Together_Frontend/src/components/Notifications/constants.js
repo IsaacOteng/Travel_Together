@@ -1,31 +1,40 @@
 import {
   AlertTriangle, UserCheck, CheckCircle, XCircle,
-  MessageCircle, Star, Clock, MapPin, Bell,
+  MessageCircle, Star, Clock, MapPin,
   CreditCard, Wallet, RotateCcw,
 } from "lucide-react";
 
+/* Three tones, not fourteen colours. The old config gave every type its own
+   hue, so a karma bump looked as loud as an SOS. Tone now carries meaning:
+   `alert` needs attention, `good` is a confirmation, `plain` is information.
+   `action` is the thing this notification is asking you to do — surfacing it
+   is the whole point of the panel. */
 export const TYPE_CFG = {
-  sos_alert:         { Icon: AlertTriangle, color: "#ef4444", bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.25)"   },
-  join_request:      { Icon: UserCheck,     color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.25)"  },
-  join_approved:     { Icon: CheckCircle,   color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.25)"  },
-  approved:          { Icon: CheckCircle,   color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.25)"  },
-  join_declined:     { Icon: XCircle,       color: "#f87171", bg: "rgba(248,113,113,0.10)", border: "rgba(248,113,113,0.25)" },
-  chat_message:      { Icon: MessageCircle, color: "#FF6B35", bg: "rgba(255,107,53,0.12)",  border: "rgba(255,107,53,0.25)"  },
-  karma_level:       { Icon: Star,          color: "#fbbf24", bg: "rgba(251,191,36,0.12)",  border: "rgba(251,191,36,0.25)"  },
-  trip_reminder:     { Icon: Clock,         color: "#60a5fa", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.25)"  },
-  trip_ended:        { Icon: CheckCircle,   color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.25)" },
-  proximity_warning: { Icon: MapPin,        color: "#fb923c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.25)"  },
-  review_reminder:   { Icon: Star,          color: "#FF6B35", bg: "rgba(255,107,53,0.12)",  border: "rgba(255,107,53,0.25)"  },
-  payment_due:       { Icon: CreditCard,    color: "#FF6B35", bg: "rgba(255,107,53,0.12)",  border: "rgba(255,107,53,0.25)"  },
-  payment_received:  { Icon: CheckCircle,   color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.25)"  },
-  payment_failed:    { Icon: XCircle,       color: "#f87171", bg: "rgba(248,113,113,0.10)", border: "rgba(248,113,113,0.25)" },
-  refund_processed:  { Icon: RotateCcw,     color: "#60a5fa", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.25)"  },
-  payout_released:   { Icon: Wallet,        color: "#4ade80", bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.25)"  },
-  trip_cancelled:    { Icon: XCircle,       color: "#f87171", bg: "rgba(248,113,113,0.10)", border: "rgba(248,113,113,0.25)" },
-  report_filed:      { Icon: AlertTriangle, color: "#fb923c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.25)"  },
+  sos_alert:         { Icon: AlertTriangle, tone: "alert", action: "View group"  },
+  join_request:      { Icon: UserCheck,     tone: "alert"                        },
+  join_approved:     { Icon: CheckCircle,   tone: "good",  action: "View trip"   },
+  approved:          { Icon: CheckCircle,   tone: "good",  action: "View trip"   },
+  join_declined:     { Icon: XCircle,       tone: "plain"                        },
+  chat_message:      { Icon: MessageCircle, tone: "plain", action: "Open chat"   },
+  karma_level:       { Icon: Star,          tone: "good",  action: "View profile"},
+  trip_reminder:     { Icon: Clock,         tone: "plain", action: "View trip"   },
+  trip_ended:        { Icon: CheckCircle,   tone: "plain", action: "Rate crew"   },
+  proximity_warning: { Icon: MapPin,        tone: "alert", action: "View group"  },
+  review_reminder:   { Icon: Star,          tone: "plain", action: "Rate crew"   },
+  payment_due:       { Icon: CreditCard,    tone: "alert", action: "Pay now"     },
+  payment_received:  { Icon: CheckCircle,   tone: "good"                         },
+  payment_failed:    { Icon: XCircle,       tone: "alert", action: "Try again"   },
+  refund_processed:  { Icon: RotateCcw,     tone: "good"                         },
+  payout_released:   { Icon: Wallet,        tone: "good"                         },
+  trip_cancelled:    { Icon: XCircle,       tone: "alert", action: "View trip"   },
+  report_filed:      { Icon: AlertTriangle, tone: "alert", action: "View group"  },
 };
 
-export const PANEL_BG = "#09162a";
+export const TONE_CLS = {
+  alert: "bg-accent-soft text-accent",
+  good:  "bg-moss/15 text-moss",
+  plain: "bg-surface-alt text-ink-mute",
+};
 
 export const css = `
   @keyframes npDropIn {
@@ -36,13 +45,7 @@ export const css = `
     from { transform: translateY(100%); }
     to   { transform: translateY(0);    }
   }
-  @keyframes npFadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  .np-item { transition: background 150ms; }
-  .np-item:hover { background: rgba(255,255,255,0.04) !important; }
   .np-scroll::-webkit-scrollbar { width: 4px; }
   .np-scroll::-webkit-scrollbar-track { background: transparent; }
-  .np-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  .np-scroll::-webkit-scrollbar-thumb { background: var(--tt-line); border-radius: 4px; }
 `;

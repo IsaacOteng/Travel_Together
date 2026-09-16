@@ -52,16 +52,16 @@ export default function TripCompletionPrompt({ tripId }) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 mb-4">
-      <p className="text-[13px] font-bold text-white mb-1">How was your trip?</p>
-      <p className="text-[11px] text-white/40 mb-3 leading-snug">
+    <div className="rounded-2xl border border-line bg-surface-alt px-4 py-3.5 mb-4">
+      <p className="text-[13px] font-bold text-ink mb-1">How was your trip?</p>
+      <p className="text-[11px] text-ink-mute mb-3 leading-snug">
         Confirm it happened, or report a problem. If you don't respond, it's taken as confirmed.
       </p>
 
       {!reporting ? (
         <div className="flex gap-2">
           <button onClick={confirm} disabled={busy}
-            className="flex-1 py-2.5 rounded-xl text-[12.5px] font-bold text-white border-none cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-xl text-[12.5px] font-bold text-ink border-none cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
             style={{ background: "linear-gradient(135deg,#4ade80,#22c55e)" }}>
             <CheckCircle size={14} /> Confirm it happened
           </button>
@@ -74,14 +74,14 @@ export default function TripCompletionPrompt({ tripId }) {
         <div className="flex flex-col gap-2">
           <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
             placeholder="What went wrong? Be specific (min 50 characters) this freezes the payout for review."
-            className="w-full rounded-xl px-3 py-2.5 text-[12.5px] text-white bg-white/[0.06] border border-white/10 outline-none placeholder:text-white/25 focus:border-[#FF6B35] resize-none" />
+            className="w-full rounded-xl px-3 py-2.5 text-[12.5px] text-ink bg-surface-alt border border-line outline-none placeholder:text-ink-mute focus:border-accent resize-none" />
           <div className="flex gap-2">
             <button onClick={submitReport} disabled={busy}
-              className="flex-1 py-2.5 rounded-xl text-[12.5px] font-bold text-white bg-red-500 cursor-pointer disabled:opacity-50">
+              className="flex-1 py-2.5 rounded-xl text-[12.5px] font-bold text-ink bg-red-500 cursor-pointer disabled:opacity-50">
               {busy ? "Submitting…" : "Submit report"}
             </button>
             <button onClick={() => setReporting(false)} disabled={busy}
-              className="px-4 py-2.5 rounded-xl text-[12px] font-semibold text-white/50 border border-white/10 cursor-pointer hover:text-white/80">
+              className="px-4 py-2.5 rounded-xl text-[12px] font-semibold text-ink-soft border border-line cursor-pointer hover:text-ink">
               Cancel
             </button>
           </div>

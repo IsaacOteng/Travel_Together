@@ -1,11 +1,6 @@
 export default function SectionHead({ label }) {
   return (
-    <div style={{
-      padding: "10px 20px 6px",
-      fontSize: 10, fontWeight: 800,
-      letterSpacing: "0.08em", textTransform: "uppercase",
-      color: "rgba(255,255,255,0.25)",
-    }}>
+    <div className="bg-ground-alt px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">
       {label}
     </div>
   );
