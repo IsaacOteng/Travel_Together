@@ -1,6 +1,8 @@
 import uuid
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
+from django.core.exceptions import ValidationError
 from utils.storage import save_image, delete_file as storage_delete
 from rest_framework import status
 from rest_framework.views import APIView
@@ -34,6 +36,59 @@ def _save_upload(file, trip_id, request=None):
 
 def _delete_file(key):
     storage_delete(key)
+
+
+def _acknowledge_report(report):
+    """
+    Drop the acknowledgement card into the reporter's Travel Together thread.
+
+    Best-effort: a chat thread that fails to write must never lose a report that
+    is already committed. The report is the record; the card is the receipt.
+    """
+    try:
+        from apps.chat.support import post_report_card
+        post_report_card(report)
+    except Exception:
+        pass
+
+
+def _notify_reported_party(report):
+    """
+    Tell whoever this report names that they need to answer it without ever
+    saying who filed it.
+
+    Anti-retaliation is the whole point: the reporter may still be in a van with
+    this person. `push` carries only the trip and the report id, and
+    IncidentReportView.get withholds the reporter on the way back out.
+    """
+    reported_id = report.reported_user_id
+    if not reported_id or reported_id == report.reporter_id:
+        return
+    try:
+        from apps.notifications.utils import push
+        trip = report.trip
+        push(
+            recipient  = report.reported_user,
+            notif_type = "report_filed",
+            title      = (
+                "A concern was raised about your trip" if trip
+                else "A concern was raised involving you"
+            ),
+            body       = (
+                f'Someone raised a concern about "{trip.title}". '
+                f"Add your side and any evidence so the team can review it fairly."
+                if trip else
+                "The Travel Together team will be in touch about a concern involving you."
+            ),
+            trip       = trip,
+            action_url = f"/group-dashboard/{trip.id}" if trip else "/chat",
+            data       = {
+                "trip_id":   str(trip.id) if trip else None,
+                "report_id": str(report.id),
+            },
+        )
+    except Exception:
+        pass
 
 
 def _is_chief(trip, user):
@@ -1344,24 +1399,72 @@ class TripRatingView(APIView):
 
 class IncidentReportView(APIView):
     """
-    GET  /api/trips/{trip_id}/reports/  — organizer views concerns raised (reporter hidden)
-    POST /api/trips/{trip_id}/reports/  — file a report (must be approved member)
+    GET  /api/trips/{trip_id}/reports/           organizer views concerns raised
+                                                  ABOUT them (reporter withheld)
+    GET  /api/trips/{trip_id}/reports/?mine=1     anyone views reports THEY filed
+                                                  on this trip
+    POST /api/trips/{trip_id}/reports/            file a trip-scoped report
+
+    Trip-scoped only. A concern that is not about a trip goes to
+    GeneralReportView, which stamps scope=general.
     """
     permission_classes = [IsAuthenticated]
+
+    def _membership(self, trip, user):
+        """(is_chief, is_member) for this user on this trip."""
+        is_chief  = _is_chief(trip, user)
+        is_member = TripMember.objects.filter(
+            trip=trip, user=user, status=TripMember.Status.APPROVED
+        ).exists()
+        return is_chief, is_member
 
     def get(self, request, trip_id):
         try:
             trip = Trip.objects.get(id=trip_id)
         except Trip.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
+
+        # "Reports I filed" available to any approved member, including the
+        # organizer. This is how a chief follows up on a concern they raised.
+        if request.query_params.get("mine"):
+            is_chief, is_member = self._membership(trip, request.user)
+            if not (is_chief or is_member):
+                return Response({"detail": "You are not on this trip."}, status=403)
+            mine = trip.incident_reports.filter(
+                reporter=request.user
+            ).order_by("-created_at")
+            return Response([
+                {
+                    "id":               str(r.id),
+                    "reference_number": r.reference_number,
+                    "incident_type":    r.incident_type,
+                    "description":      r.description,
+                    "evidence_urls":    r.evidence_urls,
+                    "status":           r.status,
+                    "created_at":       r.created_at,
+                    "response":         r.response,
+                    "responded_at":     r.responded_at,
+                }
+                for r in mine
+            ])
+
         if not _is_chief(trip, request.user):
             return Response({"detail": "Only the organizer can view this."}, status=403)
-        reports = trip.incident_reports.order_by("-created_at")
+
+        # Only what was raised AGAINST the organizer. The previous version
+        # returned every report on the trip, which meant a report the chief
+        # filed themselves came straight back to them rendered as "a concern was
+        # raised about your trip", and a report naming one member was shown to
+        # the organizer as if it accused them.
+        reports = trip.incident_reports.filter(
+            Q(reported_user=request.user) | Q(reported_user__isnull=True)
+        ).exclude(reporter=request.user).order_by("-created_at")
+
         return Response([
             {
                 "id":            str(r.id),
                 "incident_type": r.incident_type,
-                "description":   r.description,      # the claim reporter identity withheld
+                "description":   r.description,      # the claim; reporter identity withheld
                 "status":        r.status,
                 "created_at":    r.created_at,
                 "response":      r.response,
@@ -1372,43 +1475,184 @@ class IncidentReportView(APIView):
 
     def post(self, request, trip_id):
         try:
-            trip = Trip.objects.get(id=trip_id)
+            trip = Trip.objects.select_related("chief").get(id=trip_id)
         except Trip.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
 
-        is_member = TripMember.objects.filter(
-            trip=trip, user=request.user, status=TripMember.Status.APPROVED
-        ).exists()
-        if not is_member:
+        is_chief, is_member = self._membership(trip, request.user)
+        if not (is_chief or is_member):
             return Response(
-                {"detail": "You must be a trip member to file a report."}, status=403
+                {"detail": "You must be on this trip to file a report about it."},
+                status=403,
             )
 
         serializer = IncidentReportSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
 
-        report = serializer.save(trip=trip, reporter=request.user)
+        # Whoever is named must actually be on this trip. Without this check the
+        # member picker is an arbitrary "file a report against any user id"
+        # endpoint wearing a trip feature's clothes.
+        reported = serializer.validated_data.get("reported_user")
+        if reported is not None:
+            if reported.pk == request.user.pk:
+                return Response(
+                    {"detail": "You can't file a report against yourself."}, status=400
+                )
+            on_trip = (
+                trip.chief_id == reported.pk
+                or TripMember.objects.filter(
+                    trip=trip, user=reported, status=TripMember.Status.APPROVED
+                ).exists()
+            )
+            if not on_trip:
+                return Response(
+                    {"detail": "That person isn't on this trip."}, status=400
+                )
 
-        # A trip-level dispute is against the organizer. Default the reported party
-        # to the chief, and notify them so they can present their side WITHOUT
-        # revealing the reporter's identity (anti-retaliation).
-        if not report.reported_user_id and trip.chief_id:
+        report = serializer.save(
+            trip          = trip,
+            reporter      = request.user,
+            scope         = IncidentReport.Scope.TRIP,
+            origin        = IncidentReport.Origin.GROUP_DASHBOARD,
+            reporter_role = (
+                IncidentReport.ReporterRole.CHIEF if is_chief
+                else IncidentReport.ReporterRole.MEMBER
+            ),
+        )
+
+        # A member's trip-level dispute is with the organizer, so default the
+        # reported party to the chief. An ORGANIZER's is not otherwise the
+        # chief becomes the accused in their own complaint, and then reads it
+        # back to themselves in OrganizerReportCard.
+        if not report.reported_user_id and not is_chief and trip.chief_id:
             report.reported_user = trip.chief
             report.save(update_fields=["reported_user"])
-        if trip.chief_id and trip.chief_id != request.user.pk:
-            from apps.notifications.utils import push
-            push(
-                recipient  = trip.chief,
-                notif_type = "report_filed",
-                title      = "A concern was raised about your trip",
-                body       = f"Someone raised a concern about \"{trip.title}\". "
-                             f"Add your side and any evidence so the team can review it fairly.",
-                trip       = trip,
-                action_url = f"/group-dashboard/{trip.id}",   # organizer responds here
-                data       = {"trip_id": str(trip.id), "report_id": str(report.id)},
-            )
+
+        _acknowledge_report(report)
+        _notify_reported_party(report)
+
         return Response(IncidentReportSerializer(report).data, status=201)
+
+
+class GeneralReportView(APIView):
+    """
+    GET  /api/reports/    every report this user has filed, trip-scoped or not
+    POST /api/reports/    file a general (non-trip) report
+
+    The counterpart to IncidentReportView. Same record, same admin queue, same
+    reference number the only difference is that `scope` says this concern is
+    not about a particular trip, so nothing gets a payout freeze and no
+    organizer is asked to answer for it.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        reports = IncidentReport.objects.filter(
+            reporter=request.user
+        ).select_related("trip").order_by("-created_at")
+        return Response([
+            {
+                "id":               str(r.id),
+                "reference_number": r.reference_number,
+                "scope":            r.scope,
+                "trip_id":          str(r.trip_id) if r.trip_id else None,
+                "trip_title":       r.trip.title if r.trip_id else None,
+                "incident_type":    r.incident_type,
+                "description":      r.description,
+                "evidence_urls":    r.evidence_urls,
+                "status":           r.status,
+                "created_at":       r.created_at,
+            }
+            for r in reports
+        ])
+
+    def post(self, request):
+        serializer = IncidentReportSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        # Support chat lets the user optionally attach a trip they were on. If
+        # they do, this becomes a trip-scoped report filed through a different
+        # door and `origin` records which door.
+        trip     = None
+        trip_id  = request.data.get("trip")
+        is_chief = False
+        if trip_id:
+            try:
+                trip = Trip.objects.select_related("chief").get(id=trip_id)
+            except (Trip.DoesNotExist, ValueError, ValidationError):
+                return Response({"detail": "Trip not found."}, status=400)
+            is_chief  = _is_chief(trip, request.user)
+            is_member = TripMember.objects.filter(
+                trip=trip, user=request.user, status=TripMember.Status.APPROVED
+            ).exists()
+            if not (is_chief or is_member):
+                return Response(
+                    {"detail": "You can only attach a trip you were on."}, status=403
+                )
+
+        report = serializer.save(
+            trip          = trip,
+            reporter      = request.user,
+            scope         = IncidentReport.Scope.TRIP if trip else IncidentReport.Scope.GENERAL,
+            origin        = IncidentReport.Origin.SUPPORT_CHAT,
+            reporter_role = (
+                IncidentReport.ReporterRole.CHIEF if is_chief
+                else IncidentReport.ReporterRole.MEMBER if trip
+                else IncidentReport.ReporterRole.GUEST
+            ),
+        )
+        if trip and not report.reported_user_id and not is_chief and trip.chief_id:
+            report.reported_user = trip.chief
+            report.save(update_fields=["reported_user"])
+
+        _acknowledge_report(report)
+        if trip:
+            _notify_reported_party(report)
+
+        return Response(IncidentReportSerializer(report).data, status=201)
+
+
+class ReportEvidenceUploadView(APIView):
+    """
+    POST /api/reports/evidence/   multipart, key `file`
+
+    Returns { "url": "..." } to put in `evidence_urls` when filing. Separate
+    from the report POST so a photo uploads while the person is still typing
+    the 50-character description, and so one failed upload doesn't throw away
+    the whole account of what happened.
+
+    Goes through save_image, which strips EXIF. That matters more here than
+    anywhere else in the app: a harassment photo still carrying the reporter's
+    GPS coordinates is a location leak straight onto an admin screen.
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes     = [MultiPartParser, FormParser]
+
+    ALLOWED  = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+    MAX_SIZE = 10 * 1024 * 1024
+
+    def post(self, request):
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"detail": "No file provided. Use key 'file'."}, status=400)
+        if getattr(file, "content_type", "") not in self.ALLOWED:
+            return Response(
+                {"detail": "Evidence must be an image (JPEG, PNG, WebP or HEIC)."},
+                status=400,
+            )
+        if file.size > self.MAX_SIZE:
+            return Response({"detail": "Image exceeds 10 MB limit."}, status=400)
+
+        # Keyed by reporter, not by trip: evidence uploads before the report row
+        # exists, and a general report has no trip to key on.
+        key = f"reports/{request.user.pk}/{uuid.uuid4().hex}.jpg"
+        try:
+            url = save_image(file, key, max_px=1600, request=request)
+        except Exception:
+            return Response({"detail": "Couldn't process that image."}, status=400)
+        return Response({"url": url}, status=201)
 
 
 class IncidentRespondView(APIView):

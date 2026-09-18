@@ -47,8 +47,10 @@ def _require_dm_still_allowed(conversation, user):
     """
     Guard for writing into a DM. Returns a Response to bail out with, or None.
 
-    Group conversations are governed by trip membership already and are not
-    affected.
+    Group conversations are governed by trip membership already, and SUPPORT
+    threads have exactly one member, so neither is affected the early return
+    covers both. A member writing into their own Travel Together thread is the
+    normal case: it is how they answer a question about their own report.
     """
     if conversation.type != Conversation.Type.DM:
         return None
@@ -429,3 +431,24 @@ class ChatMediaUploadView(APIView):
             media_url = save_file(file, key, request=request)
 
         return Response({"media_url": media_url, "message_type": message_type}, status=201)
+
+
+# ─── Travel Together support thread ───────────────────────────────────────────
+
+class SupportConversationView(APIView):
+    """
+    GET /api/conversations/support/
+
+    The caller's Travel Together thread, created on first ask. The client calls
+    this once on entering Chat so the thread is always present and pinned, even
+    for someone who has never filed anything an empty support thread is how a
+    user discovers the team is reachable at all.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .support import get_support_conversation
+        conv = get_support_conversation(request.user)
+        return Response(
+            ConversationDetailSerializer(conv, context={"request": request}).data
+        )

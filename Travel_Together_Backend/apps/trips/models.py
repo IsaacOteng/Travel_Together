@@ -311,8 +311,51 @@ class IncidentReport(models.Model):
         RESOLVED     = "resolved",     "Resolved"
         DISMISSED    = "dismissed",    "Dismissed"
 
+    class Scope(models.TextChoices):
+        TRIP    = "trip",    "About a trip"
+        GENERAL = "general", "General / account"
+
+    class Origin(models.TextChoices):
+        GROUP_DASHBOARD   = "group_dashboard",   "Group Dashboard"
+        SUPPORT_CHAT      = "support_chat",      "Support Chat"
+        POST_TRIP_PROMPT  = "post_trip_prompt",  "Post-trip Prompt"
+        SOS               = "sos",               "SOS"
+
+    class ReporterRole(models.TextChoices):
+        MEMBER = "member", "Member"
+        CHIEF  = "chief",  "Chief"
+        GUEST  = "guest",  "Not on the trip"
+
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    trip             = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="incident_reports")
+    # Nullable since general reports exist: an account, a payment, a person met
+    # through the app but not on a trip together. `scope` not the presence of
+    # this FK is the field to branch on, so that "general" stays a deliberate
+    # statement rather than something inferred from a missing value.
+    trip             = models.ForeignKey(
+                            Trip,
+                            on_delete=models.CASCADE,
+                            null=True, blank=True,
+                            related_name="incident_reports",
+                        )
+    # Is this concern about a trip, or about the platform/account in general?
+    # Set by the entry point, never asked of the user on a trip surface filing
+    # from a trip IS the answer, and asking again just invites a wrong answer.
+    scope            = models.CharField(max_length=10, choices=Scope.choices, default=Scope.TRIP)
+    # Which surface it came through. Distinct from `scope` on purpose: scope is
+    # what the report is about, origin is how it arrived, and the admin team
+    # needs both (a trip-scoped report filed from support chat reads differently
+    # from one filed from inside the group dashboard mid-trip).
+    origin           = models.CharField(
+                            max_length=20, choices=Origin.choices,
+                            default=Origin.GROUP_DASHBOARD,
+                        )
+    # Snapshot, not a lookup. Roles change an organizer can hand over a trip,
+    # a member can later run one and the report must keep saying who this
+    # person was at the moment they raised the concern.
+    reporter_role    = models.CharField(
+                            max_length=10, choices=ReporterRole.choices,
+                            default=ReporterRole.MEMBER,
+                        )
     reporter         = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="incident_reports")
     reported_user    = models.ForeignKey(
                             "users.User",
@@ -335,6 +378,13 @@ class IncidentReport(models.Model):
     class Meta:
         db_table   = "trips_incidentreport"
         verbose_name = "Incident Report"
+        indexes    = [
+            # The admin inbox is always "open reports, newest first", optionally
+            # narrowed to one scope. Without this it is a full scan of every
+            # report ever filed to render the default view.
+            models.Index(fields=["scope", "status", "-created_at"]),
+            models.Index(fields=["reporter", "-created_at"]),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.reference_number:
@@ -343,3 +393,7 @@ class IncidentReport(models.Model):
 
     def __str__(self):
         return f"{self.reference_number} {self.incident_type}"
+
+    @property
+    def is_about_a_trip(self):
+        return self.scope == self.Scope.TRIP and self.trip_id is not None

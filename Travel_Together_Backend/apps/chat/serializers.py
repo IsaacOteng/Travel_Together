@@ -27,6 +27,7 @@ class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source="sender.username",  read_only=True)
     sender_avatar  = serializers.CharField(source="sender.avatar_url", read_only=True)
     read_by_count  = serializers.SerializerMethodField()
+    report         = serializers.SerializerMethodField()
 
     class Meta:
         model  = Message
@@ -36,13 +37,45 @@ class MessageSerializer(serializers.ModelSerializer):
             "message_type", "text", "media_url",
             "duration_seconds", "location_address",
             "streak_id", "is_edited", "edited_at",
-            "is_deleted", "is_pinned",
-            "read_by_count", "created_at",
+            "is_deleted", "is_pinned", "is_official",
+            "report", "read_by_count", "created_at",
         ]
         read_only_fields = fields
 
     def get_read_by_count(self, obj):
         return obj.read_receipts.count()
+
+    def get_report(self, obj):
+        """
+        Resolve report_id to a small card payload, or null.
+
+        Resolved at read time rather than stored, so the status shown in the
+        thread is always the report's current status a member scrolling back
+        to the acknowledgement should not see "pending" on a case that closed
+        last week. Returns null for a purged report; the plain text of the
+        message still stands on its own.
+        """
+        if not obj.report_id:
+            return None
+        from apps.trips.models import IncidentReport
+        r = (
+            IncidentReport.objects
+            .filter(id=obj.report_id)
+            .select_related("trip")
+            .only("id", "reference_number", "status", "incident_type", "scope", "trip__id", "trip__title")
+            .first()
+        )
+        if not r:
+            return None
+        return {
+            "id":               str(r.id),
+            "reference_number": r.reference_number,
+            "status":           r.status,
+            "incident_type":    r.incident_type,
+            "scope":            r.scope,
+            "trip_id":          str(r.trip_id) if r.trip_id else None,
+            "trip_title":       r.trip.title if r.trip_id else None,
+        }
 
 
 class MessageSendSerializer(serializers.ModelSerializer):
@@ -94,6 +127,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
             "text":            msg.text,
             "sender_id":       str(msg.sender_id) if msg.sender_id else None,
             "sender_username": msg.sender.username if msg.sender_id else None,
+            "is_official":     msg.is_official,
             "created_at":      msg.created_at.isoformat(),
         }
 

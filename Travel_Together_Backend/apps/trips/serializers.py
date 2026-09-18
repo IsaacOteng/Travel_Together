@@ -773,16 +773,25 @@ class IncidentReportSerializer(serializers.ModelSerializer):
         source="reported_user.username", read_only=True, allow_null=True
     )
 
+    trip_title        = serializers.CharField(
+        source="trip.title", read_only=True, allow_null=True
+    )
+
     class Meta:
         model  = IncidentReport
         fields = [
-            "id", "trip", "reporter",
+            "id", "trip", "trip_title", "reporter",
             "reported_user", "reported_username",
             "incident_type", "description", "evidence_urls",
+            "scope", "origin", "reporter_role",
             "status", "reference_number", "created_at",
         ]
         read_only_fields = [
-            "id", "trip", "reporter", "reported_username",
+            "id", "trip", "trip_title", "reporter", "reported_username",
+            # Stamped by the view from the entry point that was used. Accepting
+            # these from the client would let a trip-scoped report claim to be
+            # general (or vice versa) and quietly escape the payout freeze.
+            "scope", "origin", "reporter_role",
             "status", "reference_number", "created_at",
         ]
 

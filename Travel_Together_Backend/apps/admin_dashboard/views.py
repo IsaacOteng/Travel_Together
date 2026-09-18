@@ -1,5 +1,6 @@
 from django.utils import timezone
 from django.db.models import Count, Sum, Q
+from django.core.exceptions import ValidationError
 from datetime import timedelta
 
 from rest_framework.views import APIView
@@ -352,6 +353,13 @@ class AdminIncidentsView(APIView):
         if incident_type:
             qs = qs.filter(incident_type=incident_type)
 
+        # "Is this about a trip, or about us?" the split the inbox is triaged
+        # on. A trip report has a payout to freeze and an organizer to hear
+        # from; a general one has neither and is worked differently.
+        scope = request.query_params.get("scope")
+        if scope in (IncidentReport.Scope.TRIP, IncidentReport.Scope.GENERAL):
+            qs = qs.filter(scope=scope)
+
         page     = max(int(request.query_params.get("page", 1)), 1)
         per_page = 20
         total    = qs.count()
@@ -360,6 +368,11 @@ class AdminIncidentsView(APIView):
         from decimal import Decimal
 
         def held_amount(trip):
+            # A general report freezes nothing there is no trip and so no
+            # escrow to hold. Returning "0" rather than skipping the key keeps
+            # the shape of every row identical for the client.
+            if trip is None:
+                return str(Decimal("0"))
             return str(
                 Payment.objects.filter(trip=trip, status="held")
                 .aggregate(t=Sum("amount"))["t"] or Decimal("0")
@@ -377,6 +390,9 @@ class AdminIncidentsView(APIView):
                 "responded_at":     r.responded_at,
                 "reference_number": r.reference_number,
                 "created_at":       r.created_at,
+                "scope":            r.scope,           # about a trip, or about us
+                "origin":           r.origin,          # which surface it came through
+                "reporter_role":    r.reporter_role,   # who they were at filing time
                 "frozen_amount":    held_amount(r.trip),          # money on hold pending this case
                 "reporter": {
                     "id":       str(r.reporter.id),
@@ -391,12 +407,34 @@ class AdminIncidentsView(APIView):
                 "trip": {
                     "id":    str(r.trip.id),
                     "title": r.trip.title,
-                },
+                } if r.trip_id else None,
             }
             for r in qs
         ]
 
         return Response({"count": total, "page": page, "results": incidents})
+
+
+def _tell_reporter(incident, status, note=None):
+    """
+    Close the loop in the reporter's Travel Together thread.
+
+    This is the half that was missing: a report used to change status entirely
+    inside the admin dashboard, and the person who filed it never found out.
+    Best-effort the decision is already committed, and a chat write that
+    fails must not roll it back.
+    """
+    try:
+        from apps.chat.support import post_status_change, post_official
+        if status:
+            post_status_change(incident, status, note)
+        elif note:
+            post_official(
+                incident.reporter,
+                f"About {incident.reference_number}:\n\n{note}",
+            )
+    except Exception:
+        pass
 
 
 class AdminIncidentDetailView(APIView):
@@ -411,21 +449,34 @@ class AdminIncidentDetailView(APIView):
         action = request.data.get("action")
 
         # Resolution actions that move money:
+        # Anything an admin writes here reaches the person who filed the report.
+        # Optional, and never auto-generated from internal notes an admin has
+        # to choose the words that go to the member.
+        note = (request.data.get("note") or "").strip() or None
+
         if action == "uphold":
             # Side with the reporter: refund every held payment, cancel the trip,
             # penalise the organizer. (Any already-released partial is a clawback
             # matter handled separately.)
+            if not incident.trip_id:
+                return Response(
+                    {"detail": "Only a trip report can be upheld there is no trip "
+                               "to cancel or payment to refund. Resolve it instead."},
+                    status=400,
+                )
             from apps.payments.services import cancel_trip
             cancel_trip(incident.trip, by_organizer=True,
                         reason=f"report {incident.reference_number} upheld")
             incident.status = IncidentReport.ReportStatus.RESOLVED
             incident.save(update_fields=["status", "updated_at"])
+            _tell_reporter(incident, incident.status, note)
             return Response({"detail": "Report upheld trip cancelled and members refunded.",
                              "status": incident.status})
 
         if action == "dismiss":
             incident.status = IncidentReport.ReportStatus.DISMISSED
             incident.save(update_fields=["status", "updated_at"])
+            _tell_reporter(incident, incident.status, note)
             return Response({"detail": "Report dismissed held payouts will resume.",
                              "status": incident.status})
 
@@ -435,8 +486,15 @@ class AdminIncidentDetailView(APIView):
         if new_status and new_status not in allowed_statuses:
             return Response({"detail": f"Invalid status. Choices: {allowed_statuses}"}, status=400)
         if new_status:
+            changed = new_status != incident.status
             incident.status = new_status
             incident.save(update_fields=["status", "updated_at"])
+            # Only on a real transition. Re-saving "under_review" while working a
+            # case must not spam the member with the same line each time.
+            if changed:
+                _tell_reporter(incident, new_status, note)
+        elif note:
+            _tell_reporter(incident, None, note)
         return Response({"detail": "Incident updated.", "status": incident.status})
 
 
@@ -615,3 +673,247 @@ class AdminPayoutsView(APIView):
             for po in rows
         ]
         return Response({"count": total_ct, "page": page, "results": results})
+
+
+# ─── Messaging members as Travel Together ─────────────────────────────────────
+
+class AdminSupportInboxView(APIView):
+    """
+    GET /api/admin-dashboard/support/
+
+        ?search=      email / username / name
+        ?awaiting=1   only threads whose newest message came from the member
+        ?page=
+
+    The queue side of the Travel Together thread. Without this an admin could
+    only reply to a member they already knew to look up, which is no use at all
+    for the case this exists for: somebody wrote in and is waiting.
+
+    Threads with no messages are left out. One is created the moment a member
+    opens Chat, so including them would bury the handful of real conversations
+    under a row for every account on the platform.
+    """
+    permission_classes = [IsAdminUser]
+
+    PER_PAGE = 20
+
+    def get(self, request):
+        from django.db.models import Max, OuterRef, Subquery
+        from apps.chat.models import Conversation
+
+        # The newest surviving message decides both the ordering and whether
+        # the thread is still waiting on us, so it is worth the two subqueries
+        # to have both available before paginating.
+        newest = (
+            Message.objects
+            .filter(conversation=OuterRef("pk"), is_deleted=False)
+            .order_by("-created_at")
+        )
+        qs = (
+            Conversation.objects
+            .filter(type=Conversation.Type.SUPPORT)
+            .annotate(
+                last_activity   = Max("messages__created_at", filter=Q(messages__is_deleted=False)),
+                last_is_official= Subquery(newest.values("is_official")[:1]),
+            )
+            .filter(last_activity__isnull=False)
+            .prefetch_related("memberships__user")
+            .order_by("-last_activity")
+        )
+
+        search = request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(
+                Q(memberships__user__email__icontains=search)      |
+                Q(memberships__user__username__icontains=search)   |
+                Q(memberships__user__first_name__icontains=search) |
+                Q(memberships__user__last_name__icontains=search)
+            )
+
+        if request.query_params.get("awaiting") in ("1", "true"):
+            qs = qs.filter(last_is_official=False)
+
+        page  = max(int(request.query_params.get("page", 1)), 1)
+        total = qs.count()
+        rows  = list(qs[(page - 1) * self.PER_PAGE : page * self.PER_PAGE])
+
+        # One DISTINCT ON instead of a "latest message" query per row. Postgres
+        # only allows it when the leading ORDER BY matches the distinct column.
+        previews = {
+            m.conversation_id: m
+            for m in (
+                Message.objects
+                .filter(conversation_id__in=[c.id for c in rows], is_deleted=False)
+                .order_by("conversation_id", "-created_at")
+                .distinct("conversation_id")
+            )
+        }
+
+        results = []
+        for conv in rows:
+            membership = next(iter(conv.memberships.all()), None)
+            u = membership.user if membership else None
+            msg = previews.get(conv.id)
+            results.append({
+                "conversation_id": str(conv.id),
+                "user": {
+                    "id":         str(u.id),
+                    "email":      u.email,
+                    "username":   u.username,
+                    "first_name": u.first_name,
+                    "last_name":  u.last_name,
+                    "avatar_url": u.avatar_url,
+                    "is_active":  u.is_active,
+                } if u else None,
+                "last_message": {
+                    "text":         msg.text,
+                    "message_type": msg.message_type,
+                    "is_official":  msg.is_official,
+                    "created_at":   msg.created_at,
+                } if msg else None,
+                "awaiting_reply": conv.last_is_official is False,
+                "last_activity":  conv.last_activity,
+            })
+
+        # A thread whose only member has been deleted has nobody to reply to.
+        results = [r for r in results if r["user"]]
+
+        return Response({"count": total, "page": page, "results": results})
+
+
+class AdminSupportThreadView(APIView):
+    """
+    GET  /api/admin-dashboard/support/<user_id>/   read one user's thread
+    POST /api/admin-dashboard/support/<user_id>/   reply into it
+
+    The admin side of the Travel Together thread. Staff never join the
+    conversation they post into it, so the thread shows one identity to the
+    member and no individual admin is exposed to someone they just ruled
+    against. See apps.chat.support for the invariants.
+    """
+    permission_classes = [IsAdminUser]
+
+    def _user(self, user_id):
+        from apps.users.models import User
+        return User.objects.filter(id=user_id).first()
+
+    @staticmethod
+    def _user_block(u):
+        return {
+            "id":         str(u.id),
+            "email":      u.email,
+            "username":   u.username,
+            "first_name": u.first_name,
+            "last_name":  u.last_name,
+            "avatar_url": u.avatar_url,
+            "is_active":  u.is_active,
+        }
+
+    def get(self, request, user_id):
+        from apps.chat.support import get_support_conversation
+        from apps.chat.serializers import MessageSerializer
+
+        user = self._user(user_id)
+        if not user:
+            return Response({"detail": "User not found."}, status=404)
+
+        conv = get_support_conversation(user, create=False)
+        if not conv:
+            # Nothing said yet in either direction. An empty thread is the
+            # honest answer; creating one here would put a blank Travel Together
+            # row in the member's chat list just because an admin looked.
+            return Response({
+                "conversation_id": None,
+                "user":            self._user_block(user),
+                "messages":        [],
+            })
+
+        msgs = conv.messages.filter(is_deleted=False).order_by("created_at")[:200]
+        return Response({
+            "conversation_id": str(conv.id),
+            "user":            self._user_block(user),
+            "messages":        MessageSerializer(msgs, many=True).data,
+        })
+
+    def post(self, request, user_id):
+        from apps.chat.support import post_official
+        from apps.chat.serializers import MessageSerializer
+
+        user = self._user(user_id)
+        if not user:
+            return Response({"detail": "User not found."}, status=404)
+
+        text = (request.data.get("text") or "").strip()
+        if not text:
+            return Response({"detail": "Message text is required."}, status=400)
+
+        msg = post_official(user, text, media_url=request.data.get("media_url") or None)
+        return Response(MessageSerializer(msg).data, status=201)
+
+
+class AdminBroadcastView(APIView):
+    """
+    POST /api/admin-dashboard/broadcast/
+        { "text": "...", "trip_id": "<uuid>" }   every approved member + chief
+        { "text": "...", "user_ids": [...] }     a named list
+
+    One official message, delivered into each recipient's own Travel Together
+    thread rather than into the trip group chat. Deliberate: an announcement in
+    the group chat is a message members can reply to in front of each other,
+    and "your organizer is under investigation" is not a group conversation.
+
+    There is no send-to-everyone option here on purpose. A broadcast to the
+    whole user base is a different thing with different blast radius, and it
+    should not be one missing filter away from a routine trip announcement.
+    """
+    permission_classes = [IsAdminUser]
+
+    MAX_RECIPIENTS = 500
+
+    def post(self, request):
+        from apps.users.models import User
+        from apps.chat.support import post_official
+
+        text = (request.data.get("text") or "").strip()
+        if not text:
+            return Response({"detail": "Message text is required."}, status=400)
+
+        trip_id  = request.data.get("trip_id")
+        user_ids = request.data.get("user_ids")
+
+        if trip_id:
+            try:
+                trip = Trip.objects.select_related("chief").get(id=trip_id)
+            except (Trip.DoesNotExist, ValueError, ValidationError):
+                return Response({"detail": "Trip not found."}, status=404)
+            ids = set(
+                TripMember.objects.filter(
+                    trip=trip, status=TripMember.Status.APPROVED
+                ).values_list("user_id", flat=True)
+            )
+            if trip.chief_id:
+                ids.add(trip.chief_id)
+            recipients = User.objects.filter(id__in=ids)
+        elif user_ids:
+            if not isinstance(user_ids, list):
+                return Response({"detail": "user_ids must be a list."}, status=400)
+            recipients = User.objects.filter(id__in=user_ids[:self.MAX_RECIPIENTS])
+        else:
+            return Response(
+                {"detail": "Provide either trip_id or user_ids."}, status=400
+            )
+
+        recipients = list(recipients[:self.MAX_RECIPIENTS])
+        if not recipients:
+            return Response({"detail": "No recipients matched."}, status=400)
+
+        sent = 0
+        for user in recipients:
+            try:
+                post_official(user, text)
+                sent += 1
+            except Exception:
+                # One bad thread must not swallow the rest of the broadcast.
+                continue
+
+        return Response({"sent": sent, "recipients": len(recipients)}, status=201)

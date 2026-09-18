@@ -8,6 +8,7 @@ from apps.chat.views import (
     MarkReadView,
     MuteView,
     ChatMediaUploadView,
+    SupportConversationView,
 )
 
 urlpatterns = [
@@ -15,6 +16,11 @@ urlpatterns = [
     path("",
          ConversationListView.as_view(),
          name="conversation-list"),
+
+    # Must precede the <uuid> route below so "support" is never parsed as an id.
+    path("support/",
+         SupportConversationView.as_view(),
+         name="support-conversation"),
     path("<uuid:conversation_id>/",
          ConversationDetailView.as_view(),
          name="conversation-detail"),

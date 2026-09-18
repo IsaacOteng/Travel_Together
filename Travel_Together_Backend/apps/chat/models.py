@@ -6,8 +6,16 @@ from django.contrib.gis.db import models
 
 class Conversation(models.Model):
     class Type(models.TextChoices):
-        DM    = "dm",    "Direct Message"
-        GROUP = "group", "Group"
+        DM      = "dm",      "Direct Message"
+        GROUP   = "group",   "Group"
+        # The user's single thread with the Travel Together team. Exactly one per
+        # user, created on demand. It is where admin announcements land, where a
+        # report the user filed is acknowledged, and where every status change on
+        # that report gets reported back. Before this, a member filed a report and
+        # then heard nothing forever the report went into an admin queue with no
+        # return path. `support` gives the return path a home the user already
+        # knows how to read.
+        SUPPORT = "support", "Travel Together Support"
 
     id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     type       = models.CharField(max_length=10, choices=Type.choices)
@@ -67,6 +75,7 @@ class Message(models.Model):
         STREAK      = "streak",      "Streak"
         POLL_RESULT = "poll_result", "Poll Result"
         SYSTEM      = "system",      "System"
+        REPORT_REF  = "report_ref",  "Report Reference"
 
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation     = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
@@ -85,6 +94,15 @@ class Message(models.Model):
     # Plain UUIDField NOT a FK. Deleted streaks must not cascade-delete chat history.
     # Serializer resolves to streak data or null at read time.
     streak_id        = models.UUIDField(null=True, blank=True)
+    # Same reasoning as streak_id: a report_ref card points at an IncidentReport
+    # without a FK, so purging a report can never punch a hole in the thread that
+    # discussed it.
+    report_id        = models.UUIDField(null=True, blank=True)
+    # Sent by the Travel Together team rather than by a person. `sender` stays NULL
+    # on these on purpose: the member is talking to Travel Together, not to an
+    # individual staff member, and naming the admin who typed it invites the member
+    # to take a dispute personally to someone whose safety is not part of the deal.
+    is_official      = models.BooleanField(default=False)
     is_edited        = models.BooleanField(default=False)
     edited_at        = models.DateTimeField(null=True, blank=True)
     is_deleted       = models.BooleanField(default=False)
@@ -117,3 +135,33 @@ class MessageReadReceipt(models.Model):
 
     def __str__(self):
         return f"{self.user.email} read {self.message_id}"
+
+
+# ─── Support thread (admin-facing proxy) ──────────────────────────────────────
+
+class SupportThread(Conversation):
+    """
+    The SUPPORT conversations, on their own screen in the Django admin.
+
+    A proxy, not a new table: it is the same row a member sees in their chat.
+    It exists because ConversationAdmin is a database view — every DM and group
+    chat, edited field by field — and answering somebody who wrote in is not
+    that job. Here the thread reads as a conversation and the only action is
+    to reply, so an admin doing support cannot fat-finger a group chat's trip
+    FK on the way past.
+    """
+
+    class Meta:
+        proxy               = True
+        verbose_name        = "Support thread"
+        verbose_name_plural = "Support threads"
+
+    @property
+    def member(self):
+        """The single user this thread belongs to. See apps.chat.support."""
+        m = self.memberships.select_related("user").first()
+        return m.user if m else None
+
+    def __str__(self):
+        u = self.member
+        return f"Support · {u.email if u else 'unknown member'}"
