@@ -1,0 +1,126 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{# The member's Travel Together thread, read as a conversation rather than as a
+   table of Message rows. Outgoing (official) messages sit on the right; the
+   member's sit on the left, the same way round as in the app they are reading
+   it in, so an admin is never answering a transcript they have to decode. #}
+
+{% block breadcrumbs %}
+  <div class="px-4 lg:px-12 text-font-subtle-light dark:text-font-subtle-dark text-sm mt-6">
+    <a href="{% url 'admin:index' %}" class="hover:underline">{% trans 'Home' %}</a>
+    <span class="mx-2">/</span>
+    <a href="{{ changelist_url }}" class="hover:underline">{% trans 'Support threads' %}</a>
+    <span class="mx-2">/</span>
+    <span>{% if member %}{{ member.email }}{% else %}{% trans 'Unknown member' %}{% endif %}</span>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 lg:px-12 pb-12">
+
+  {# ── who ──────────────────────────────────────────────────────────────── #}
+  <div class="flex flex-wrap items-center gap-4 border border-base-200 dark:border-base-800 bg-white dark:bg-base-900 rounded-default p-5 mb-4">
+    {% if member.avatar_url %}
+      <img src="{{ member.avatar_url }}" alt="" class="w-12 h-12 rounded-full object-cover shrink-0">
+    {% else %}
+      <span class="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-200 flex items-center justify-center font-semibold shrink-0">
+        {% if member %}{{ member.email|slice:":1"|upper }}{% else %}?{% endif %}
+      </span>
+    {% endif %}
+
+    <div class="min-w-0 grow">
+      <p class="m-0 font-semibold text-font-important-light dark:text-font-important-dark truncate">
+        {% if member %}
+          {{ member.first_name|default:"" }} {{ member.last_name|default:"" }}
+          {% if not member.first_name and not member.last_name %}{{ member.username|default:member.email }}{% endif %}
+        {% else %}
+          {% trans 'Unknown member' %}
+        {% endif %}
+      </p>
+      <p class="m-0 text-sm text-font-subtle-light dark:text-font-subtle-dark truncate">
+        {{ member.email|default:"—" }}
+        {% if member and not member.is_active %}
+          · <span class="text-red-600 dark:text-red-400">{% trans 'Deactivated' %}</span>
+        {% endif %}
+      </p>
+    </div>
+
+    {% if member %}
+      <a href="{% url 'admin:users_user_change' member.pk %}"
+         class="shrink-0 border border-base-200 dark:border-base-700 rounded-default px-3 py-2 text-sm hover:bg-base-50 dark:hover:bg-base-800">
+        {% trans 'Open account' %}
+      </a>
+    {% endif %}
+  </div>
+
+  {# ── transcript ───────────────────────────────────────────────────────── #}
+  <div class="border border-base-200 dark:border-base-800 bg-white dark:bg-base-900 rounded-default p-5 mb-4">
+    {% if messages_ %}
+      <div class="flex flex-col gap-4">
+        {% for m in messages_ %}
+          <div class="flex {% if m.is_official %}justify-end{% else %}justify-start{% endif %}">
+            <div class="max-w-xl min-w-0">
+              <p class="m-0 mb-1 text-xs font-semibold {% if m.is_official %}text-right text-primary-600 dark:text-primary-300{% else %}text-font-subtle-light dark:text-font-subtle-dark{% endif %}">
+                {% if m.is_official %}
+                  Travel Together
+                {% else %}
+                  {{ m.sender.username|default:m.sender.email|default:"Member" }}
+                {% endif %}
+              </p>
+
+              {% if m.message_type == "image" and m.media_url %}
+                <img src="{{ m.media_url }}" alt="" class="max-h-64 rounded-default border border-base-200 dark:border-base-700">
+              {% else %}
+                <div class="rounded-default px-4 py-2.5 text-sm whitespace-pre-wrap break-words
+                            {% if m.is_official %}bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800{% else %}bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700{% endif %}">
+                  {{ m.text|default:"—" }}
+                </div>
+              {% endif %}
+
+              {% if m.report_id %}
+                <p class="m-0 mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">
+                  {% trans 'Attached report' %} · {{ m.report_id }}
+                </p>
+              {% endif %}
+
+              <p class="m-0 mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark {% if m.is_official %}text-right{% endif %}">
+                {{ m.created_at|date:"j M Y, H:i" }}
+              </p>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="m-0 py-10 text-center text-sm text-font-subtle-light dark:text-font-subtle-dark">
+        {% trans 'No messages yet. Anything you send starts this thread.' %}
+      </p>
+    {% endif %}
+  </div>
+
+  {# ── reply ────────────────────────────────────────────────────────────── #}
+  {% if can_reply and member %}
+    <form method="post" class="border border-base-200 dark:border-base-800 bg-white dark:bg-base-900 rounded-default p-5">
+      {% csrf_token %}
+      <label for="support-reply" class="block mb-2 text-sm font-semibold text-font-important-light dark:text-font-important-dark">
+        {% trans 'Reply as Travel Together' %}
+      </label>
+      <p class="m-0 mb-3 text-xs text-font-subtle-light dark:text-font-subtle-dark">
+        {% trans 'Sent from the platform, not from you — your name is never shown to the member.' %}
+      </p>
+      <textarea id="support-reply" name="text" rows="4" required
+                placeholder="{% trans 'Write a reply…' %}"
+                class="w-full border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 rounded-default px-4 py-3 text-sm"></textarea>
+      <button type="submit"
+              class="mt-3 bg-primary-600 text-white font-semibold rounded-default px-5 py-2.5 text-sm cursor-pointer hover:bg-primary-700">
+        {% trans 'Send' %}
+      </button>
+    </form>
+  {% elif not member %}
+    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">
+      {% trans 'This thread has no member attached, so there is nobody to reply to.' %}
+    </p>
+  {% endif %}
+
+</div>
+{% endblock %}

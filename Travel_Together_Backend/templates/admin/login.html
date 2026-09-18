@@ -10,43 +10,90 @@
     {{ block.super }}
     {{ form.media }}
     <style>
+        /* -- Theme ---------------------------------------------------
+           Unfold toggles a `dark` class on <html> (Alpine `adminTheme`).
+           Dark is the base here because the admin defaults to dark -- the
+           seed script below sets that on a first visit -- and the light
+           values only take over when that class is absent.
+
+           The light palette is the same warm paper the public site uses,
+           so switching to light lands somewhere recognisable rather than
+           on plain white. */
         .tt-page {
             --primary-400: #f97316; --primary-500: #ea580c; --primary-600: #c2410c; --primary-700: #9a3412;
-            --gray-950: #030712; --gray-900: #111827; --gray-800: #1f2937; --gray-700: #374151;
-            --gray-500: #6b7280; --gray-400: #9ca3af; --gray-300: #d1d5db; --gray-100: #f3f4f6;
 
+            /* dark (default) */
+            --ground:      #071422;
+            --frame:       #030712;
+            --panel:       #111827;
+            --sunken:      #030712;
+            --edge:        #1f2937;
+            --edge-soft:   #374151;
+            --txt:         #f3f4f6;
+            --txt-soft:    #d1d5db;
+            --txt-mute:    #9ca3af;
+            --txt-faint:   #6b7280;
+            --dots:        rgba(148, 163, 184, .10);
+            --glow:        rgba(234, 88, 12, .07);
+            --doodle:      rgba(249, 115, 22, .55);
+            --doodle-soft: rgba(148, 163, 184, .28);
+            --frame-shadow: 0 50px 120px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(234, 88, 12, .06);
+            --mock-shadow: rgba(60, 15, 0, .55);
+        }
+
+        html:not(.dark) .tt-page {
+            --ground:      #FAF7F1;
+            --frame:       #F1EADD;
+            --panel:       #FFFFFF;
+            --sunken:      #FFFFFF;
+            --edge:        #E2D9C9;
+            --edge-soft:   #D8CDB8;
+            --txt:         #1C1916;
+            --txt-soft:    #4C463D;
+            --txt-mute:    #8B8275;
+            --txt-faint:   #A79C8B;
+            --dots:        rgba(28, 25, 22, .07);
+            --glow:        rgba(234, 88, 12, .06);
+            --doodle:      rgba(194, 65, 12, .40);
+            --doodle-soft: rgba(28, 25, 22, .16);
+            --frame-shadow: 0 40px 90px -35px rgba(60, 40, 20, .28), 0 0 0 1px rgba(234, 88, 12, .05);
+            --mock-shadow: rgba(60, 40, 20, .22);
+        }
+
+        .tt-page {
             position: relative; overflow: hidden; min-height: 100vh;
             display: flex; align-items: center; justify-content: center; padding: 40px 20px;
             background:
-                radial-gradient(900px 500px at 50% 50%, rgba(234, 88, 12, .07), transparent 70%),
-                radial-gradient(rgba(148, 163, 184, .10) 1px, transparent 1.2px) 0 0 / 22px 22px,
-                #071422;
+                radial-gradient(900px 500px at 50% 50%, var(--glow), transparent 70%),
+                radial-gradient(var(--dots) 1px, transparent 1.2px) 0 0 / 22px 22px,
+                var(--ground);
+            transition: background .2s ease;
         }
         .tt-page *, .tt-page *::before, .tt-page *::after { box-sizing: border-box; }
 
-        /* ── Side doodles ───────────────────────────────────────────── */
+        /* -- Side doodles -------------------------------------------- */
         .tt-doodle {
             position: absolute; top: 50%; width: 260px; height: 760px; transform: translateY(-50%);
-            color: rgba(249, 115, 22, .55); pointer-events: none; display: none;
+            color: var(--doodle); pointer-events: none; display: none;
         }
         .tt-doodle.left  { left: max(8px, calc(50% - 640px - 280px)); }
         .tt-doodle.right { right: max(8px, calc(50% - 640px - 280px)); }
         @media (min-width: 1500px) { .tt-doodle { display: block; } }
-        .tt-doodle .soft { color: rgba(148, 163, 184, .28); }
+        .tt-doodle .soft { color: var(--doodle-soft); }
         .tt-doodle .route { stroke-dasharray: 6 8; animation: tt-dash 30s linear infinite; }
         .tt-doodle .bob { animation: tt-bob 6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
         @keyframes tt-dash { to { stroke-dashoffset: -600; } }
         @keyframes tt-bob  { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
-        /* ── Frame ──────────────────────────────────────────────────── */
+        /* -- Frame --------------------------------------------------- */
         .tt-frame {
             position: relative; z-index: 1; width: 100%; max-width: 1280px; min-height: 740px;
             display: flex; gap: 18px; padding: 18px; border-radius: 28px;
-            background: var(--gray-950); border: 1px solid var(--gray-800);
-            box-shadow: 0 50px 120px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(234, 88, 12, .06);
+            background: var(--frame); border: 1px solid var(--edge);
+            box-shadow: var(--frame-shadow);
         }
 
-        /* ── Left: brand panel ──────────────────────────────────────── */
+        /* -- Left: brand panel --------------------------------------- */
         .tt-brand {
             position: relative; flex: 1.1; overflow: hidden; border-radius: 20px; display: none;
             flex-direction: column; align-items: center; justify-content: center; padding: 60px 44px; text-align: center;
@@ -63,52 +110,67 @@
         .tt-brand h2 { position: relative; margin: 0 0 12px; font-size: 36px; line-height: 1.2; font-weight: 700; color: #fff; letter-spacing: -.4px; }
         .tt-brand p  { position: relative; margin: 0; font-size: 15px; color: rgba(255, 255, 255, .85); }
 
-        /* Placeholder illustration: a tilted mock of the admin dashboard (dark, like the real one) */
+        /* Placeholder illustration: a tilted mock of the admin dashboard */
         .tt-mock { position: relative; width: 100%; max-width: 480px; height: 330px; margin-top: 60px; }
         .tt-mock-side, .tt-mock-main {
-            position: absolute; background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 8px;
-            box-shadow: 0 30px 60px -20px rgba(60, 15, 0, .75);
+            position: absolute; background: var(--panel); border: 1px solid var(--edge); border-radius: 8px;
+            box-shadow: 0 30px 60px -20px var(--mock-shadow);
         }
         .tt-mock-side { left: 0; top: 56px; width: 74px; height: 270px; padding: 12px 9px; transform: rotate(-2deg); }
         .tt-mock-main { right: 0; top: 0; width: 360px; height: 292px; padding: 14px; transform: rotate(6deg); }
         .tt-mock-logo { width: 24px; height: 24px; margin-bottom: 14px; }
-        .tt-mock-nav  { height: 9px; border-radius: 3px; background: var(--gray-800); margin-bottom: 9px; }
+        .tt-mock-nav  { height: 9px; border-radius: 3px; background: var(--edge); margin-bottom: 9px; }
         .tt-mock-nav.on { background: var(--primary-500); }
-        .tt-mock-bar  { height: 10px; width: 45%; border-radius: 5px; background: var(--gray-800); margin-bottom: 14px; }
+        .tt-mock-bar  { height: 10px; width: 45%; border-radius: 5px; background: var(--edge); margin-bottom: 14px; }
         .tt-mock-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
-        .tt-mock-stat { border: 1px solid var(--gray-800); border-radius: 6px; padding: 9px 8px; text-align: left; }
+        .tt-mock-stat { border: 1px solid var(--edge); border-radius: 6px; padding: 9px 8px; text-align: left; }
         .tt-mock-stat i { display: block; width: 14px; height: 14px; border-radius: 4px; margin-bottom: 6px; }
-        .tt-mock-stat b { display: block; font-size: 13px; color: var(--gray-100); }
-        .tt-mock-stat span { display: block; font-size: 7px; color: var(--gray-500); }
-        .tt-mock-row { display: grid; grid-template-columns: 2fr 1.3fr 1fr .8fr; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--gray-800); }
+        .tt-mock-stat b { display: block; font-size: 13px; color: var(--txt); }
+        .tt-mock-stat span { display: block; font-size: 7px; color: var(--txt-faint); }
+        .tt-mock-row { display: grid; grid-template-columns: 2fr 1.3fr 1fr .8fr; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--edge); }
         .tt-mock-row.head { background: rgba(234, 88, 12, .14); border-radius: 4px; padding: 7px 4px; border: 0; }
-        .tt-mock-row > u { display: block; height: 6px; border-radius: 3px; background: var(--gray-700); text-decoration: none; }
+        .tt-mock-row > u { display: block; height: 6px; border-radius: 3px; background: var(--edge-soft); text-decoration: none; }
         .tt-mock-row.head > u { background: rgba(249, 115, 22, .55); }
         .tt-pill { display: block; height: 9px; border-radius: 5px; }
         .tt-pill.g { background: rgba(34, 197, 94, .55); } .tt-pill.o { background: rgba(249, 115, 22, .6); } .tt-pill.r { background: rgba(239, 68, 68, .55); }
-        .tt-mock-shadow { position: absolute; left: 12%; right: 12%; bottom: -28px; height: 26px; border-radius: 50%; background: rgba(60, 15, 0, .45); filter: blur(14px); }
+        .tt-mock-shadow { position: absolute; left: 12%; right: 12%; bottom: -28px; height: 26px; border-radius: 50%; background: var(--mock-shadow); filter: blur(14px); }
 
-        /* ── Right: form panel ──────────────────────────────────────── */
+        /* -- Right: form panel --------------------------------------- */
         .tt-form {
             position: relative; flex: 1; display: flex; flex-direction: column;
-            border-radius: 20px; border: 1px solid var(--gray-800); background: var(--gray-900); padding: 32px 34px 26px;
+            border-radius: 20px; border: 1px solid var(--edge); background: var(--panel); padding: 32px 34px 26px;
         }
         .tt-org { display: flex; align-items: center; gap: 11px; }
         .tt-org img { width: 36px; height: auto; }
-        .tt-org b { display: block; font-size: 18px; font-weight: 600; color: var(--gray-100); line-height: 1.2; }
+        .tt-org b { display: block; font-size: 18px; font-weight: 600; color: var(--txt); line-height: 1.2; }
         .tt-org small { display: block; font-size: 11px; color: var(--primary-400); }
+
+        /* -- Theme toggle -------------------------------------------- */
+        .tt-theme {
+            margin-left: auto; width: 38px; height: 38px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 999px; border: 1px solid var(--edge); background: transparent;
+            color: var(--txt-mute); cursor: pointer;
+            transition: color .15s ease, border-color .15s ease;
+        }
+        .tt-theme:hover { color: var(--primary-400); border-color: var(--primary-500); }
+        .tt-theme .material-symbols-outlined { font-size: 19px; }
+        /* Show the icon for the theme you would switch TO, not the one you are in. */
+        .tt-theme .to-light { display: none; }
+        html.dark .tt-page .tt-theme .to-light { display: block; }
+        html.dark .tt-page .tt-theme .to-dark  { display: none; }
 
         .tt-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 0; }
         .tt-inner { width: 100%; max-width: 380px; }
-        .tt-inner h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; color: var(--gray-100); letter-spacing: -.3px; }
+        .tt-inner h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; color: var(--txt); letter-spacing: -.3px; }
         .tt-inner h1 span { color: var(--primary-400); }
-        .tt-inner .tt-sub { margin: 0 0 30px; font-size: 14px; color: var(--gray-400); }
+        .tt-inner .tt-sub { margin: 0 0 30px; font-size: 14px; color: var(--txt-mute); }
 
-        /* Unfold field helpers, restyled to the dark palette */
-        .tt-inner label { color: var(--gray-300) !important; font-size: 13px !important; }
+        /* Unfold field helpers, restyled to the palette above */
+        .tt-inner label { color: var(--txt-soft) !important; font-size: 13px !important; }
         .tt-inner input[type="text"], .tt-inner input[type="email"], .tt-inner input[type="password"] {
-            width: 100%; height: 46px; background: var(--gray-950) !important; color: var(--gray-100) !important;
-            border: 1px solid var(--gray-700) !important; border-radius: 8px !important;
+            width: 100%; height: 46px; background: var(--sunken) !important; color: var(--txt) !important;
+            border: 1px solid var(--edge-soft) !important; border-radius: 8px !important;
             transition: border-color .15s ease, box-shadow .15s ease;
         }
         .tt-inner input:focus { border-color: var(--primary-500) !important; box-shadow: 0 0 0 3px rgba(234, 88, 12, .25) !important; outline: none !important; }
@@ -123,18 +185,39 @@
         .tt-submit .material-symbols-outlined { font-size: 19px; transition: transform .15s ease; }
         .tt-submit:hover .material-symbols-outlined { transform: translateX(3px); }
 
-        .tt-divider { height: 1px; background: var(--gray-800); margin: 24px 0; }
+        .tt-divider { height: 1px; background: var(--edge); margin: 24px 0; }
         .tt-reset {
             display: flex; align-items: center; justify-content: center; height: 46px; border-radius: 8px;
-            border: 1px solid var(--gray-700); font-size: 13px; color: var(--gray-300); text-decoration: none;
+            border: 1px solid var(--edge-soft); font-size: 13px; color: var(--txt-soft); text-decoration: none;
         }
         .tt-reset:hover { border-color: var(--primary-500); color: var(--primary-400); }
 
-        .tt-foot { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--gray-500); }
+        .tt-foot { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--txt-faint); }
         .tt-foot .material-symbols-outlined { font-size: 14px; color: #22c55e; }
 
         @media (prefers-reduced-motion: reduce) { .tt-doodle .route, .tt-doodle .bob { animation: none; } }
     </style>
+
+    <script>
+        /* The admin opens dark, the public site opens light, so it is obvious
+           at a glance which one you are looking at. Unfold stores the choice
+           in Alpine's $persist key for `adminTheme`; seeding it before Alpine
+           boots makes dark the default without overriding a real choice, and
+           the value carries through to the rest of the admin. */
+        (function () {
+            try {
+                var KEY = "_x_adminTheme";
+                if (localStorage.getItem(KEY) === null) {
+                    localStorage.setItem(KEY, JSON.stringify("dark"));
+                }
+                if (JSON.parse(localStorage.getItem(KEY)) === "dark") {
+                    document.documentElement.classList.add("dark");
+                }
+            } catch (e) {
+                /* blocked storage - Unfold's own default still applies */
+            }
+        })();
+    </script>
 {% endblock %}
 
 {% block bodyclass %}{{ block.super }} login{% endblock %}
@@ -250,6 +333,16 @@
             <div class="tt-org">
                 <img src="{% static 'img/logo.png' %}" alt="">
                 <div><b>{{ site_title }}</b><small>Admin Dashboard</small></div>
+
+                {# Writes the same Alpine store the rest of the admin reads, so the #}
+                {# choice made here follows you past the login screen. #}
+                <button type="button" class="tt-theme"
+                        x-on:click="adminTheme = (adminTheme === 'dark' ? 'light' : 'dark')"
+                        x-bind:aria-label="adminTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+                        x-bind:title="adminTheme === 'dark' ? 'Light theme' : 'Dark theme'">
+                    <span class="material-symbols-outlined to-light">light_mode</span>
+                    <span class="material-symbols-outlined to-dark">dark_mode</span>
+                </button>
             </div>
 
             <div class="tt-body">

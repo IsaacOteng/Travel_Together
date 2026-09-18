@@ -3,26 +3,31 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
   LayoutDashboard, Users, Map, ShieldAlert, BarChart2,
-  LogOut, Menu, X, ChevronRight, Wallet,
+  LogOut, Menu, X, ChevronRight, Wallet, ExternalLink,
 } from "lucide-react";
+import { AdminThemeProvider, AdminThemeToggle } from "./AdminTheme.jsx";
+import { officialLogo } from "../../assets/logos";
 
-import Overview       from "./Overview";
-import UsersPage      from "./UsersPage";
-import TripsPage      from "./TripsPage";
-import SafetyPage     from "./SafetyPage";
+import Overview        from "./Overview";
+import UsersPage       from "./UsersPage";
+import TripsPage       from "./TripsPage";
+import SafetyPage      from "./SafetyPage";
 import LeaderboardPage from "./LeaderboardPage";
-import PaymentsPage   from "./PaymentsPage";
+import PaymentsPage    from "./PaymentsPage";
 
 const NAV = [
-  { id: "overview",    label: "Overview",    Icon: LayoutDashboard, desc: "Platform stats" },
-  { id: "users",       label: "Users",       Icon: Users,           desc: "Manage accounts" },
-  { id: "trips",       label: "Trips",       Icon: Map,             desc: "All trips"       },
+  { id: "overview",    label: "Overview",    Icon: LayoutDashboard, desc: "Platform stats"   },
+  { id: "users",       label: "Users",       Icon: Users,           desc: "Manage accounts"  },
+  { id: "trips",       label: "Trips",       Icon: Map,             desc: "All trips"        },
   { id: "payments",    label: "Payments",    Icon: Wallet,          desc: "Escrow & payouts" },
-  { id: "safety",      label: "Safety",      Icon: ShieldAlert,     desc: "SOS & incidents" },
-  { id: "leaderboard", label: "Leaderboard", Icon: BarChart2,       desc: "Karma rankings"  },
+  { id: "safety",      label: "Safety",      Icon: ShieldAlert,     desc: "SOS & incidents"  },
+  { id: "leaderboard", label: "Leaderboard", Icon: BarChart2,       desc: "Karma rankings"   },
 ];
 
-const PAGE = { overview: Overview, users: UsersPage, trips: TripsPage, payments: PaymentsPage, safety: SafetyPage, leaderboard: LeaderboardPage };
+const PAGE = {
+  overview: Overview, users: UsersPage, trips: TripsPage,
+  payments: PaymentsPage, safety: SafetyPage, leaderboard: LeaderboardPage,
+};
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -34,129 +39,165 @@ export default function AdminDashboard() {
 
   const ActivePage = PAGE[active] ?? Overview;
   const activeMeta = NAV.find(n => n.id === active);
-
-  const closeSide = () => setSideOpen(false);
+  const closeSide  = () => setSideOpen(false);
 
   return (
-    <div className="min-h-screen bg-[#060f1a] flex text-sm">
-
-      {/* ── Mobile overlay ── */}
+    <AdminThemeProvider className="flex min-h-screen bg-ground font-sans text-ink">
       {sideOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeSide} />
-          <Sidebar active={active} setActive={id => { setActive(id); closeSide(); }} user={user} logout={logout} />
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            style={{ animation: "ttFadeIn .2s ease both" }}
+            onClick={closeSide}
+          />
+          <Sidebar
+            active={active}
+            setActive={id => { setActive(id); closeSide(); }}
+            user={user}
+            logout={logout}
+          />
         </div>
       )}
 
-      {/* ── Desktop sidebar ── */}
-      <aside className="hidden md:flex w-60 flex-col shrink-0 fixed inset-y-0 left-0 z-30">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 shrink-0 flex-col md:flex">
         <Sidebar active={active} setActive={setActive} user={user} logout={logout} />
       </aside>
 
-      {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-h-screen md:ml-60">
-
-        {/* Top bar */}
-        <header className="sticky top-0 z-20 flex items-center gap-3 px-4 md:px-8 h-14
-          bg-[#060f1a]/80 backdrop-blur border-b border-white/[0.06]">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:ml-64">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-ground/90 px-4 backdrop-blur-md md:px-8">
           <button
-            className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            aria-label={sideOpen ? "Close navigation" : "Open navigation"}
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-soft transition-colors hover:border-accent hover:text-accent md:hidden"
             onClick={() => setSideOpen(s => !s)}
           >
-            {sideOpen ? <X size={18} /> : <Menu size={18} />}
+            {sideOpen ? <X size={17} /> : <Menu size={17} />}
           </button>
 
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-slate-500">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-[13.5px] text-ink-mute">
             <span className="hidden sm:block">Admin</span>
-            <ChevronRight size={14} className="hidden sm:block" />
-            <span className="text-white font-medium">{activeMeta?.label}</span>
-          </div>
+            <ChevronRight size={14} className="hidden shrink-0 sm:block" />
+            <span className="truncate font-semibold text-ink">{activeMeta?.label}</span>
+          </nav>
 
-          <div className="ml-auto flex items-center gap-3">
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-white text-xs font-medium leading-none">{user.first_name || user.username || "Admin"}</span>
-              <span className="text-slate-500 text-xs mt-0.5">{user.email}</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#FF6B35] to-[#e0531f] flex items-center justify-center text-white text-xs font-bold select-none shadow-lg">
-              {user.first_name?.[0]?.toUpperCase() ?? user.email?.[0]?.toUpperCase() ?? "A"}
-            </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2.5">
+            <a
+              href="/discover"
+              title="Open the public site"
+              className="hidden h-9 cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-[13px] font-medium text-ink-soft no-underline transition-colors hover:border-accent hover:text-accent sm:flex"
+            >
+              View site <ExternalLink size={13} />
+            </a>
+            <AdminThemeToggle />
+            <Avatar user={user} size={34} />
           </div>
         </header>
 
-        {/* Page */}
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-          <ActivePage />
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div key={active} style={{ animation: "ttFadeUp .3s ease both" }}>
+            <ActivePage />
+          </div>
         </main>
       </div>
-    </div>
+    </AdminThemeProvider>
   );
 }
 
-/* ── Sidebar component ─────────────────────────────────────────────────────── */
+function Avatar({ user, size = 32 }) {
+  const initial =
+    user.first_name?.[0]?.toUpperCase() ??
+    user.username?.[0]?.toUpperCase() ??
+    user.email?.[0]?.toUpperCase() ??
+    "A";
+  return user.avatar_url ? (
+    <img
+      src={user.avatar_url}
+      alt=""
+      className="shrink-0 rounded-full object-cover"
+      style={{ width: size, height: size }}
+    />
+  ) : (
+    <span
+      className="flex shrink-0 select-none items-center justify-center rounded-full bg-accent-soft font-semibold text-accent"
+      style={{ width: size, height: size, fontSize: size * 0.4 }}
+    >
+      {initial}
+    </span>
+  );
+}
+
 function Sidebar({ active, setActive, user, logout }) {
   return (
-    <div className="relative z-50 w-60 h-full bg-[#0a1929] border-r border-white/[0.06] flex flex-col">
-
-      {/* Logo */}
-      <div className="px-5 pt-6 pb-5 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-linear-to-br from-[#FF6B35] to-[#e0531f] flex items-center justify-center shrink-0">
-            <Map size={14} className="text-white" />
-          </div>
-          <div>
-            <p className="text-white font-bold text-sm leading-none">Travel Together</p>
-            <p className="text-slate-500 text-[10px] mt-0.5 uppercase tracking-widest">Admin</p>
-          </div>
+    <div className="relative z-50 flex h-full w-64 flex-col border-r border-line bg-surface">
+      <div className="flex items-center gap-2.5 border-b border-line px-5 py-5">
+        <img
+          src={officialLogo}
+          alt=""
+          className="h-8 w-8 shrink-0"
+          onError={e => { e.target.style.display = "none"; }}
+        />
+        <div className="min-w-0">
+          <p className="m-0 truncate font-display text-[15px] font-semibold leading-tight text-ink">
+            Travel Together
+          </p>
+          <p className="m-0 mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-accent">
+            Admin
+          </p>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <p className="text-slate-600 text-[10px] font-semibold uppercase tracking-widest px-3 mb-3">Navigation</p>
-        {NAV.map(({ id, label, Icon, desc }) => {
-          const isActive = active === id;
-          return (
-            <button
-              key={id}
-              onClick={() => setActive(id)}
-              className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150
-                ${isActive
-                  ? "bg-[#FF6B35]/15 text-[#FF6B35]"
-                  : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <p className="m-0 mb-2.5 px-3 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-mute">
+          Navigation
+        </p>
+        <div className="flex flex-col gap-0.5">
+          {NAV.map(({ id, label, Icon, desc }) => {
+            const isActive = active === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setActive(id)}
+                aria-current={isActive ? "page" : undefined}
+                className={`group flex w-full cursor-pointer items-center gap-3 rounded-xl border-none px-3 py-2.5 text-left transition-colors ${
+                  isActive
+                    ? "bg-accent-soft text-accent"
+                    : "bg-transparent text-ink-soft hover:bg-surface-alt hover:text-ink"
                 }`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors
-                ${isActive ? "bg-[#FF6B35]/20" : "bg-white/[0.04] group-hover:bg-white/[0.08]"}`}>
-                <Icon size={16} />
-              </div>
-              <div className="text-left min-w-0">
-                <p className={`font-medium text-xs leading-none ${isActive ? "text-[#FF6B35]" : ""}`}>{label}</p>
-                <p className="text-slate-600 text-[10px] mt-0.5 truncate">{desc}</p>
-              </div>
-              {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#FF6B35] shrink-0" />}
-            </button>
-          );
-        })}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                    isActive ? "bg-accent text-accent-ink" : "bg-surface-alt text-ink-mute group-hover:text-ink"
+                  }`}
+                >
+                  <Icon size={15} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block text-[13.5px] font-semibold leading-tight ${isActive ? "text-accent" : ""}`}>
+                    {label}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11.5px] text-ink-mute">{desc}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
-      {/* User + logout */}
-      <div className="px-3 py-4 border-t border-white/[0.06]">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] mb-1">
-          <div className="w-7 h-7 rounded-full bg-linear-to-br from-[#FF6B35] to-[#e0531f] flex items-center justify-center text-white text-xs font-bold shrink-0">
-            {user.first_name?.[0]?.toUpperCase() ?? "A"}
-          </div>
+      <div className="border-t border-line px-3 py-4">
+        <div className="mb-1 flex items-center gap-3 rounded-xl bg-surface-alt px-3 py-2.5">
+          <Avatar user={user} size={30} />
           <div className="min-w-0">
-            <p className="text-white text-xs font-medium truncate">{user.first_name || user.username || "Admin"}</p>
-            <p className="text-slate-500 text-[10px] truncate">{user.email}</p>
+            <p className="m-0 truncate text-[13px] font-semibold text-ink">
+              {user.first_name || user.username || "Admin"}
+            </p>
+            <p className="m-0 truncate text-[11.5px] text-ink-mute">{user.email}</p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/[0.08] transition-colors"
+          className="flex w-full cursor-pointer items-center gap-3 rounded-xl border-none bg-transparent px-3 py-2.5 text-[13px] text-ink-mute transition-colors hover:bg-danger-soft hover:text-danger"
         >
-          <LogOut size={14} />
-          <span className="text-xs">Sign out</span>
+          <LogOut size={14} className="shrink-0" />
+          Sign out
         </button>
       </div>
     </div>

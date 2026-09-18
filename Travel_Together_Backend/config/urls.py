@@ -43,6 +43,9 @@ urlpatterns = [
     # Public endpoints (no auth)
     path("api/public/", include("apps.trips.urls_public")),
 
+    # General (non-trip) reports + evidence upload.
+    path("api/reports/", include("apps.trips.urls_reports")),
+
     # Social auth (Google OAuth)
     path("social/", include("social_django.urls", namespace="social")),
 ]

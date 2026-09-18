@@ -471,6 +471,9 @@ UNFOLD = {
                 "separator": True,
                 "items": [
                     {"title": "Users",                "icon": "person",             "link": "/admin/users/user/"},
+                    # Sits under Users, not Chat: it is a queue of people
+                    # waiting on an answer, worked account by account.
+                    {"title": "Support Threads",      "icon": "support_agent",      "link": "/admin/chat/supportthread/"},
                     {"title": "Emergency Contacts",   "icon": "emergency",          "link": "/admin/users/emergencycontact/"},
                     {"title": "Email Verifications",  "icon": "mark_email_read",    "link": "/admin/users/emailverification/"},
                     {"title": "Notification Settings","icon": "notifications",      "link": "/admin/users/notificationsettings/"},
